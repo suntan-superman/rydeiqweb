@@ -46,22 +46,7 @@ const TripHistory = ({ driverApplication }) => {
     }
   };
 
-  // Sample trip data structure for when trips exist
-  const sampleTrip = {
-    id: 'trip_001',
-    date: '2024-01-15',
-    time: '14:30',
-    pickup: '123 Main St, Downtown',
-    dropoff: '456 Oak Ave, Uptown', 
-    distance: '8.2 miles',
-    duration: '22 minutes',
-    fare: 18.50,
-    tips: 3.50,
-    total: 22.00,
-    status: 'completed',
-    rider: 'John D.',
-    rating: 5
-  };
+
 
   return (
     <div className="space-y-6">

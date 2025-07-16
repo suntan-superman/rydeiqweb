@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   getDriverApplications, 
   getDriverApplicationDetails, 
   approveDriverApplication, 
-  rejectDriverApplication,
-  updateDriverStatus 
+  rejectDriverApplication
 } from '../../services/adminService';
 import Button from '../common/Button';
 import Input from '../common/Input';
@@ -38,17 +37,7 @@ const DriverManagement = () => {
     { value: 'suspended', label: 'Suspended' }
   ];
 
-  // Load applications
-  useEffect(() => {
-    loadApplications();
-  }, []);
-
-  // Apply filters
-  useEffect(() => {
-    applyFilters();
-  }, [applications, filters]);
-
-  const loadApplications = async () => {
+  const loadApplications = useCallback(async () => {
     try {
       setLoading(true);
       const result = await getDriverApplications(user, { status: 'all' });
@@ -64,9 +53,9 @@ const DriverManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...applications];
 
     // Status filter
@@ -99,7 +88,17 @@ const DriverManagement = () => {
     });
 
     setFilteredApplications(filtered);
-  };
+  }, [applications, filters]);
+
+  // Load applications
+  useEffect(() => {
+    loadApplications();
+  }, [loadApplications]);
+
+  // Apply filters
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
 
   const handleViewDetails = async (applicationId) => {
     try {

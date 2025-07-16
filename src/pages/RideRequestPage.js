@@ -10,7 +10,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 const RideRequestPage = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const {
     pickupLocation,
@@ -20,13 +20,11 @@ const RideRequestPage = () => {
     setSpecialRequests,
     paymentMethod,
     setPaymentMethod,
-    currentRide,
     rideStatus,
     driverBids,
     loading,
     error,
     canRequestRide,
-    hasActiveRide,
     hasBids,
     biddingTimeRemaining,
     requestRide,
@@ -63,7 +61,7 @@ const RideRequestPage = () => {
     } else if (rideStatus === RIDE_STATUS.MATCHED) {
       navigate('/ride-tracking');
     }
-  }, [rideStatus, currentStep, navigate]);
+  }, [rideStatus, currentStep, navigate, RIDE_STATUS.BIDDING, RIDE_STATUS.MATCHED]);
 
   const handleRequestRide = async () => {
     if (!canRequestRide) {

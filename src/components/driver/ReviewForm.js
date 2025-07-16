@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useDriverOnboarding } from '../../contexts/DriverOnboardingContext';
 import { 
   submitDriverApplication, 
   validateCompleteApplication,
-  ONBOARDING_STEPS,
   DOCUMENT_TYPES 
 } from '../../services/driverService';
 import Button from '../common/Button';
@@ -15,12 +14,21 @@ const ReviewForm = () => {
     driverApplication, 
     goToStep,
     goToPreviousStep,
-    saving,
     ONBOARDING_STEPS: STEPS
   } = useDriverOnboarding();
   
   const [submitting, setSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState([]);
+
+  // Validate all required sections are completed
+  const validateApplication = useCallback(() => {
+    if (!driverApplication) {
+      return ['Driver application data not found'];
+    }
+    
+    const validation = validateCompleteApplication(driverApplication);
+    return validation.errors;
+  }, [driverApplication]);
 
   // Validate on component load
   useEffect(() => {
@@ -28,17 +36,7 @@ const ReviewForm = () => {
       const errors = validateApplication();
       setValidationErrors(errors);
     }
-  }, [driverApplication]);
-
-  // Validate all required sections are completed
-  const validateApplication = () => {
-    if (!driverApplication) {
-      return ['Driver application data not found'];
-    }
-    
-    const validation = validateCompleteApplication(driverApplication);
-    return validation.errors;
-  };
+  }, [driverApplication, validateApplication]);
 
   const handleSubmit = async () => {
     setValidationErrors([]);

@@ -11,8 +11,7 @@ const LocationPicker = ({ onLocationsSet }) => {
     setDestination,
     swapLocations,
     clearLocations,
-    estimatedFare,
-    updateEstimatedFare
+    estimatedFare
   } = useRide();
 
   const [pickupInput, setPickupInput] = useState('');

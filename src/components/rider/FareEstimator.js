@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRide } from '../../contexts/RideContext';
-import Button from '../common/Button';
 
 const FareEstimator = ({ onRideTypeChange }) => {
   const {
@@ -15,7 +14,6 @@ const FareEstimator = ({ onRideTypeChange }) => {
 
   const [fareBreakdown, setFareBreakdown] = useState(null);
   const [competitorFares, setCompetitorFares] = useState(null);
-  const [loading, setLoading] = useState(false);
 
   // Ride type configurations
   const rideTypeConfigs = {
@@ -49,15 +47,7 @@ const FareEstimator = ({ onRideTypeChange }) => {
     }
   };
 
-  // Calculate fare breakdown
-  useEffect(() => {
-    if (pickupLocation && destinationLocation && estimatedFare > 0) {
-      calculateFareBreakdown();
-      calculateCompetitorFares();
-    }
-  }, [pickupLocation, destinationLocation, estimatedFare, rideType]);
-
-  const calculateFareBreakdown = () => {
+  const calculateFareBreakdown = useCallback(() => {
     const config = rideTypeConfigs[rideType];
     const baseFare = estimatedFare / config.multiplier;
     
@@ -70,9 +60,9 @@ const FareEstimator = ({ onRideTypeChange }) => {
     };
 
     setFareBreakdown(breakdown);
-  };
+  }, [rideType, estimatedFare, rideTypeConfigs]);
 
-  const calculateCompetitorFares = () => {
+  const calculateCompetitorFares = useCallback(() => {
     // Simulate competitor pricing (in production, you'd call their APIs or use estimates)
     const basePrice = estimatedFare;
     
@@ -96,7 +86,15 @@ const FareEstimator = ({ onRideTypeChange }) => {
     });
 
     setCompetitorFares(competitors);
-  };
+  }, [estimatedFare]);
+
+  // Calculate fare breakdown
+  useEffect(() => {
+    if (pickupLocation && destinationLocation && estimatedFare > 0) {
+      calculateFareBreakdown();
+      calculateCompetitorFares();
+    }
+  }, [pickupLocation, destinationLocation, estimatedFare, rideType, calculateFareBreakdown, calculateCompetitorFares]);
 
   const handleRideTypeSelection = (newRideType) => {
     setRideType(newRideType);

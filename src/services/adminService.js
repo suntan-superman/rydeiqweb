@@ -1,17 +1,13 @@
-import { 
+import {
   collection, 
   doc, 
   getDocs, 
   getDoc, 
   updateDoc, 
-  deleteDoc,
   query, 
   where, 
   orderBy, 
-  limit,
-  startAfter,
-  Timestamp,
-  writeBatch
+  limit
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { isAdmin } from './authService';
@@ -194,7 +190,7 @@ export const getRides = async (currentUser, filters = {}, pagination = {}) => {
   try {
     checkAdminPermissions(currentUser);
 
-    const { status, driverId, customerId, dateRange, page = 1, pageSize = 20 } = { ...filters, ...pagination };
+    const { status, driverId, customerId, page = 1, pageSize = 20 } = { ...filters, ...pagination };
     
     let q = collection(db, 'rides');
     
@@ -613,7 +609,7 @@ export const getSupportTickets = async (currentUser, filters = {}) => {
   }
 };
 
-export default {
+const adminService = {
   // Driver Management
   getDriverApplications,
   getDriverApplicationDetails,
@@ -639,4 +635,6 @@ export default {
   
   // Support
   getSupportTickets
-}; 
+};
+
+export default adminService; 

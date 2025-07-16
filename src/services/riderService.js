@@ -8,8 +8,7 @@ import {
   query, 
   where, 
   orderBy, 
-  onSnapshot,
-  Timestamp 
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -448,9 +447,7 @@ export const processPayment = async (rideRequestId, paymentData) => {
   try {
     // This would integrate with Stripe or your payment processor
     const {
-      amount,
-      paymentMethodId,
-      customerId
+      amount
     } = paymentData;
 
     // Placeholder implementation
@@ -529,7 +526,7 @@ export const getNearbyDrivers = async (location, radiusMiles = 10) => {
   }
 };
 
-export default {
+const riderService = {
   // Ride Management
   createRideRequest,
   getRideRequest,
@@ -554,4 +551,6 @@ export default {
   
   // Driver Discovery
   getNearbyDrivers
-}; 
+};
+
+export default riderService; 

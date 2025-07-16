@@ -11,7 +11,7 @@ import RideRating from '../components/rider/RideRating';
 import toast from 'react-hot-toast';
 
 const RideTrackingPage = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const {
     currentRide,
@@ -43,14 +43,14 @@ const RideTrackingPage = () => {
       navigate('/request-ride');
       return;
     }
-  }, [hasActiveRide, rideStatus, navigate]);
+  }, [hasActiveRide, rideStatus, navigate, RIDE_STATUS.COMPLETED]);
 
   // Handle ride completion
   useEffect(() => {
     if (rideStatus === RIDE_STATUS.COMPLETED) {
       setShowRatingModal(true);
     }
-  }, [rideStatus]);
+  }, [rideStatus, RIDE_STATUS.COMPLETED]);
 
   // Simulate driver location updates (in production, this would come from real-time Firebase updates)
   useEffect(() => {
