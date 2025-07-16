@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import {
   createRideRequest,
@@ -78,14 +78,14 @@ export const RideProvider = ({ children }) => {
     } else {
       resetRideState();
     }
-  }, [user, isAuthenticated]);
+  }, [user, isAuthenticated, loadRideHistory, resetRideState]);
 
   // Update estimated fare when locations or ride type change
   useEffect(() => {
     if (pickupLocation && destinationLocation) {
       updateEstimatedFare();
     }
-  }, [pickupLocation, destinationLocation, rideType]);
+  }, [pickupLocation, destinationLocation, rideType, updateEstimatedFare]);
 
   // Clean up subscription on unmount
   useEffect(() => {
@@ -122,7 +122,7 @@ export const RideProvider = ({ children }) => {
 
   // ===== FARE CALCULATION =====
 
-  const updateEstimatedFare = async () => {
+  const updateEstimatedFare = useCallback(async () => {
     try {
       if (pickupLocation && destinationLocation) {
         const fare = calculateEstimatedFare(pickupLocation, destinationLocation, rideType);
@@ -131,7 +131,7 @@ export const RideProvider = ({ children }) => {
     } catch (error) {
       console.error('Error calculating fare:', error);
     }
-  };
+  }, [pickupLocation, destinationLocation, rideType]);
 
   // ===== RIDE REQUEST MANAGEMENT =====
 
@@ -351,7 +351,7 @@ export const RideProvider = ({ children }) => {
 
   // ===== DATA LOADING =====
 
-  const loadRideHistory = async () => {
+  const loadRideHistory = useCallback(async () => {
     if (!user?.uid) return;
 
     try {
@@ -364,7 +364,7 @@ export const RideProvider = ({ children }) => {
     } catch (error) {
       console.error('Error loading ride history:', error);
     }
-  };
+  }, [user]);
 
   const loadNearbyDrivers = async () => {
     if (!pickupLocation?.coordinates) return;
@@ -383,7 +383,7 @@ export const RideProvider = ({ children }) => {
 
   // ===== STATE MANAGEMENT =====
 
-  const resetRideState = () => {
+  const resetRideState = useCallback(() => {
     setCurrentRide(null);
     setRideStatus(RIDE_STATUS.NONE);
     setDriverBids([]);
@@ -395,7 +395,7 @@ export const RideProvider = ({ children }) => {
       rideSubscription();
       setRideSubscription(null);
     }
-  };
+  }, [rideSubscription]);
 
   const refreshCurrentRide = async () => {
     if (!currentRide?.id) return;

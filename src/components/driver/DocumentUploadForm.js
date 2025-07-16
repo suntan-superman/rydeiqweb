@@ -300,8 +300,6 @@ const DocumentUploadCard = ({
   uploadProgress, 
   isUploading 
 }) => {
-  const [dragActive, setDragActive] = useState(false);
-
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles.length > 0) {
       onUpload(acceptedFiles[0]);

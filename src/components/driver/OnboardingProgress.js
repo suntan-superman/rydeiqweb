@@ -4,7 +4,6 @@ import { useDriverOnboarding } from '../../contexts/DriverOnboardingContext';
 const OnboardingProgress = ({ currentStep, progress, applicationStatus }) => {
   const { 
     ONBOARDING_STEPS, 
-    DRIVER_STATUS,
     getStepStatus,
     goToStep,
     isStepAccessible
@@ -154,7 +153,7 @@ const OnboardingProgress = ({ currentStep, progress, applicationStatus }) => {
 
           {/* Desktop Step Navigation */}
           <nav className="hidden lg:flex" aria-label="Progress">
-            <ol role="list" className="flex items-center w-full">
+            <ol className="flex items-center w-full">
               {steps.map((step, stepIdx) => {
                 const status = getStepStatus(step.key);
                 const isClickable = isStepAccessible(step.key);

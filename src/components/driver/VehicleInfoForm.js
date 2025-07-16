@@ -22,8 +22,7 @@ const VehicleInfoForm = () => {
     handleSubmit,
     formState: { errors },
     setValue,
-    watch,
-    reset
+    watch
   } = useForm({
     defaultValues: {
       make: '',
@@ -141,7 +140,7 @@ const VehicleInfoForm = () => {
     }
 
     // Validate license plate format (basic validation)
-    const licensePlateRegex = /^[A-Z0-9\s\-]{2,8}$/i;
+    const licensePlateRegex = /^[A-Z0-9\s-]{2,8}$/i;
     if (!licensePlateRegex.test(data.licensePlate)) {
       customErrors.push('Please enter a valid license plate number');
     }
@@ -303,7 +302,7 @@ const VehicleInfoForm = () => {
                 {...register('licensePlate', {
                   required: 'License plate is required',
                   pattern: {
-                    value: /^[A-Z0-9\s\-]{2,8}$/i,
+                    value: /^[A-Z0-9\s-]{2,8}$/i,
                     message: 'Please enter a valid license plate'
                   }
                 })}

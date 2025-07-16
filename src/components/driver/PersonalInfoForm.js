@@ -20,8 +20,7 @@ const PersonalInfoForm = () => {
     register,
     handleSubmit,
     formState: { errors },
-    setValue,
-    watch,
+    setValue
   } = useForm({
     defaultValues: {
       firstName: '',
@@ -70,7 +69,7 @@ const PersonalInfoForm = () => {
     // Validate date of birth (must be at least 18 years old)
     const birthDate = new Date(data.dateOfBirth);
     const today = new Date();
-    const age = today.getFullYear() - birthDate.getFullYear();
+    let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
