@@ -45,7 +45,7 @@ const HomePage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Why Choose RydeIQ?
+              Why Choose RydeAlong?
             </h2>
             <p className="text-xl text-gray-600">
               Everything you need to make smarter transportation decisions
@@ -103,7 +103,7 @@ const HomePage = () => {
               Get the Full Experience
             </h2>
             <p className="text-xl text-gray-600 mb-8">
-              Download our mobile app for the complete RydeIQ experience with advanced features and real-time notifications.
+              Download our mobile app for the complete RydeAlong experience with advanced features and real-time notifications.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
@@ -180,7 +180,7 @@ const HomePage = () => {
             Ready to Save on Your Next Ride?
           </h2>
           <p className="text-xl mb-8 opacity-90">
-            Join thousands of smart travelers who use RydeIQ to save money on every trip.
+            Join thousands of smart travelers who use RydeAlong to save money on every trip.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
