@@ -10,8 +10,16 @@ import {
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
+// User roles constants
+export const USER_ROLES = {
+  CUSTOMER: 'customer',
+  DRIVER: 'driver',
+  ADMIN: 'admin',
+  SUPER_ADMIN: 'super_admin'
+};
+
 // Register new user
-export const registerUser = async ({ email, password, firstName, lastName }) => {
+export const registerUser = async ({ email, password, firstName, lastName, role = USER_ROLES.CUSTOMER }) => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
@@ -28,6 +36,7 @@ export const registerUser = async ({ email, password, firstName, lastName }) => 
       firstName,
       lastName,
       displayName: `${firstName} ${lastName}`,
+      role: role,
       createdAt: new Date().toISOString(),
       emailVerified: false,
       preferences: {
@@ -47,6 +56,7 @@ export const registerUser = async ({ email, password, firstName, lastName }) => 
         email: user.email,
         displayName: user.displayName,
         emailVerified: user.emailVerified,
+        role: role,
       },
     };
   } catch (error) {
@@ -209,5 +219,76 @@ export const getAuthErrorMessage = (errorCode) => {
       return 'Network error. Please check your connection.';
     default:
       return 'An error occurred. Please try again.';
+  }
+};
+
+// Check if user has admin privileges
+export const isAdmin = (user) => {
+  return user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.SUPER_ADMIN;
+};
+
+// Check if user has super admin privileges
+export const isSuperAdmin = (user) => {
+  return user?.role === USER_ROLES.SUPER_ADMIN;
+};
+
+// Check if user has specific role
+export const hasRole = (user, role) => {
+  return user?.role === role;
+};
+
+// Update user role (admin only)
+export const updateUserRole = async (userId, newRole, currentUser) => {
+  try {
+    // Only admins can change roles
+    if (!isAdmin(currentUser)) {
+      throw new Error('Insufficient permissions to update user roles');
+    }
+
+    // Super admins can change any role, regular admins can only promote to customer/driver
+    if (!isSuperAdmin(currentUser) && (newRole === USER_ROLES.ADMIN || newRole === USER_ROLES.SUPER_ADMIN)) {
+      throw new Error('Insufficient permissions to grant admin privileges');
+    }
+
+    await updateDoc(doc(db, 'users', userId), {
+      role: newRole,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        code: error.code,
+        message: error.message,
+      },
+    };
+  }
+};
+
+// Create admin user (super admin only)
+export const createAdminUser = async ({ email, password, firstName, lastName }, currentUser) => {
+  try {
+    // Only super admins can create admin users
+    if (!isSuperAdmin(currentUser)) {
+      throw new Error('Only super admins can create admin users');
+    }
+
+    return await registerUser({
+      email,
+      password,
+      firstName,
+      lastName,
+      role: USER_ROLES.ADMIN
+    });
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        code: error.code,
+        message: error.message,
+      },
+    };
   }
 }; 

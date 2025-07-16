@@ -13,7 +13,7 @@ const Footer = () => {
               <div className="h-8 w-8 bg-gradient-primary rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">R</span>
               </div>
-              <span className="text-xl font-bold">RydeIQ</span>
+              <span className="text-xl font-bold">RydeAlong</span>
             </div>
             <p className="text-gray-400 text-sm">
               Compare ride prices, save money, and make smarter travel decisions. 
@@ -140,7 +140,7 @@ const Footer = () => {
             </h3>
             <div className="space-y-3">
               <p className="text-gray-400 text-sm">
-                Download our mobile app for the best RydeIQ experience!
+                Download our mobile app for the best RydeAlong experience!
               </p>
               <div className="flex flex-col space-y-2">
                 <a
@@ -174,7 +174,7 @@ const Footer = () => {
 
         <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <div className="text-gray-400 text-sm">
-            © 2025 RydeIQ. All rights reserved.
+            © 2025 RydeAlong. All rights reserved.
           </div>
           <div className="text-gray-400 text-sm mt-2 md:mt-0">
             Made with ❤️ for smarter travel decisions

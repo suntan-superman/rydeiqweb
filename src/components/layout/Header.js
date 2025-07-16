@@ -45,7 +45,7 @@ const Header = () => {
               <div className="h-8 w-8 bg-gradient-primary rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">R</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">RydeIQ</span>
+              <span className="text-xl font-bold text-gray-900">RydeAlong</span>
             </Link>
           </div>
 
@@ -74,6 +74,12 @@ const Header = () => {
               className="text-gray-700 hover:text-primary-600 transition-colors duration-200"
             >
               Contact
+            </Link>
+            <Link
+              to="/driver-onboarding"
+              className="text-gray-700 hover:text-primary-600 transition-colors duration-200 font-medium"
+            >
+              Drive with Us
             </Link>
           </nav>
 
@@ -183,6 +189,13 @@ const Header = () => {
                 onClick={toggleMenu}
               >
                 Contact
+              </Link>
+              <Link
+                to="/driver-onboarding"
+                className="px-3 py-2 text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md font-medium"
+                onClick={toggleMenu}
+              >
+                Drive with Us
               </Link>
               {isAuthenticated && (
                 <div className="px-3 py-2 text-sm text-gray-500">
