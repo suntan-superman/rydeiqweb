@@ -1,12 +1,12 @@
-# **RydeAlong: The Future of Fair Ride-Sharing**
+# **AnyRyde: The Future of Fair Ride-Sharing**
 
 ## **🚀 Revolutionary Competitive Bidding Platform**
 
-RydeAlong transforms the ride-sharing industry by empowering **drivers to set their own prices** through an innovative competitive bidding system, eliminating surge pricing and creating true market-driven pricing for both riders and drivers.
+AnyRyde transforms the ride-sharing industry by empowering **drivers to set their own prices** through an innovative competitive bidding system, eliminating surge pricing and creating true market-driven pricing for both riders and drivers.
 
 ---
 
-## **💡 What Makes RydeAlong Unique**
+## **💡 What Makes AnyRyde Unique**
 
 ### **🎯 For Riders: Complete Transparency & Choice**
 
@@ -150,7 +150,7 @@ RydeAlong transforms the ride-sharing industry by empowering **drivers to set th
 
 ---
 
-## **🎯 Why RydeAlong Will Succeed**
+## **🎯 Why AnyRyde Will Succeed**
 
 ### **🚩 Market Timing**
 - **Driver dissatisfaction** with current platforms creates opportunity
@@ -212,7 +212,7 @@ RydeAlong transforms the ride-sharing industry by empowering **drivers to set th
 
 ---
 
-**RydeAlong represents the next evolution of ride-sharing: where drivers earn fairly, riders save money, and local transportation ecosystems thrive through transparent competition and innovative technology.**
+**AnyRyde represents the next evolution of ride-sharing: where drivers earn fairly, riders save money, and local transportation ecosystems thrive through transparent competition and innovative technology.**
 
 ---
 

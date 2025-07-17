@@ -612,7 +612,7 @@ const PayoutSetupForm = () => {
                 />
                 <div>
                   <span className="text-sm text-gray-900">
-                    I consent to RydeAlong reporting my earnings to tax authorities as required by law *
+                    I consent to AnyRyde reporting my earnings to tax authorities as required by law *
                   </span>
                   {getErrorMessage('consentToTaxReporting') && (
                     <p className="text-red-500 text-sm mt-1">{getErrorMessage('consentToTaxReporting')}</p>

@@ -104,7 +104,7 @@ const AdminDashboardPage = () => {
           <div className="flex justify-between items-center py-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                RydeAlong Admin Dashboard
+                AnyRyde Admin Dashboard
               </h1>
               <p className="text-sm text-gray-600">
                 Welcome back, {user?.displayName || user?.firstName || 'Administrator'}

@@ -318,7 +318,7 @@ const ReviewForm = () => {
                 <li>Maintain valid insurance and vehicle registration</li>
                 <li>Follow all local and state driving regulations</li>
                 <li>Provide safe and professional service to riders</li>
-                <li>RydeAlong's driver terms of service and privacy policy</li>
+                <li>AnyRyde's driver terms of service and privacy policy</li>
               </ul>
             </div>
           </div>

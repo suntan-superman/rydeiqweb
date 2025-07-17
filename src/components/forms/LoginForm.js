@@ -51,7 +51,7 @@ const LoginForm = () => {
       <div className="card">
         <div className="card-header">
           <h2 className="text-2xl font-bold text-gray-900 text-center">
-            Sign in to RydeAlong
+            Sign in to AnyRyde
           </h2>
           <p className="text-sm text-gray-600 text-center mt-2">
             Welcome back! Please sign in to your account.

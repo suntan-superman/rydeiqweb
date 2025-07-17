@@ -1,4 +1,4 @@
-# RydeAlong Driver Mobile App - Technical Requirements Document
+# AnyRyde Driver Mobile App - Technical Requirements Document
 
 ## 📱 App Overview
 **Platform**: iOS & Android (React Native recommended for code reuse)
@@ -600,4 +600,4 @@ const authSecurity = {
 
 ---
 
-*This document serves as the complete technical blueprint for RydeAlong mobile app development. Regular updates should be made as features evolve and user feedback is incorporated.* 
+*This document serves as the complete technical blueprint for AnyRyde mobile app development. Regular updates should be made as features evolve and user feedback is incorporated.* 

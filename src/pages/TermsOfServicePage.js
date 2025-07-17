@@ -16,9 +16,9 @@ const TermsOfServicePage = () => {
 
           <div className="prose max-w-none">
             <div className="bg-blue-50 border-l-4 border-blue-400 p-6 mb-8">
-              <h3 className="text-lg font-medium text-blue-900 mb-2">Welcome to RydeAlong</h3>
+              <h3 className="text-lg font-medium text-blue-900 mb-2">Welcome to AnyRyde</h3>
               <p className="text-blue-800">
-                These Terms of Service govern your use of RydeAlong's platform and services. 
+                These Terms of Service govern your use of AnyRyde's platform and services. 
                 By using our platform, you agree to these terms. Please read them carefully.
               </p>
             </div>
@@ -26,13 +26,13 @@ const TermsOfServicePage = () => {
             <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">1. Acceptance of Terms</h2>
             
             <p className="text-gray-700 mb-4">
-              By accessing, downloading, or using RydeAlong's platform, mobile applications, or services 
+              By accessing, downloading, or using AnyRyde's platform, mobile applications, or services 
               (collectively, the "Platform"), you agree to be bound by these Terms of Service ("Terms"). 
               If you do not agree to these Terms, you may not use our Platform.
             </p>
             
             <p className="text-gray-700">
-              These Terms constitute a legally binding agreement between you and RydeAlong, Inc. ("RydeAlong," 
+              These Terms constitute a legally binding agreement between you and AnyRyde, Inc. ("AnyRyde," 
               "we," "us," or "our"). We may update these Terms from time to time, and your continued 
               use of the Platform constitutes acceptance of any updates.
             </p>
@@ -40,7 +40,7 @@ const TermsOfServicePage = () => {
             <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">2. Description of Service</h2>
             
             <p className="text-gray-700 mb-4">
-              RydeAlong operates a technology platform that connects riders who need transportation with 
+              AnyRyde operates a technology platform that connects riders who need transportation with 
               drivers who provide transportation services. Our platform features a unique competitive 
               bidding system where drivers can set their own prices for rides.
             </p>
@@ -58,9 +58,9 @@ const TermsOfServicePage = () => {
 
             <h3 className="text-xl font-semibold text-gray-900 mt-6 mb-3">2.2 Important Notice</h3>
             <p className="text-gray-700">
-              RydeAlong is a technology platform and does not provide transportation services directly. 
+              AnyRyde is a technology platform and does not provide transportation services directly. 
               Transportation services are provided by independent drivers or licensed transportation 
-              companies. RydeAlong is not a transportation carrier and does not own or operate vehicles.
+              companies. AnyRyde is not a transportation carrier and does not own or operate vehicles.
             </p>
 
             <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">3. Eligibility and Account Registration</h2>
@@ -76,7 +76,7 @@ const TermsOfServicePage = () => {
 
             <h3 className="text-xl font-semibold text-gray-900 mt-6 mb-3">3.2 Driver-Specific Requirements</h3>
             <p className="text-gray-700 mb-4">
-              To drive on the RydeAlong platform, you must additionally:
+              To drive on the AnyRyde platform, you must additionally:
             </p>
             <ul className="list-disc pl-6 space-y-2 text-gray-700">
               <li>Hold a valid driver's license and meet local licensing requirements</li>
@@ -146,7 +146,7 @@ const TermsOfServicePage = () => {
 
             <h3 className="text-xl font-semibold text-gray-900 mt-6 mb-3">6.2 Fees and Commissions</h3>
             <ul className="list-disc pl-6 space-y-2 text-gray-700">
-              <li>RydeAlong charges drivers a commission of 10-20% of the ride fare</li>
+              <li>AnyRyde charges drivers a commission of 10-20% of the ride fare</li>
               <li>Additional fees may apply for payment processing, instant payouts, or other services</li>
               <li>All fees are clearly disclosed before you complete a transaction</li>
               <li>We reserve the right to update our fee structure with notice</li>
@@ -174,7 +174,7 @@ const TermsOfServicePage = () => {
             <ul className="list-disc pl-6 space-y-2 text-gray-700">
               <li>Drivers must maintain valid auto insurance meeting local requirements</li>
               <li>Commercial or rideshare insurance may be required</li>
-              <li>RydeAlong may provide additional coverage as required by law</li>
+              <li>AnyRyde may provide additional coverage as required by law</li>
               <li>Insurance coverage details are available in our Driver Agreement</li>
             </ul>
 
@@ -206,7 +206,7 @@ const TermsOfServicePage = () => {
             <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">9. Intellectual Property</h2>
             
             <p className="text-gray-700 mb-4">
-              The Platform and all content, features, and functionality are owned by RydeAlong and 
+              The Platform and all content, features, and functionality are owned by AnyRyde and 
               protected by copyright, trademark, and other intellectual property laws. You may not:
             </p>
             <ul className="list-disc pl-6 space-y-2 text-gray-700">
@@ -234,7 +234,7 @@ const TermsOfServicePage = () => {
               payment obligations.
             </p>
 
-            <h3 className="text-xl font-semibold text-gray-900 mt-6 mb-3">11.2 Termination by RydeAlong</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mt-6 mb-3">11.2 Termination by AnyRyde</h3>
             <p className="text-gray-700 mb-4">
               We may suspend or terminate your account immediately if you:
             </p>
@@ -297,7 +297,7 @@ const TermsOfServicePage = () => {
             
             <p className="text-gray-700">
               These Terms, together with our Privacy Policy and any other policies referenced 
-              herein, constitute the entire agreement between you and RydeAlong regarding the Platform. 
+              herein, constitute the entire agreement between you and AnyRyde regarding the Platform. 
               These Terms supersede all prior or contemporaneous communications and proposals.
             </p>
 
@@ -310,7 +310,7 @@ const TermsOfServicePage = () => {
             <div className="bg-gray-50 rounded-lg p-6">
               <h4 className="font-semibold text-gray-900 mb-3">Legal Department</h4>
               <div className="space-y-1 text-gray-700">
-                <p>RydeAlong, Inc.</p>
+                <p>AnyRyde, Inc.</p>
                 <p>123 Innovation Drive</p>
                 <p>San Francisco, CA 94105</p>
                 <p>Email: <a href="mailto:legal@rydealong.com" className="text-primary-600 hover:text-primary-700">legal@rydealong.com</a></p>
@@ -321,7 +321,7 @@ const TermsOfServicePage = () => {
             <div className="bg-red-50 border-l-4 border-red-400 p-6 mt-8">
               <h4 className="text-lg font-medium text-red-900 mb-2">Important Legal Notice</h4>
               <p className="text-red-800">
-                By using RydeAlong's platform, you acknowledge that you have read, understood, 
+                By using AnyRyde's platform, you acknowledge that you have read, understood, 
                 and agree to be bound by these Terms of Service. If you do not agree to these 
                 terms, you must discontinue use of our platform immediately.
               </p>

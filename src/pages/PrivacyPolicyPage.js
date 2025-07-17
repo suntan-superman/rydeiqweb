@@ -18,7 +18,7 @@ const PrivacyPolicyPage = () => {
             <div className="bg-blue-50 border-l-4 border-blue-400 p-6 mb-8">
               <h3 className="text-lg font-medium text-blue-900 mb-2">Your Privacy Matters</h3>
               <p className="text-blue-800">
-                At RydeAlong, we are committed to protecting your privacy and ensuring transparency 
+                At AnyRyde, we are committed to protecting your privacy and ensuring transparency 
                 in how we collect, use, and share your personal information. This policy explains 
                 our practices in clear, understandable terms.
               </p>
@@ -205,7 +205,7 @@ const PrivacyPolicyPage = () => {
             <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">7. Children's Privacy</h2>
             
             <p className="text-gray-700">
-              RydeAlong is not intended for use by children under 18. We do not knowingly collect 
+              AnyRyde is not intended for use by children under 18. We do not knowingly collect 
               personal information from children under 18. If we become aware that a child under 
               18 has provided us with personal information, we will delete such information immediately.
             </p>
@@ -236,7 +236,7 @@ const PrivacyPolicyPage = () => {
             <div className="bg-gray-50 rounded-lg p-6">
               <h4 className="font-semibold text-gray-900 mb-3">Privacy Officer</h4>
               <div className="space-y-1 text-gray-700">
-                <p>RydeAlong, Inc.</p>
+                <p>AnyRyde, Inc.</p>
                 <p>123 Innovation Drive</p>
                 <p>San Francisco, CA 94105</p>
                 <p>Email: <a href="mailto:privacy@rydealong.com" className="text-primary-600 hover:text-primary-700">privacy@rydealong.com</a></p>

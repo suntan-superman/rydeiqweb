@@ -264,11 +264,11 @@ const ComparePage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              See How RydeAlong Compares
+              See How AnyRyde Compares
             </h1>
             <p className="text-xl md:text-2xl mb-8 max-w-4xl mx-auto">
               Fair pricing, transparent earnings, and competitive market dynamics. 
-              See why drivers and riders are choosing RydeAlong over traditional platforms.
+              See why drivers and riders are choosing AnyRyde over traditional platforms.
             </p>
             
             <div className="flex justify-center mb-8">
@@ -303,7 +303,7 @@ const ComparePage = () => {
       <div className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">
-            Why Choose RydeAlong {viewType === 'driver' ? 'as a Driver' : 'as a Rider'}
+            Why Choose AnyRyde {viewType === 'driver' ? 'as a Driver' : 'as a Rider'}
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -331,7 +331,7 @@ const ComparePage = () => {
                 <thead className="bg-primary-600 text-white">
                   <tr>
                     <th className="px-6 py-4 text-left font-semibold">Feature</th>
-                    <th className="px-6 py-4 text-center font-semibold">RydeAlong</th>
+                    <th className="px-6 py-4 text-center font-semibold">AnyRyde</th>
                     <th className="px-6 py-4 text-center font-semibold">Uber</th>
                     <th className="px-6 py-4 text-center font-semibold">Lyft</th>
                   </tr>
@@ -376,7 +376,7 @@ const ComparePage = () => {
                 
                 <div className="space-y-3">
                   <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                    <span className="font-medium text-green-900">RydeAlong</span>
+                    <span className="font-medium text-green-900">AnyRyde</span>
                     <span className="font-bold text-green-900">{study.rydeiq}</span>
                   </div>
                   <div className="flex justify-between items-center p-3 bg-gray-100 rounded-lg">
@@ -413,7 +413,7 @@ const ComparePage = () => {
                 <thead className="bg-gray-200">
                   <tr>
                     <th className="px-6 py-4 text-left font-semibold text-gray-900">Metric</th>
-                    <th className="px-6 py-4 text-center font-semibold text-gray-900">RydeAlong</th>
+                    <th className="px-6 py-4 text-center font-semibold text-gray-900">AnyRyde</th>
                     <th className="px-6 py-4 text-center font-semibold text-gray-900">Uber</th>
                     <th className="px-6 py-4 text-center font-semibold text-gray-900">Lyft</th>
                   </tr>
@@ -434,7 +434,7 @@ const ComparePage = () => {
           
           <div className="mt-8 text-center">
             <p className="text-gray-600 max-w-3xl mx-auto">
-              While RydeAlong is newer and smaller than established platforms, our focus on fair 
+              While AnyRyde is newer and smaller than established platforms, our focus on fair 
               pricing and transparent economics is already attracting drivers and riders who 
               want a better alternative to traditional ride-sharing.
             </p>
@@ -451,14 +451,14 @@ const ComparePage = () => {
             </h2>
             <p className="text-xl mb-8 max-w-3xl mx-auto">
               Join thousands of drivers and riders who have already made the switch to fair, 
-              transparent ride-sharing with RydeAlong.
+              transparent ride-sharing with AnyRyde.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               {viewType === 'driver' ? (
                 <>
                   <Button size="large" variant="outline" className="text-white border-white hover:bg-white hover:text-primary-600">
-                    Start Driving with RydeAlong
+                    Start Driving with AnyRyde
                   </Button>
                   <Button size="large" variant="outline" className="text-white border-white hover:bg-white hover:text-primary-600">
                     Calculate Your Earnings

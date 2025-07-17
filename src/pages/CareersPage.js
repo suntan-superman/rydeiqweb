@@ -206,7 +206,7 @@ const CareersPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              Join the RydeAlong Team
+              Join the AnyRyde Team
             </h1>
             <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto">
               Help us build the future of fair and transparent transportation. 
@@ -224,7 +224,7 @@ const CareersPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-              Why Work at RydeAlong?
+              Why Work at AnyRyde?
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               We're building something meaningful - a platform that creates fair opportunities 
@@ -570,7 +570,7 @@ const CareersPage = () => {
           </h2>
           <p className="text-xl mb-8 max-w-3xl mx-auto">
             We're always looking for exceptional talent. Send us your resume and 
-            let us know how you'd like to contribute to RydeAlong's mission.
+            let us know how you'd like to contribute to AnyRyde's mission.
           </p>
           <Button size="large" variant="outline" className="text-white border-white hover:bg-white hover:text-primary-600">
             Send Us Your Resume

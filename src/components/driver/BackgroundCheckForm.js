@@ -412,7 +412,7 @@ const BackgroundCheckForm = () => {
           <div className="bg-blue-50 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Background Check Consent</h3>
             <p className="text-gray-600 mb-6">
-              By checking the boxes below, you give RydeAlong permission to conduct a background check including criminal history and driving record verification.
+              By checking the boxes below, you give AnyRyde permission to conduct a background check including criminal history and driving record verification.
             </p>
             
             <div className="space-y-4">
@@ -426,7 +426,7 @@ const BackgroundCheckForm = () => {
                 />
                 <div>
                   <span className="text-sm text-gray-900">
-                    I consent to a background check being performed by RydeAlong or its authorized third-party partners *
+                    I consent to a background check being performed by AnyRyde or its authorized third-party partners *
                   </span>
                   {getErrorMessage('consentBackgroundCheck') && (
                     <p className="text-red-500 text-sm mt-1">{getErrorMessage('consentBackgroundCheck')}</p>

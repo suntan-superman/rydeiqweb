@@ -312,7 +312,7 @@ const DriverBidsList = ({ bids, onSelectDriver, loading }) => {
         <div className="flex items-start space-x-3">
           <span className="text-green-600 text-xl">🏆</span>
           <div>
-            <h4 className="text-sm font-medium text-green-900">Why Choose RydeAlong?</h4>
+            <h4 className="text-sm font-medium text-green-900">Why Choose AnyRyde?</h4>
             <p className="text-sm text-green-700 mt-1">
               Unlike other platforms, you see all driver bids and choose based on price, rating, and arrival time. 
               No surge pricing, no hidden fees - just transparent competition that saves you money!
