@@ -71,21 +71,7 @@ export const RideProvider = ({ children }) => {
   // Real-time subscription
   const [rideSubscription, setRideSubscription] = useState(null);
 
-  // Load ride history when user changes
-  useEffect(() => {
-    if (isAuthenticated && user?.uid) {
-      loadRideHistory();
-    } else {
-      resetRideState();
-    }
-  }, [user, isAuthenticated, loadRideHistory, resetRideState]);
 
-  // Update estimated fare when locations or ride type change
-  useEffect(() => {
-    if (pickupLocation && destinationLocation) {
-      updateEstimatedFare();
-    }
-  }, [pickupLocation, destinationLocation, rideType, updateEstimatedFare]);
 
   // Clean up subscription on unmount
   useEffect(() => {
@@ -396,6 +382,22 @@ export const RideProvider = ({ children }) => {
       setRideSubscription(null);
     }
   }, [rideSubscription]);
+
+  // Load ride history when user changes
+  useEffect(() => {
+    if (isAuthenticated && user?.uid) {
+      loadRideHistory();
+    } else {
+      resetRideState();
+    }
+  }, [user, isAuthenticated, loadRideHistory, resetRideState]);
+
+  // Update estimated fare when locations or ride type change
+  useEffect(() => {
+    if (pickupLocation && destinationLocation) {
+      updateEstimatedFare();
+    }
+  }, [pickupLocation, destinationLocation, rideType, updateEstimatedFare]);
 
   const refreshCurrentRide = async () => {
     if (!currentRide?.id) return;
