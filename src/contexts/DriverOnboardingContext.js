@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { 
   getDriverApplication, 
@@ -39,7 +39,7 @@ export const DriverOnboardingProvider = ({ children }) => {
       setLoading(false);
       setProgress(0);
     }
-  }, [user, isAuthenticated]);
+  }, [user, isAuthenticated, loadDriverApplication]);
 
   // Update progress when application data changes
   useEffect(() => {
@@ -49,7 +49,7 @@ export const DriverOnboardingProvider = ({ children }) => {
     }
   }, [driverApplication]);
 
-  const loadDriverApplication = async () => {
+  const loadDriverApplication = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -70,7 +70,7 @@ export const DriverOnboardingProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   const startApplication = async () => {
     if (!user?.uid) {

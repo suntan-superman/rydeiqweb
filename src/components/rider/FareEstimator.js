@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRide } from '../../contexts/RideContext';
 
 const FareEstimator = ({ onRideTypeChange }) => {
@@ -8,7 +8,6 @@ const FareEstimator = ({ onRideTypeChange }) => {
     rideType,
     setRideType,
     estimatedFare,
-    updateEstimatedFare,
     RIDE_TYPES
   } = useRide();
 
@@ -16,7 +15,7 @@ const FareEstimator = ({ onRideTypeChange }) => {
   const [competitorFares, setCompetitorFares] = useState(null);
 
   // Ride type configurations
-  const rideTypeConfigs = {
+  const rideTypeConfigs = useMemo(() => ({
     [RIDE_TYPES.STANDARD]: {
       name: 'Standard',
       description: 'Affordable rides with reliable drivers',
@@ -45,7 +44,7 @@ const FareEstimator = ({ onRideTypeChange }) => {
       features: ['Pet-friendly driver', 'Pet seat covers', 'Extra space'],
       multiplier: 1.1
     }
-  };
+  }), [RIDE_TYPES]);
 
   const calculateFareBreakdown = useCallback(() => {
     const config = rideTypeConfigs[rideType];
