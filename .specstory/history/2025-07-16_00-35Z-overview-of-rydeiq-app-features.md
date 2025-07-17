@@ -5063,3 +5063,97 @@ Should resolve both the build failure AND the "page not found" issue.
 
 ---
 
+_**User**_
+
+$ yarn build
+8:51:55 AM: yarn run v1.22.22
+8:51:55 AM: $ react-scripts build
+8:51:56 AM: Creating an optimized production build...
+8:52:12 AM: Failed during stage 'building site': Build script returned non-zero exit code: 2 (https://ntl.fyi/exit-code-2)
+8:52:12 AM: 
+8:52:12 AM: Treating warnings as errors because process.env.CI = true.
+8:52:12 AM: Most CI servers set it automatically.
+8:52:12 AM: 
+8:52:12 AM: Failed to compile.
+8:52:12 AM: 
+8:52:12 AM: [eslint]
+8:52:12 AM: src/contexts/DriverOnboardingContext.js
+8:52:12 AM:   Line 42:30:  'loadDriverApplication' was used before it was defined  no-use-before-define
+8:52:12 AM: error Command failed with exit code 1. (https://ntl.fyi/exit-code-1)
+8:52:12 AM: info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command.
+8:52:12 AM: ​
+8:52:12 AM: "build.command" failed                                        
+8:52:12 AM: ────────────────────────────────────────────────────────────────
+8:52:12 AM: ​
+8:52:12 AM:   Error message
+8:52:12 AM:   Command failed with exit code 1: yarn build (https://ntl.fyi/exit-code-1)
+8:52:12 AM: ​
+8:52:12 AM:   Error location
+8:52:12 AM:   In build.command from netlify.toml:
+8:52:12 AM:   yarn build
+8:52:12 AM: ​
+8:52:12 AM:   Resolved config
+8:52:12 AM:   build:
+8:52:12 AM:     command: yarn build
+8:52:12 AM:     commandOrigin: config
+8:52:12 AM:     environment:
+8:52:12 AM:       - REACT_APP_FIREBASE_API_KEY
+8:52:12 AM:       - REACT_APP_FIREBASE_APP_ID
+8:52:12 AM:       - REACT_APP_FIREBASE_AUTH_DOMAIN
+8:52:12 AM:       - REACT_APP_FIREBASE_MEASUREMENT_ID
+8:52:12 AM:       - REACT_APP_FIREBASE_MESSAGING_SENDER_ID
+8:52:12 AM:       - REACT_APP_FIREBASE_PROJECT_ID
+8:52:12 AM:       - REACT_APP_FIREBASE_STORAGE_BUCKET
+8:52:12 AM:       - REACT_APP_GOOGLE_MAPS_API_KEY
+8:52:12 AM:       - REACT_APP_GOOGLE_MAPS_MAP_ID
+8:52:12 AM:       - SECRETS_SCAN_SMART_DETECTION_ENABLED
+8:52:12 AM:     publish: /opt/build/repo/build
+8:52:12 AM:     publishOrigin: config
+8:52:12 AM:   redirects:
+8:52:12 AM:     - from: /*
+
+---
+
+_**Assistant**_
+
+<think><details><summary>Thought Process</summary>The build is still failing with the same "use before define" error in DriverOnboardingContext.js on line 42. I need to move the `loadDriverApplication` function definition before the useEffect that calls it, or find another solution.
+
+Let me check where the function is being called and where it's defined to fix this ordering issue.</details></think>
+
+---
+
+Still getting the "use before define" error in DriverOnboardingContext.js. I need to move the `loadDriverApplication` function definition before the `useEffect` that calls it. Let me fix this:
+
+---
+
+Read file: src/contexts/DriverOnboardingContext.js
+
+---
+
+<think><details><summary>Thought Process</summary>The issue is that the `useEffect` on line 33-42 is calling `loadDriverApplication()` but the function is defined later in the file. I need to move the function definition before this useEffect, or restructure the code.
+
+Let me find where `loadDriverApplication` is currently defined and move it up.</details></think>
+
+---
+
+Read file: src/contexts/DriverOnboardingContext.js
+
+---
+
+<think><details><summary>Thought Process</summary>I need to move the `loadDriverApplication` function definition from line 52-71 to before the first `useEffect` that calls it (around line 33). Let me do this by:
+
+1. First, removing the function from its current location
+2. Then, inserting it before the useEffect
+
+Let me carefully extract the exact function and move it.</details></think>
+
+---
+
+
+
+---
+
+
+
+---
+
