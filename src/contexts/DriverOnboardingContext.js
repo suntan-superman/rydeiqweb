@@ -29,26 +29,6 @@ export const DriverOnboardingProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(0);
 
-  // Load existing driver application on user change
-  useEffect(() => {
-    if (isAuthenticated && user?.uid) {
-      loadDriverApplication();
-    } else {
-      setDriverApplication(null);
-      setCurrentStep(ONBOARDING_STEPS.WELCOME);
-      setLoading(false);
-      setProgress(0);
-    }
-  }, [user, isAuthenticated, loadDriverApplication]);
-
-  // Update progress when application data changes
-  useEffect(() => {
-    if (driverApplication?.stepProgress) {
-      const progressPercentage = getOnboardingProgress(driverApplication.stepProgress);
-      setProgress(progressPercentage);
-    }
-  }, [driverApplication]);
-
   const loadDriverApplication = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -71,6 +51,26 @@ export const DriverOnboardingProvider = ({ children }) => {
       setLoading(false);
     }
   }, [user]);
+
+  // Load existing driver application on user change
+  useEffect(() => {
+    if (isAuthenticated && user?.uid) {
+      loadDriverApplication();
+    } else {
+      setDriverApplication(null);
+      setCurrentStep(ONBOARDING_STEPS.WELCOME);
+      setLoading(false);
+      setProgress(0);
+    }
+  }, [user, isAuthenticated, loadDriverApplication]);
+
+  // Update progress when application data changes
+  useEffect(() => {
+    if (driverApplication?.stepProgress) {
+      const progressPercentage = getOnboardingProgress(driverApplication.stepProgress);
+      setProgress(progressPercentage);
+    }
+  }, [driverApplication]);
 
   const startApplication = async () => {
     if (!user?.uid) {
