@@ -7,16 +7,16 @@ const PressPage = () => {
   const pressReleases = [
     {
       id: 1,
-      title: 'RydeAlong Launches Revolutionary Competitive Bidding Platform for Ride-Sharing',
+      title: 'AnyRyde Launches Revolutionary Competitive Bidding Platform for Ride-Sharing',
       date: 'January 15, 2025',
-      summary: 'RydeAlong today announced the launch of its innovative ride-sharing platform that allows drivers to set their own prices through competitive bidding, eliminating surge pricing and creating fairer earnings for drivers.',
-      content: `SAN FRANCISCO, CA - January 15, 2025 - RydeAlong, a revolutionary ride-sharing platform, today announced its official launch with a game-changing competitive bidding system that empowers drivers to set their own prices while eliminating surge pricing for riders.
+      summary: 'AnyRyde today announced the launch of its innovative ride-sharing platform that allows drivers to set their own prices through competitive bidding, eliminating surge pricing and creating fairer earnings for drivers.',
+      content: `SAN FRANCISCO, CA - January 15, 2025 - AnyRyde, a revolutionary ride-sharing platform, today announced its official launch with a game-changing competitive bidding system that empowers drivers to set their own prices while eliminating surge pricing for riders.
 
-Unlike traditional ride-sharing platforms that take 50-60% commissions, RydeAlong operates on a transparent 10-20% commission model, allowing drivers to keep 80-90% of their earnings. The platform's unique bidding system enables drivers to compete for rides based on their availability, location, and preferred pricing, while riders can choose drivers based on price, rating, vehicle type, and estimated arrival time.
+Unlike traditional ride-sharing platforms that take 50-60% commissions, AnyRyde operates on a transparent 10-20% commission model, allowing drivers to keep 80-90% of their earnings. The platform's unique bidding system enables drivers to compete for rides based on their availability, location, and preferred pricing, while riders can choose drivers based on price, rating, vehicle type, and estimated arrival time.
 
-"We're fundamentally changing how ride-sharing works," said Joseph Roy, CEO and Co-Founder of RydeAlong. "Our platform puts control back in the hands of drivers while giving riders transparency and choice they've never had before. No more surge pricing surprises, no more exploitation of drivers - just fair market competition that benefits everyone."
+"We're fundamentally changing how ride-sharing works," said Joseph Roy, CEO and Co-Founder of AnyRyde. "Our platform puts control back in the hands of drivers while giving riders transparency and choice they've never had before. No more surge pricing surprises, no more exploitation of drivers - just fair market competition that benefits everyone."
 
-Key features of the RydeAlong platform include:
+Key features of the AnyRyde platform include:
 • Competitive driver bidding system
 • Transparent pricing with no surge pricing
 • 10-20% commission vs. industry standard 50-60%
@@ -24,27 +24,27 @@ Key features of the RydeAlong platform include:
 • Comprehensive background checks and safety features
 • Support for independent drivers and local taxi companies
 
-The platform is initially launching in San Francisco, Los Angeles, and Seattle, with plans to expand to 10 additional markets by the end of 2025. RydeAlong has secured $15 million in Series A funding led by Andreessen Horowitz, with participation from Sequoia Capital and existing investors.
+The platform is initially launching in San Francisco, Los Angeles, and Seattle, with plans to expand to 10 additional markets by the end of 2025. AnyRyde has secured $15 million in Series A funding led by Andreessen Horowitz, with participation from Sequoia Capital and existing investors.
 
-"RydeAlong represents the future of transportation - where market forces drive fair pricing and drivers have real economic opportunity," said Jeremy Richards, CTO and Co-Founder. "Our technology enables real-time bidding while maintaining the safety and reliability riders expect."
+"AnyRyde represents the future of transportation - where market forces drive fair pricing and drivers have real economic opportunity," said Jeremy Richards, CTO and Co-Founder. "Our technology enables real-time bidding while maintaining the safety and reliability riders expect."
 
 The company plans to use the funding to accelerate geographic expansion, enhance its mobile applications, and build partnerships with local taxi companies and fleet operators.
 
-About RydeAlong:
-Founded in 2024, RydeAlong is a San Francisco-based transportation technology company dedicated to creating fair and transparent ride-sharing experiences. The company's platform empowers drivers through competitive pricing while providing riders with choice, transparency, and cost savings. For more information, visit www.rydeiq.com.`
+About AnyRyde:
+Founded in 2024, AnyRyde is a San Francisco-based transportation technology company dedicated to creating fair and transparent ride-sharing experiences. The company's platform empowers drivers through competitive pricing while providing riders with choice, transparency, and cost savings. For more information, visit www.rydeiq.com.`
     },
     {
       id: 2,
-      title: 'RydeAlong Raises $15M Series A to Expand Fair Ride-Sharing Platform',
+      title: 'AnyRyde Raises $15M Series A to Expand Fair Ride-Sharing Platform',
       date: 'December 10, 2024',
-      summary: 'Led by Andreessen Horowitz, the funding will accelerate RydeAlong\'s expansion to new markets and development of advanced driver earnings optimization features.',
-      content: `SAN FRANCISCO, CA - December 10, 2024 - RydeAlong, the ride-sharing platform revolutionizing driver economics through competitive bidding, today announced it has raised $15 million in Series A funding led by Andreessen Horowitz, with participation from Sequoia Capital, GV (Google Ventures), and existing investors.
+      summary: 'Led by Andreessen Horowitz, the funding will accelerate AnyRyde\'s expansion to new markets and development of advanced driver earnings optimization features.',
+      content: `SAN FRANCISCO, CA - December 10, 2024 - AnyRyde, the ride-sharing platform revolutionizing driver economics through competitive bidding, today announced it has raised $15 million in Series A funding led by Andreessen Horowitz, with participation from Sequoia Capital, GV (Google Ventures), and existing investors.
 
-The funding will be used to accelerate geographic expansion, enhance the platform's real-time bidding technology, and develop advanced features for driver earnings optimization. RydeAlong plans to enter 10 new markets by the end of 2025, starting with major metropolitan areas on the West Coast and expanding nationwide.
+The funding will be used to accelerate geographic expansion, enhance the platform's real-time bidding technology, and develop advanced features for driver earnings optimization. AnyRyde plans to enter 10 new markets by the end of 2025, starting with major metropolitan areas on the West Coast and expanding nationwide.
 
-"The ride-sharing industry has been dominated by platforms that extract enormous value from drivers while creating unpredictable pricing for riders," said Marc Andreessen, Co-Founder of Andreessen Horowitz. "RydeAlong's approach represents a fundamental improvement - using technology to create fair market dynamics that benefit both sides of the marketplace."
+"The ride-sharing industry has been dominated by platforms that extract enormous value from drivers while creating unpredictable pricing for riders," said Marc Andreessen, Co-Founder of Andreessen Horowitz. "AnyRyde's approach represents a fundamental improvement - using technology to create fair market dynamics that benefit both sides of the marketplace."
 
-Since its beta launch six months ago, RydeAlong has demonstrated strong early traction:
+Since its beta launch six months ago, AnyRyde has demonstrated strong early traction:
 • Over 5,000 drivers registered across three initial markets
 • Average driver earnings 40% higher than traditional platforms
 • 95% driver satisfaction rate
@@ -53,28 +53,28 @@ Since its beta launch six months ago, RydeAlong has demonstrated strong early tr
 
 The platform's success stems from its unique competitive bidding model, where drivers submit real-time price quotes for ride requests. Riders can see all available options and choose based on price, driver rating, vehicle type, and estimated arrival time. This creates natural price competition while eliminating the artificial scarcity that drives surge pricing.
 
-"Traditional ride-sharing platforms have created a race to the bottom for driver earnings while subjecting riders to unpredictable pricing," said Joseph Roy, CEO of RydeAlong. "Our data shows that when drivers have pricing autonomy, they earn more while riders pay less on average. It's a win-win that the market has been waiting for."
+"Traditional ride-sharing platforms have created a race to the bottom for driver earnings while subjecting riders to unpredictable pricing," said Joseph Roy, CEO of AnyRyde. "Our data shows that when drivers have pricing autonomy, they earn more while riders pay less on average. It's a win-win that the market has been waiting for."
 
-The company also announced partnerships with three major taxi companies and plans to integrate with existing fleet management systems, allowing traditional transportation providers to access RydeAlong's rider network while maintaining their operational independence.
+The company also announced partnerships with three major taxi companies and plans to integrate with existing fleet management systems, allowing traditional transportation providers to access AnyRyde's rider network while maintaining their operational independence.
 
-RydeAlong's technology platform includes advanced machine learning algorithms for demand prediction, optimal driver matching, and dynamic pricing recommendations that help drivers maximize their earnings while maintaining competitive rates.
+AnyRyde's technology platform includes advanced machine learning algorithms for demand prediction, optimal driver matching, and dynamic pricing recommendations that help drivers maximize their earnings while maintaining competitive rates.
 
-About RydeAlong:
-RydeAlong is transforming ride-sharing through fair market competition and transparent pricing. Founded in 2024, the company's platform empowers drivers to set their own prices while giving riders choice and eliminating surge pricing. Based in San Francisco, RydeAlong operates in California, Washington, and Oregon, with plans for nationwide expansion. For more information, visit www.rydeiq.com.`
+About AnyRyde:
+AnyRyde is transforming ride-sharing through fair market competition and transparent pricing. Founded in 2024, the company's platform empowers drivers to set their own prices while giving riders choice and eliminating surge pricing. Based in San Francisco, AnyRyde operates in California, Washington, and Oregon, with plans for nationwide expansion. For more information, visit www.rydeiq.com.`
     },
     {
       id: 3,
-      title: 'RydeAlong Partners with Local Taxi Companies to Modernize Traditional Transportation',
+      title: 'AnyRyde Partners with Local Taxi Companies to Modernize Traditional Transportation',
       date: 'November 5, 2024',
-      summary: 'Strategic partnerships bring licensed taxi operators onto RydeAlong\'s platform, providing digital tools while preserving their independence and local market knowledge.',
-      content: `SAN FRANCISCO, CA - November 5, 2024 - RydeAlong today announced strategic partnerships with three major taxi companies, bringing licensed transportation providers onto its competitive bidding platform while preserving their operational independence and local market expertise.
+      summary: 'Strategic partnerships bring licensed taxi operators onto AnyRyde\'s platform, providing digital tools while preserving their independence and local market knowledge.',
+      content: `SAN FRANCISCO, CA - November 5, 2024 - AnyRyde today announced strategic partnerships with three major taxi companies, bringing licensed transportation providers onto its competitive bidding platform while preserving their operational independence and local market expertise.
 
-The partnerships with Yellow Cab of San Francisco, Seattle Taxi, and Los Angeles Checker Cab represent RydeAlong's commitment to supporting traditional transportation providers rather than displacing them. These taxi companies will integrate their fleets with RydeAlong's platform, gaining access to digital booking tools and a broader customer base while maintaining their existing operations and pricing autonomy.
+The partnerships with Yellow Cab of San Francisco, Seattle Taxi, and Los Angeles Checker Cab represent AnyRyde's commitment to supporting traditional transportation providers rather than displacing them. These taxi companies will integrate their fleets with AnyRyde's platform, gaining access to digital booking tools and a broader customer base while maintaining their existing operations and pricing autonomy.
 
-"We believe the transportation ecosystem is strongest when it includes diverse operators - from independent drivers to established taxi companies," said David Rodriguez, VP of Operations at RydeAlong. "These partnerships demonstrate that innovation doesn't have to come at the expense of traditional businesses that have served communities for decades."
+"We believe the transportation ecosystem is strongest when it includes diverse operators - from independent drivers to established taxi companies," said David Rodriguez, VP of Operations at AnyRyde. "These partnerships demonstrate that innovation doesn't have to come at the expense of traditional businesses that have served communities for decades."
 
 Key benefits for partner taxi companies include:
-• Access to RydeAlong's rider network and booking platform
+• Access to AnyRyde's rider network and booking platform
 • Digital fleet management and dispatch tools
 • Real-time demand analytics and pricing insights
 • Integration with existing operations and regulations
@@ -85,18 +85,18 @@ For riders, the partnerships provide additional benefits:
 • Professional drivers with extensive local knowledge
 • Wheelchair-accessible and specialty vehicles
 • Airport pickup rights and dedicated taxi lanes
-• Integration with RydeAlong's transparent pricing model
+• Integration with AnyRyde's transparent pricing model
 
 "Our drivers know the city better than anyone, and now they can compete on the same platform as ride-share drivers while maintaining the professional standards and licensing that our customers trust," said Maria Santos, General Manager of Yellow Cab of San Francisco.
 
-The integration allows taxi companies to participate in RydeAlong's bidding system while maintaining their existing fare structures and regulatory compliance. Riders can easily identify licensed taxi services and choose them based on their preferences for regulated transportation, local expertise, or vehicle accessibility features.
+The integration allows taxi companies to participate in AnyRyde's bidding system while maintaining their existing fare structures and regulatory compliance. Riders can easily identify licensed taxi services and choose them based on their preferences for regulated transportation, local expertise, or vehicle accessibility features.
 
-RydeAlong plans to expand these partnerships to additional markets as it grows, with particular focus on airport-authorized operators and companies serving underserved communities where traditional taxi services play a crucial role.
+AnyRyde plans to expand these partnerships to additional markets as it grows, with particular focus on airport-authorized operators and companies serving underserved communities where traditional taxi services play a crucial role.
 
-The partnerships also include a commitment to driver training on RydeAlong's platform and technology, ensuring seamless integration while respecting existing employment relationships and union agreements where applicable.
+The partnerships also include a commitment to driver training on AnyRyde's platform and technology, ensuring seamless integration while respecting existing employment relationships and union agreements where applicable.
 
-About RydeAlong:
-RydeAlong is revolutionizing ride-sharing through competitive bidding and fair market dynamics. The platform empowers all transportation providers - from independent drivers to established taxi companies - to compete fairly while giving riders unprecedented choice and transparency. Founded in 2024 and based in San Francisco, RydeAlong operates across the West Coast with plans for nationwide expansion. For more information, visit www.rydeiq.com.`
+About AnyRyde:
+AnyRyde is revolutionizing ride-sharing through competitive bidding and fair market dynamics. The platform empowers all transportation providers - from independent drivers to established taxi companies - to compete fairly while giving riders unprecedented choice and transparency. Founded in 2024 and based in San Francisco, AnyRyde operates across the West Coast with plans for nationwide expansion. For more information, visit www.rydeiq.com.`
     }
   ];
 
@@ -148,7 +148,7 @@ RydeAlong is revolutionizing ride-sharing through competitive bidding and fair m
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              RydeAlong Press Room
+              AnyRyde Press Room
             </h1>
             <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto">
               Latest news, updates, and media resources about the future of fair ride-sharing
@@ -173,7 +173,7 @@ RydeAlong is revolutionizing ride-sharing through competitive bidding and fair m
               Latest News
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Stay up to date with RydeAlong's latest announcements, partnerships, and milestones
+              Stay up to date with AnyRyde's latest announcements, partnerships, and milestones
             </p>
           </div>
 
@@ -236,7 +236,7 @@ RydeAlong is revolutionizing ride-sharing through competitive bidding and fair m
               Company Facts
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Key statistics and information about RydeAlong's growth and impact
+              Key statistics and information about AnyRyde's growth and impact
             </p>
           </div>
 
@@ -290,7 +290,7 @@ RydeAlong is revolutionizing ride-sharing through competitive bidding and fair m
               Executive Team
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Meet the leadership team driving RydeAlong's mission
+              Meet the leadership team driving AnyRyde's mission
             </p>
           </div>
 

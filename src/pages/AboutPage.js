@@ -13,7 +13,7 @@ const AboutPage = () => {
               <span className="text-primary-600 block">One Fair Ride at a Time</span>
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              At RydeAlong, we believe transportation should be fair, transparent, and profitable 
+              At AnyRyde, we believe transportation should be fair, transparent, and profitable 
               for everyone. We're building the future where drivers earn more and riders pay less.
             </p>
           </div>
@@ -73,7 +73,7 @@ const AboutPage = () => {
               Our Core Values
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              These principles guide everything we do at RydeAlong, from product development 
+              These principles guide everything we do at AnyRyde, from product development 
               to customer service.
             </p>
           </div>
@@ -183,7 +183,7 @@ const AboutPage = () => {
                 Our Story
               </h2>
               <p className="text-lg text-gray-600 mb-6">
-                RydeAlong was founded in 2024 by a team of transportation industry veterans and 
+                AnyRyde was founded in 2024 by a team of transportation industry veterans and 
                 technology experts who witnessed firsthand the inequities in traditional 
                 ride-sharing platforms.
               </p>

@@ -45,7 +45,7 @@ const Header = () => {
               <div className="h-8 w-8 bg-gradient-primary rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">R</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">RydeAlong</span>
+              <span className="text-xl font-bold text-gray-900">AnyRyde</span>
             </Link>
           </div>
 

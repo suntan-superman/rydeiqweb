@@ -238,14 +238,14 @@ const FareEstimator = ({ onRideTypeChange }) => {
           <h3 className="text-lg font-medium text-gray-900 mb-4">Price Comparison</h3>
           
           <div className="space-y-4">
-            {/* RydeAlong Fare */}
+            {/* AnyRyde Fare */}
             <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
                   <span className="text-white font-bold text-sm">R</span>
                 </div>
                 <div>
-                  <div className="font-medium text-green-900">RydeAlong</div>
+                  <div className="font-medium text-green-900">AnyRyde</div>
                   <div className="text-sm text-green-700">No surge pricing</div>
                 </div>
               </div>
@@ -301,7 +301,7 @@ const FareEstimator = ({ onRideTypeChange }) => {
 
       {/* Pricing Features */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Why Choose RydeAlong?</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Why Choose AnyRyde?</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex items-start space-x-3">

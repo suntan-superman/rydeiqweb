@@ -122,7 +122,7 @@ const DriverDashboardPage = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <h1 className="text-xl font-semibold text-gray-900">
-                RydeAlong Driver
+                AnyRyde Driver
               </h1>
             </div>
             

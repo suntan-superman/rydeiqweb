@@ -29,11 +29,11 @@ const ContactPage = () => {
         {/* Header */}
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            Contact RydeAlong
+            Contact AnyRyde
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Get in touch with our team. Whether you're a driver, rider, or potential partner, 
-            we're here to help you succeed with RydeAlong.
+            we're here to help you succeed with AnyRyde.
           </p>
         </div>
 
@@ -245,7 +245,7 @@ const ContactPage = () => {
               <div className="space-y-4">
                 <details className="group">
                   <summary className="flex justify-between items-center cursor-pointer p-4 bg-gray-50 rounded-lg">
-                    <span className="font-medium text-gray-900">How do I become a RydeAlong driver?</span>
+                    <span className="font-medium text-gray-900">How do I become a AnyRyde driver?</span>
                     <svg className="w-5 h-5 text-gray-500 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                     </svg>
@@ -257,7 +257,7 @@ const ContactPage = () => {
 
                 <details className="group">
                   <summary className="flex justify-between items-center cursor-pointer p-4 bg-gray-50 rounded-lg">
-                    <span className="font-medium text-gray-900">What makes RydeAlong different from Uber/Lyft?</span>
+                    <span className="font-medium text-gray-900">What makes AnyRyde different from Uber/Lyft?</span>
                     <svg className="w-5 h-5 text-gray-500 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                     </svg>

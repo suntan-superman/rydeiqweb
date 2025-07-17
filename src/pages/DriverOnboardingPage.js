@@ -85,7 +85,7 @@ const ApplicationSubmittedScreen = () => {
       case DRIVER_STATUS.APPROVED:
         return {
           title: "Congratulations! You're Approved!",
-          message: "Welcome to the RydeAlong driver network! You can now start accepting rides and earning money.",
+          message: "Welcome to the AnyRyde driver network! You can now start accepting rides and earning money.",
           color: "green"
         };
       case DRIVER_STATUS.REJECTED:

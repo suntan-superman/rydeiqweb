@@ -40,7 +40,7 @@ const WelcomeScreen = () => {
             </div>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            Drive with RydeAlong
+            Drive with AnyRyde
             <span className="block text-primary-600">Earn More, Keep More</span>
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
@@ -109,7 +109,7 @@ const WelcomeScreen = () => {
         {/* Additional Benefits */}
         <div className="bg-white rounded-xl p-8 shadow-lg mb-12">
           <h3 className="text-2xl font-semibold text-gray-900 text-center mb-8">
-            Why Independent Drivers Choose RydeAlong
+            Why Independent Drivers Choose AnyRyde
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex items-start space-x-3">

@@ -83,7 +83,7 @@ const CookiePolicyPage = () => {
             <div className="bg-blue-50 border-l-4 border-blue-400 p-6 mb-8">
               <h3 className="text-lg font-medium text-blue-900 mb-2">About This Policy</h3>
               <p className="text-blue-800">
-                This Cookie Policy explains how RydeAlong uses cookies and similar tracking technologies 
+                This Cookie Policy explains how AnyRyde uses cookies and similar tracking technologies 
                 on our website and mobile applications to provide, improve, and secure our services.
               </p>
             </div>
@@ -253,7 +253,7 @@ const CookiePolicyPage = () => {
                          <ul className="list-disc pl-6 space-y-2 text-gray-700">
                <li><strong>iOS:</strong> Settings &gt; Privacy &amp; Security &gt; Tracking</li>
                <li><strong>Android:</strong> Settings &gt; Privacy &gt; Ads</li>
-               <li><strong>App Settings:</strong> Privacy preferences within the RydeAlong app</li>
+               <li><strong>App Settings:</strong> Privacy preferences within the AnyRyde app</li>
                <li><strong>Device Settings:</strong> Location services and app permissions</li>
              </ul>
 
@@ -311,7 +311,7 @@ const CookiePolicyPage = () => {
             <div className="bg-gray-50 rounded-lg p-6">
               <h4 className="font-semibold text-gray-900 mb-3">Privacy Team</h4>
               <div className="space-y-1 text-gray-700">
-                <p>RydeAlong, Inc.</p>
+                <p>AnyRyde, Inc.</p>
                 <p>123 Innovation Drive</p>
                 <p>San Francisco, CA 94105</p>
                 <p>Email: <a href="mailto:privacy@rydealong.com" className="text-primary-600 hover:text-primary-700">privacy@rydealong.com</a></p>

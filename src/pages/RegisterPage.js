@@ -27,7 +27,7 @@ const RegisterPage = () => {
       
       await registerUser(data.email, data.password, userData);
       
-      toast.success(`Welcome to RydeAlong! ${userType === 'driver' ? 'Complete your driver onboarding to start earning.' : 'You can now start booking rides!'}`);
+      toast.success(`Welcome to AnyRyde! ${userType === 'driver' ? 'Complete your driver onboarding to start earning.' : 'You can now start booking rides!'}`);
       
       if (userType === 'driver') {
         navigate('/driver-onboarding');
@@ -47,7 +47,7 @@ const RegisterPage = () => {
         <div className="max-w-4xl w-full space-y-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Join RydeAlong
+              Join AnyRyde
             </h1>
             <p className="text-xl text-gray-600 mb-12">
               Choose how you want to experience the future of ride-sharing
@@ -172,8 +172,8 @@ const RegisterPage = () => {
           </h1>
           <p className="text-gray-600">
             {userType === 'driver' 
-              ? 'Start earning with RydeAlong - set your own prices and keep more of what you earn'
-              : 'Book your first ride with RydeAlong - transparent pricing and driver choice'
+              ? 'Start earning with AnyRyde - set your own prices and keep more of what you earn'
+              : 'Book your first ride with AnyRyde - transparent pricing and driver choice'
             }
           </p>
           <button

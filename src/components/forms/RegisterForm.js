@@ -63,7 +63,7 @@ const RegisterForm = () => {
       <div className="card">
         <div className="card-header">
           <h2 className="text-2xl font-bold text-gray-900 text-center">
-            Create your RydeAlong account
+            Create your AnyRyde account
           </h2>
           <p className="text-sm text-gray-600 text-center mt-2">
             Join thousands of smart travelers saving money on rides
