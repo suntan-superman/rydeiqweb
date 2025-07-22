@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../contexts/AuthContext';
+import { registerUser, USER_TYPES } from '../services/authService';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -10,7 +11,7 @@ import Input from '../components/common/Input';
 const RegisterPage = () => {
   const [userType, setUserType] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { register: registerUser } = useAuth();
+  const { setUser } = useAuth();
   const navigate = useNavigate();
   const { register, handleSubmit, watch, formState: { errors } } = useForm();
 
@@ -19,20 +20,29 @@ const RegisterPage = () => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      const userData = {
-        ...data,
-        userType,
-        role: userType === 'driver' ? 'driver' : 'rider'
-      };
+      const result = await registerUser({
+        email: data.email,
+        password: data.password,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        userType: userType
+      });
       
-      await registerUser(data.email, data.password, userData);
-      
-      toast.success(`Welcome to AnyRyde! ${userType === 'driver' ? 'Complete your driver onboarding to start earning.' : 'You can now start booking rides!'}`);
-      
-      if (userType === 'driver') {
-        navigate('/driver-onboarding');
+      if (result.success) {
+        setUser(result.user);
+        
+        if (userType === USER_TYPES.DRIVER) {
+          toast.success('Welcome to RydeAlong! Complete your driver onboarding to start earning.');
+          navigate('/driver-onboarding');
+        } else if (userType === USER_TYPES.ADMINISTRATOR) {
+          toast.success('Admin request submitted! Your request will be reviewed by a super administrator.');
+          navigate('/dashboard');
+        } else {
+          toast.success('Welcome to RydeAlong! You can now start booking rides!');
+          navigate('/dashboard');
+        }
       } else {
-        navigate('/dashboard');
+        toast.error(result.error.message || 'Registration failed. Please try again.');
       }
     } catch (error) {
       toast.error(error.message || 'Registration failed. Please try again.');
@@ -47,104 +57,128 @@ const RegisterPage = () => {
         <div className="max-w-4xl w-full space-y-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Join AnyRyde
+              Join RydeAlong
             </h1>
             <p className="text-xl text-gray-600 mb-12">
               Choose how you want to experience the future of ride-sharing
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Rider Registration */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Passenger Registration */}
             <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-transparent hover:border-primary-200 transition-all duration-300 cursor-pointer group"
-                 onClick={() => setUserType('rider')}>
+                 onClick={() => setUserType(USER_TYPES.PASSENGER)}>
               <div className="text-center">
                 <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-blue-200 transition-colors">
                   <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">I'm a Rider</h2>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Passenger</h3>
                 <p className="text-gray-600 mb-6">
-                  Book rides, compare prices, and choose your preferred driver
+                  Book rides with transparent pricing and driver choice. Save money and travel smart.
                 </p>
-                
-                <div className="space-y-3 text-left">
-                  <div className="flex items-center space-x-3">
-                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <ul className="text-left text-sm text-gray-600 space-y-2 mb-6">
+                  <li className="flex items-center">
+                    <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    <span className="text-gray-700">No surge pricing</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    Transparent pricing
+                  </li>
+                  <li className="flex items-center">
+                    <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    <span className="text-gray-700">Choose your driver</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    Choose your driver
+                  </li>
+                  <li className="flex items-center">
+                    <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    <span className="text-gray-700">Transparent pricing</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-gray-700">Save money vs competitors</span>
-                  </div>
-                </div>
-
-                <Button size="large" className="w-full mt-6">
-                  Continue as Rider
+                    Real-time tracking
+                  </li>
+                </ul>
+                <Button size="large" className="w-full">
+                  Join as Passenger
                 </Button>
               </div>
             </div>
 
             {/* Driver Registration */}
-            <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-transparent hover:border-primary-200 transition-all duration-300 cursor-pointer group"
-                 onClick={() => setUserType('driver')}>
+            <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-transparent hover:border-green-200 transition-all duration-300 cursor-pointer group"
+                 onClick={() => setUserType(USER_TYPES.DRIVER)}>
               <div className="text-center">
                 <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-green-200 transition-colors">
                   <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12a3 3 0 006 0m0 0a3 3 0 106 0M9 12H4.5a2.5 2.5 0 000 5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">I'm a Driver</h2>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Driver</h3>
                 <p className="text-gray-600 mb-6">
-                  Set your own prices, earn more, and work when you want
+                  Set your own prices, keep more of what you earn, and work on your own schedule.
                 </p>
-                
-                <div className="space-y-3 text-left">
-                  <div className="flex items-center space-x-3">
-                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <ul className="text-left text-sm text-gray-600 space-y-2 mb-6">
+                  <li className="flex items-center">
+                    <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    <span className="text-gray-700">Keep 80-90% of earnings</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    Set your own prices
+                  </li>
+                  <li className="flex items-center">
+                    <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    <span className="text-gray-700">Set your own prices</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    Keep more earnings
+                  </li>
+                  <li className="flex items-center">
+                    <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    <span className="text-gray-700">Flexible scheduling</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-gray-700">Fast payouts available</span>
-                  </div>
-                </div>
+                    Flexible schedule
+                  </li>
+                </ul>
+                <Button size="large" className="w-full">
+                  Join as Driver
+                </Button>
+              </div>
+            </div>
 
-                <Button size="large" className="w-full mt-6 bg-green-600 hover:bg-green-700">
-                  Continue as Driver
+            {/* Administrator Registration */}
+            <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-transparent hover:border-purple-200 transition-all duration-300 cursor-pointer group"
+                 onClick={() => setUserType(USER_TYPES.ADMINISTRATOR)}>
+              <div className="text-center">
+                <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-purple-200 transition-colors">
+                  <svg className="w-10 h-10 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Administrator</h3>
+                <p className="text-gray-600 mb-6">
+                  Help manage the platform, review applications, and ensure quality service.
+                </p>
+                <ul className="text-left text-sm text-gray-600 space-y-2 mb-6">
+                  <li className="flex items-center">
+                    <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Review applications
+                  </li>
+                  <li className="flex items-center">
+                    <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Platform management
+                  </li>
+                  <li className="flex items-center">
+                    <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Requires approval
+                  </li>
+                </ul>
+                <Button size="large" className="w-full">
+                  Request Admin Access
                 </Button>
               </div>
             </div>
@@ -168,10 +202,10 @@ const RegisterPage = () => {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Create Your {userType === 'driver' ? 'Driver' : 'Rider'} Account
+            Create Your {userType === USER_TYPES.DRIVER ? 'Driver' : 'Rider'} Account
           </h1>
           <p className="text-gray-600">
-            {userType === 'driver' 
+            {userType === USER_TYPES.DRIVER 
               ? 'Start earning with AnyRyde - set your own prices and keep more of what you earn'
               : 'Book your first ride with AnyRyde - transparent pricing and driver choice'
             }
@@ -185,7 +219,7 @@ const RegisterPage = () => {
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg p-8">
-          {userType === 'driver' && (
+          {userType === USER_TYPES.DRIVER && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
               <div className="flex items-start space-x-3">
                 <svg className="w-5 h-5 text-green-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -239,7 +273,7 @@ const RegisterPage = () => {
               placeholder="+1 (555) 123-4567"
             />
 
-            {userType === 'driver' && (
+            {userType === USER_TYPES.DRIVER && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   City/Coverage Area *
@@ -316,7 +350,7 @@ const RegisterPage = () => {
               </div>
             </div>
 
-            {userType === 'driver' && (
+            {userType === USER_TYPES.DRIVER && (
               <div className="flex items-start">
                 <input
                   type="checkbox"
@@ -344,7 +378,7 @@ const RegisterPage = () => {
               disabled={isLoading}
               className="w-full"
             >
-              {isLoading ? 'Creating Account...' : `Create ${userType === 'driver' ? 'Driver' : 'Rider'} Account`}
+              {isLoading ? 'Creating Account...' : `Create ${userType === USER_TYPES.DRIVER ? 'Driver' : 'Rider'} Account`}
             </Button>
           </form>
 

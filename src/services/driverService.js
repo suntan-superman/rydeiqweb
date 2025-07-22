@@ -25,6 +25,12 @@ export const DRIVER_STATUS = {
   ACTIVE: 'active'
 };
 
+// Onboarding status constants
+export const ONBOARDING_STATUS = {
+  PENDING: 'pending',
+  COMPLETED: 'completed'
+};
+
 export const ONBOARDING_STEPS = {
   WELCOME: 'welcome',
   ACCOUNT_CREATION: 'account_creation',
@@ -48,7 +54,7 @@ export const DOCUMENT_TYPES = {
   PROFILE_PHOTO: 'profile_photo'
 };
 
-// Create new driver application
+// Create new driver application with onboarding status
 export const createDriverApplication = async (userId, initialData) => {
   try {
     const driverData = {
@@ -72,6 +78,26 @@ export const createDriverApplication = async (userId, initialData) => {
         [ONBOARDING_STEPS.PAYOUT_SETUP]: false,
         [ONBOARDING_STEPS.AVAILABILITY]: false,
         [ONBOARDING_STEPS.REVIEW]: false,
+      },
+      // Onboarding Status for mobile app integration
+      onboardingStatus: {
+        completed: false,
+        completedAt: null,
+        completedBy: null,
+        lastUpdated: serverTimestamp(),
+      },
+      // Approval Status
+      approvalStatus: {
+        status: 'pending',
+        approvedAt: null,
+        approvedBy: null,
+        notes: '',
+      },
+      // Mobile App Status
+      mobileAppStatus: {
+        accountCreated: false,
+        accountCreatedAt: null,
+        lastMobileLogin: null,
       },
       ...initialData
     };
@@ -213,20 +239,27 @@ export const submitDriverApplication = async (userId) => {
 // Admin: Get all driver applications with filters
 export const getDriverApplications = async (filters = {}) => {
   try {
+    console.log('getDriverApplications called with filters:', filters);
     let q = collection(db, 'drivers');
     
     // Apply filters
-    if (filters.status) {
+    if (filters.status && filters.status !== 'all') {
+      console.log('Applying status filter:', filters.status);
       q = query(q, where('status', '==', filters.status));
     }
     
+    console.log('Executing query on drivers collection...');
     const querySnapshot = await getDocs(q);
+    console.log('Query result - empty:', querySnapshot.empty, 'size:', querySnapshot.size);
+    
     const drivers = [];
     
     querySnapshot.forEach((doc) => {
+      console.log('Driver doc found:', doc.id, doc.data());
       drivers.push({ id: doc.id, ...doc.data() });
     });
     
+    console.log('Total drivers found:', drivers.length);
     return { success: true, data: drivers };
   } catch (error) {
     console.error('Error getting driver applications:', error);
@@ -254,6 +287,104 @@ export const updateDriverStatus = async (userId, status, adminNote = '') => {
     return { success: true };
   } catch (error) {
     console.error('Error updating driver status:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Complete onboarding (when driver finishes all steps)
+export const completeOnboarding = async (userId) => {
+  try {
+    await updateDoc(doc(db, 'drivers', userId), {
+      'onboardingStatus.completed': true,
+      'onboardingStatus.completedAt': serverTimestamp(),
+      'onboardingStatus.completedBy': 'web',
+      'onboardingStatus.lastUpdated': serverTimestamp(),
+      'approvalStatus.status': 'approved',
+      'approvalStatus.approvedAt': serverTimestamp(),
+      'approvalStatus.approvedBy': 'system',
+      status: DRIVER_STATUS.APPROVED,
+      updatedAt: serverTimestamp()
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error completing onboarding:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Admin override for onboarding status (for testing)
+export const setOnboardingStatus = async (userId, completed, adminUid) => {
+  try {
+    const updateData = {
+      'onboardingStatus.completed': completed,
+      'onboardingStatus.completedAt': completed ? serverTimestamp() : null,
+      'onboardingStatus.completedBy': 'admin',
+      'onboardingStatus.lastUpdated': serverTimestamp(),
+      'approvalStatus.status': completed ? 'approved' : 'pending',
+      'approvalStatus.approvedAt': completed ? serverTimestamp() : null,
+      'approvalStatus.approvedBy': completed ? adminUid : null,
+      updatedAt: serverTimestamp()
+    };
+
+    if (completed) {
+      updateData.status = DRIVER_STATUS.APPROVED;
+    } else {
+      updateData.status = DRIVER_STATUS.PENDING;
+    }
+
+    await updateDoc(doc(db, 'drivers', userId), updateData);
+    return { success: true };
+  } catch (error) {
+    console.error('Error setting onboarding status:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Check onboarding status (for mobile app)
+export const checkOnboardingStatus = async (userId) => {
+  try {
+    const driverDoc = await getDoc(doc(db, 'drivers', userId));
+    
+    if (driverDoc.exists()) {
+      const data = driverDoc.data();
+      const onboardingStatus = data.onboardingStatus || {};
+      
+      return {
+        success: true,
+        data: {
+          isOnboarded: onboardingStatus.completed || false,
+          canAccessFullFeatures: onboardingStatus.completed || false,
+          needsOnboarding: !onboardingStatus.completed,
+          onboardingStatus: onboardingStatus,
+          approvalStatus: data.approvalStatus || {},
+          mobileAppStatus: data.mobileAppStatus || {}
+        }
+      };
+    } else {
+      return { success: false, error: 'Driver application not found' };
+    }
+  } catch (error) {
+    console.error('Error checking onboarding status:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Update mobile app account creation
+export const updateMobileAppStatus = async (userId, accountCreated = true) => {
+  try {
+    const updateData = {
+      'mobileAppStatus.accountCreated': accountCreated,
+      'mobileAppStatus.lastMobileLogin': serverTimestamp()
+    };
+
+    if (accountCreated) {
+      updateData['mobileAppStatus.accountCreatedAt'] = serverTimestamp();
+    }
+
+    await updateDoc(doc(db, 'drivers', userId), updateData);
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating mobile app status:', error);
     return { success: false, error: error.message };
   }
 };

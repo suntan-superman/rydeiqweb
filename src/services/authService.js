@@ -7,7 +7,7 @@ import {
   sendEmailVerification,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
 // User roles constants
@@ -18,11 +18,27 @@ export const USER_ROLES = {
   SUPER_ADMIN: 'super_admin'
 };
 
-// Register new user
-export const registerUser = async ({ email, password, firstName, lastName, role = USER_ROLES.CUSTOMER }) => {
+// User types for registration
+export const USER_TYPES = {
+  PASSENGER: 'passenger',
+  DRIVER: 'driver',
+  ADMINISTRATOR: 'administrator'
+};
+
+// Register new user with user type
+export const registerUser = async ({ email, password, firstName, lastName, userType = USER_TYPES.PASSENGER }) => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
+
+    // Determine role based on user type
+    let role = USER_ROLES.CUSTOMER;
+    if (userType === USER_TYPES.DRIVER) {
+      role = USER_ROLES.DRIVER;
+    } else if (userType === USER_TYPES.ADMINISTRATOR) {
+      // Administrators start as pending and need approval
+      role = USER_ROLES.CUSTOMER; // Default role until approved
+    }
 
     // Update user profile with name
     await updateProfile(user, {
@@ -30,13 +46,14 @@ export const registerUser = async ({ email, password, firstName, lastName, role 
     });
 
     // Create user document in Firestore
-    await setDoc(doc(db, 'users', user.uid), {
+    const userData = {
       uid: user.uid,
       email: user.email,
       firstName,
       lastName,
       displayName: `${firstName} ${lastName}`,
       role: role,
+      userType: userType,
       createdAt: new Date().toISOString(),
       emailVerified: false,
       preferences: {
@@ -44,7 +61,21 @@ export const registerUser = async ({ email, password, firstName, lastName, role 
         darkMode: false,
         language: 'en',
       },
-    });
+    };
+
+    // Add admin-specific fields for administrators
+    if (userType === USER_TYPES.ADMINISTRATOR) {
+      userData.adminStatus = {
+        requested: true,
+        requestedAt: new Date().toISOString(),
+        approved: false,
+        approvedAt: null,
+        approvedBy: null,
+        notes: ''
+      };
+    }
+
+    await setDoc(doc(db, 'users', user.uid), userData);
 
     // Send email verification
     await sendEmailVerification(user);
@@ -57,6 +88,7 @@ export const registerUser = async ({ email, password, firstName, lastName, role 
         displayName: user.displayName,
         emailVerified: user.emailVerified,
         role: role,
+        userType: userType,
       },
     };
   } catch (error) {
@@ -280,9 +312,137 @@ export const createAdminUser = async ({ email, password, firstName, lastName }, 
       password,
       firstName,
       lastName,
-      role: USER_ROLES.ADMIN
+      userType: USER_TYPES.ADMINISTRATOR
     });
   } catch (error) {
+    return {
+      success: false,
+      error: {
+        code: error.code,
+        message: error.message,
+      },
+    };
+  }
+};
+
+// Approve admin request (super admin only)
+export const approveAdminRequest = async (userId, currentUser, notes = '') => {
+  try {
+    // Only super admins can approve admin requests
+    if (!isSuperAdmin(currentUser)) {
+      throw new Error('Only super admins can approve admin requests');
+    }
+
+    await updateDoc(doc(db, 'users', userId), {
+      role: USER_ROLES.ADMIN,
+      'adminStatus.approved': true,
+      'adminStatus.approvedAt': new Date().toISOString(),
+      'adminStatus.approvedBy': currentUser.uid,
+      'adminStatus.notes': notes,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        code: error.code,
+        message: error.message,
+      },
+    };
+  }
+};
+
+// Reject admin request (super admin only)
+export const rejectAdminRequest = async (userId, currentUser, reason = '') => {
+  try {
+    // Only super admins can reject admin requests
+    if (!isSuperAdmin(currentUser)) {
+      throw new Error('Only super admins can reject admin requests');
+    }
+
+    await updateDoc(doc(db, 'users', userId), {
+      'adminStatus.approved': false,
+      'adminStatus.rejectedAt': new Date().toISOString(),
+      'adminStatus.rejectedBy': currentUser.uid,
+      'adminStatus.rejectionReason': reason,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        code: error.code,
+        message: error.message,
+      },
+    };
+  }
+};
+
+// Get pending admin requests
+export const getPendingAdminRequests = async (currentUser) => {
+  try {
+    // Only super admins can view admin requests
+    if (!isSuperAdmin(currentUser)) {
+      throw new Error('Only super admins can view admin requests');
+    }
+
+    const q = query(
+      collection(db, 'users'),
+      where('userType', '==', USER_TYPES.ADMINISTRATOR),
+      where('adminStatus.requested', '==', true),
+      where('adminStatus.approved', '==', false)
+    );
+
+    const snapshot = await getDocs(q);
+    const requests = [];
+
+    snapshot.forEach((doc) => {
+      requests.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+
+    return { success: true, data: requests };
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        code: error.code,
+        message: error.message,
+      },
+    };
+  }
+};
+
+// Temporary function to promote user to super admin (for testing)
+export const promoteToSuperAdmin = async (email) => {
+  try {
+    // Find user by email
+    const q = query(collection(db, 'users'), where('email', '==', email));
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+      throw new Error('User not found');
+    }
+    
+    const userDoc = snapshot.docs[0];
+    const userId = userDoc.id;
+    
+    // Update user role to super_admin
+    await updateDoc(doc(db, 'users', userId), {
+      role: USER_ROLES.SUPER_ADMIN,
+      updatedAt: new Date().toISOString(),
+    });
+    
+    console.log(`User ${email} promoted to super admin successfully`);
+    return { success: true };
+  } catch (error) {
+    console.error('Error promoting user to super admin:', error);
     return {
       success: false,
       error: {

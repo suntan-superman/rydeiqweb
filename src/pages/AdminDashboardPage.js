@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { isAdmin } from '../services/authService';
 import { getPlatformMetrics } from '../services/adminService';
-import LoadingSpinner from '../components/common/LoadingSpinner';
 import AdminOverview from '../components/admin/AdminOverview';
 import DriverManagement from '../components/admin/DriverManagement';
 import RideMonitoring from '../components/admin/RideMonitoring';
@@ -11,6 +10,8 @@ import Analytics from '../components/admin/Analytics';
 import FinancialManagement from '../components/admin/FinancialManagement';
 import SystemSettings from '../components/admin/SystemSettings';
 import SupportCenter from '../components/admin/SupportCenter';
+import OnboardingManagement from '../components/admin/OnboardingManagement';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 const AdminDashboardPage = () => {
@@ -24,6 +25,7 @@ const AdminDashboardPage = () => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'drivers', label: 'Driver Management', icon: '👥' },
+    { id: 'onboarding', label: 'Onboarding', icon: '✅' },
     { id: 'rides', label: 'Ride Monitoring', icon: '🚗' },
     { id: 'analytics', label: 'Analytics', icon: '📈' },
     { id: 'financial', label: 'Financial', icon: '💰' },
@@ -76,11 +78,15 @@ const AdminDashboardPage = () => {
   }
 
   const renderTabContent = () => {
+    console.log('AdminDashboardPage: renderTabContent called with activeTab:', activeTab);
     switch (activeTab) {
       case 'overview':
         return <AdminOverview metrics={platformMetrics} onRefresh={() => window.location.reload()} />;
       case 'drivers':
         return <DriverManagement />;
+      case 'onboarding':
+        console.log('AdminDashboardPage: Rendering OnboardingManagement component');
+        return <OnboardingManagement />;
       case 'rides':
         return <RideMonitoring />;
       case 'analytics':

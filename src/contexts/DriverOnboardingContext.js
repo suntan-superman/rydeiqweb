@@ -2,11 +2,11 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useAuth } from './AuthContext';
 import { 
   getDriverApplication, 
+  updateDriverStep, 
+  completeOnboarding,
   createDriverApplication,
-  updateDriverStep,
-  getOnboardingProgress,
-  ONBOARDING_STEPS,
-  DRIVER_STATUS
+  submitDriverApplication,
+  ONBOARDING_STEPS
 } from '../services/driverService';
 import toast from 'react-hot-toast';
 
@@ -21,215 +21,219 @@ export const useDriverOnboarding = () => {
 };
 
 export const DriverOnboardingProvider = ({ children }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const [driverApplication, setDriverApplication] = useState(null);
   const [currentStep, setCurrentStep] = useState(ONBOARDING_STEPS.WELCOME);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-  const [progress, setProgress] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  const loadDriverApplication = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // Load driver application on mount
+  useEffect(() => {
+    const loadDriverApplication = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const result = await getDriverApplication(user.uid);
+        if (result.success) {
+          setDriverApplication(result.data);
+          setCurrentStep(result.data.currentStep || ONBOARDING_STEPS.WELCOME);
+        } else {
+          // Create new application if none exists
+          const createResult = await createDriverApplication(user.uid, {
+            email: user.email,
+            currentStep: ONBOARDING_STEPS.WELCOME
+          });
+          if (createResult.success) {
+            setDriverApplication(createResult.data);
+            setCurrentStep(ONBOARDING_STEPS.WELCOME);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading driver application:', error);
+        toast.error('Failed to load driver application');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDriverApplication();
+  }, [user]);
+
+  // Check if onboarding is complete and auto-complete if needed
+  useEffect(() => {
+    const checkAndCompleteOnboarding = async () => {
+      if (!driverApplication || !user) return;
+
+      const stepProgress = driverApplication.stepProgress || {};
+      const allStepsComplete = Object.values(stepProgress).every(completed => completed);
+
+      if (allStepsComplete && !driverApplication.onboardingStatus?.completed) {
+        try {
+          const result = await completeOnboarding(user.uid);
+          if (result.success) {
+            setDriverApplication(prev => ({
+              ...prev,
+              onboardingStatus: {
+                completed: true,
+                completedAt: new Date().toISOString(),
+                completedBy: 'web',
+                lastUpdated: new Date().toISOString()
+              },
+              approvalStatus: {
+                status: 'approved',
+                approvedAt: new Date().toISOString(),
+                approvedBy: 'system',
+                notes: ''
+              }
+            }));
+            toast.success('Onboarding completed successfully! You can now access the mobile app.');
+          }
+        } catch (error) {
+          console.error('Error completing onboarding:', error);
+        }
+      }
+    };
+
+    checkAndCompleteOnboarding();
+  }, [driverApplication, user]);
+
+  const updateStep = useCallback(async (stepName, stepData) => {
+    if (!user) return;
 
     try {
-      const result = await getDriverApplication(user.uid);
+      setSaving(true);
+      const result = await updateDriverStep(user.uid, stepName, stepData);
       
       if (result.success) {
-        setDriverApplication(result.data);
-        setCurrentStep(result.data.currentStep || ONBOARDING_STEPS.PERSONAL_INFO);
+        setDriverApplication(prev => ({
+          ...prev,
+          ...stepData,
+          currentStep: stepName,
+          updatedAt: new Date().toISOString()
+        }));
+        setCurrentStep(stepName);
+        return { success: true };
       } else {
-        // No existing application
-        setDriverApplication(null);
-        setCurrentStep(ONBOARDING_STEPS.WELCOME);
+        toast.error('Failed to save step data');
+        return { success: false, error: result.error };
       }
     } catch (error) {
-      console.error('Error loading driver application:', error);
-      setError('Failed to load driver application');
+      console.error('Error updating step:', error);
+      toast.error('Error saving step data');
+      return { success: false, error: error.message };
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   }, [user]);
 
-  // Load existing driver application on user change
-  useEffect(() => {
-    if (isAuthenticated && user?.uid) {
-      loadDriverApplication();
-    } else {
-      setDriverApplication(null);
-      setCurrentStep(ONBOARDING_STEPS.WELCOME);
-      setLoading(false);
-      setProgress(0);
-    }
-  }, [user, isAuthenticated, loadDriverApplication]);
+  const goToNextStep = useCallback(async () => {
+    const stepOrder = [
+      ONBOARDING_STEPS.WELCOME,
+      ONBOARDING_STEPS.PERSONAL_INFO,
+      ONBOARDING_STEPS.DOCUMENT_UPLOAD,
+      ONBOARDING_STEPS.VEHICLE_INFO,
+      ONBOARDING_STEPS.BACKGROUND_CHECK,
+      ONBOARDING_STEPS.PAYOUT_SETUP,
+      ONBOARDING_STEPS.AVAILABILITY,
+      ONBOARDING_STEPS.REVIEW,
+      ONBOARDING_STEPS.SUBMITTED
+    ];
 
-  // Update progress when application data changes
-  useEffect(() => {
-    if (driverApplication?.stepProgress) {
-      const progressPercentage = getOnboardingProgress(driverApplication.stepProgress);
-      setProgress(progressPercentage);
-    }
-  }, [driverApplication]);
-
-  const startApplication = async () => {
-    if (!user?.uid) {
-      setError('You must be logged in to start driver onboarding');
-      return { success: false };
-    }
-
-    setSaving(true);
-    setError(null);
-
-    try {
-      const result = await createDriverApplication(user.uid, {
-        email: user.email,
-        displayName: user.displayName || user.email
-      });
-
-      if (result.success) {
-        setDriverApplication(result.data);
-        setCurrentStep(ONBOARDING_STEPS.PERSONAL_INFO);
-        toast.success('Driver application started successfully!');
-        return { success: true };
-      } else {
-        setError(result.error);
-        toast.error('Failed to start driver application');
-        return { success: false, error: result.error };
-      }
-    } catch (error) {
-      console.error('Error starting driver application:', error);
-      setError('Failed to start driver application');
-      toast.error('Failed to start driver application');
-      return { success: false, error: error.message };
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const updateStep = async (stepName, stepData) => {
-    if (!user?.uid) {
-      setError('You must be logged in to update driver information');
-      return { success: false };
-    }
-
-    setSaving(true);
-    setError(null);
-
-    try {
-      const result = await updateDriverStep(user.uid, stepName, stepData);
-
-      if (result.success) {
-        // Reload the application to get updated data
-        await loadDriverApplication();
-        toast.success('Information saved successfully!');
-        return { success: true };
-      } else {
-        setError(result.error);
-        toast.error('Failed to save information');
-        return { success: false, error: result.error };
-      }
-    } catch (error) {
-      console.error('Error updating driver step:', error);
-      setError('Failed to save information');
-      toast.error('Failed to save information');
-      return { success: false, error: error.message };
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const goToStep = (step) => {
-    setCurrentStep(step);
-  };
-
-  const goToNextStep = () => {
-    const stepOrder = Object.values(ONBOARDING_STEPS);
     const currentIndex = stepOrder.indexOf(currentStep);
-    
     if (currentIndex < stepOrder.length - 1) {
-      setCurrentStep(stepOrder[currentIndex + 1]);
+      const nextStep = stepOrder[currentIndex + 1];
+      setCurrentStep(nextStep);
+      
+      // Update the current step in the database
+      if (driverApplication) {
+        await updateStep(nextStep, { currentStep: nextStep });
+      }
     }
-  };
+  }, [currentStep, driverApplication, updateStep]);
 
-  const goToPreviousStep = () => {
-    const stepOrder = Object.values(ONBOARDING_STEPS);
+  const goToPreviousStep = useCallback(() => {
+    const stepOrder = [
+      ONBOARDING_STEPS.WELCOME,
+      ONBOARDING_STEPS.PERSONAL_INFO,
+      ONBOARDING_STEPS.DOCUMENT_UPLOAD,
+      ONBOARDING_STEPS.VEHICLE_INFO,
+      ONBOARDING_STEPS.BACKGROUND_CHECK,
+      ONBOARDING_STEPS.PAYOUT_SETUP,
+      ONBOARDING_STEPS.AVAILABILITY,
+      ONBOARDING_STEPS.REVIEW,
+      ONBOARDING_STEPS.SUBMITTED
+    ];
+
     const currentIndex = stepOrder.indexOf(currentStep);
-    
     if (currentIndex > 0) {
-      setCurrentStep(stepOrder[currentIndex - 1]);
+      const prevStep = stepOrder[currentIndex - 1];
+      setCurrentStep(prevStep);
     }
-  };
+  }, [currentStep]);
 
-  const isStepCompleted = (step) => {
-    return driverApplication?.stepProgress?.[step] || false;
-  };
+  const submitApplication = useCallback(async () => {
+    if (!user) return;
 
-  const isStepAccessible = (step) => {
-    const stepOrder = Object.values(ONBOARDING_STEPS);
-    const stepIndex = stepOrder.indexOf(step);
-    const currentIndex = stepOrder.indexOf(currentStep);
-    
-    // Allow access to current step and all previous steps
-    return stepIndex <= currentIndex;
-  };
+    try {
+      setSaving(true);
+      const result = await submitDriverApplication(user.uid);
+      
+      if (result.success) {
+        setDriverApplication(prev => ({
+          ...prev,
+          status: 'submitted',
+          submittedAt: new Date().toISOString()
+        }));
+        setCurrentStep(ONBOARDING_STEPS.SUBMITTED);
+        toast.success('Application submitted successfully!');
+        return { success: true };
+      } else {
+        toast.error('Failed to submit application');
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      console.error('Error submitting application:', error);
+      toast.error('Error submitting application');
+      return { success: false, error: error.message };
+    } finally {
+      setSaving(false);
+    }
+  }, [user]);
 
-  const canProceedToNextStep = (step) => {
-    return isStepCompleted(step);
-  };
+  const updateMobileAppStatus = useCallback(async (accountCreated = true) => {
+    if (!user) return;
 
-  const getStepStatus = (step) => {
-    if (isStepCompleted(step)) return 'completed';
-    if (step === currentStep) return 'current';
-    if (isStepAccessible(step)) return 'accessible';
-    return 'locked';
-  };
-
-  const refreshApplication = async () => {
-    await loadDriverApplication();
-  };
-
-  const resetApplication = () => {
-    setDriverApplication(null);
-    setCurrentStep(ONBOARDING_STEPS.WELCOME);
-    setProgress(0);
-    setError(null);
-  };
+    try {
+      const result = await updateMobileAppStatus(user.uid, accountCreated);
+      if (result.success) {
+        setDriverApplication(prev => ({
+          ...prev,
+          mobileAppStatus: {
+            accountCreated,
+            accountCreatedAt: accountCreated ? new Date().toISOString() : null,
+            lastMobileLogin: new Date().toISOString()
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Error updating mobile app status:', error);
+    }
+  }, [user]);
 
   const value = {
-    // State
     driverApplication,
     currentStep,
-    loading,
     saving,
-    error,
-    progress,
-    
-    // Actions
-    startApplication,
+    loading,
     updateStep,
-    goToStep,
     goToNextStep,
     goToPreviousStep,
-    refreshApplication,
-    resetApplication,
-    
-    // Utilities
-    isStepCompleted,
-    isStepAccessible,
-    canProceedToNextStep,
-    getStepStatus,
-    
-    // Constants
-    ONBOARDING_STEPS,
-    DRIVER_STATUS,
-    
-    // Computed properties
-    isApplicationStarted: !!driverApplication,
-    isApplicationSubmitted: driverApplication?.status === DRIVER_STATUS.REVIEW_PENDING || 
-                           driverApplication?.status === DRIVER_STATUS.APPROVED ||
-                           driverApplication?.status === DRIVER_STATUS.REJECTED,
-    applicationStatus: driverApplication?.status || DRIVER_STATUS.PENDING,
+    submitApplication,
+    updateMobileAppStatus,
+    ONBOARDING_STEPS
   };
 
   return (

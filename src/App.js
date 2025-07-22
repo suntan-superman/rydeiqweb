@@ -14,6 +14,7 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import DriverDashboardPage from './pages/DriverDashboardPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import AdminSetupPage from './pages/AdminSetupPage';
 import DriverOnboardingPage from './pages/DriverOnboardingPage';
 import RideRequestPage from './pages/RideRequestPage';
 import RideTrackingPage from './pages/RideTrackingPage';
@@ -198,6 +199,15 @@ function App() {
                         <AdminRoute>
                           <AdminDashboardPage />
                         </AdminRoute>
+                      } 
+                    />
+                    
+                    <Route 
+                      path="admin-setup" 
+                      element={
+                        <ProtectedRoute>
+                          <AdminSetupPage />
+                        </ProtectedRoute>
                       } 
                     />
                     
