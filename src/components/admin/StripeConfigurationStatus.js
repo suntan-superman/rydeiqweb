@@ -155,8 +155,8 @@ const StripeConfigurationStatus = () => {
               <h5 className="font-medium text-gray-900 mb-2">Example .env Configuration</h5>
               <pre className="text-sm bg-gray-800 text-gray-100 p-3 rounded overflow-x-auto">
 {`# Stripe Configuration
-REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_51ABC123DEF456GHI789JKL012MNO345PQR678STU901VWX234YZA567BCD890EFG
-REACT_APP_STRIPE_SECRET_KEY=sk_test_51ABC123DEF456GHI789JKL012MNO345PQR678STU901VWX234YZA567BCD890EFG
+REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_your_publishable_key_here
+REACT_APP_STRIPE_SECRET_KEY=sk_test_your_secret_key_here
 
 # For development (disable payments)
 # REACT_APP_STRIPE_PUBLISHABLE_KEY=-99999
