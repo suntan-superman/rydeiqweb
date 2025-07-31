@@ -4,7 +4,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { isSuperAdmin } from '../services/authService';
 import Button from '../components/common/Button';
-import SuperUserHelper from '../components/dev/SuperUserHelper';
 
 const HomePage = () => {
   const { user } = useAuth();
@@ -295,8 +294,8 @@ const HomePage = () => {
         </div>
       </section>
       
-      {/* Development Helper */}
-      <SuperUserHelper />
+      {/* Development Helper - Commented out for production */}
+      {/* <SuperUserHelper /> */}
     </div>
   );
 };

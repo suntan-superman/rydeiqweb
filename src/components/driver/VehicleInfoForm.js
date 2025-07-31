@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useDriverOnboarding } from '../../contexts/DriverOnboardingContext';
+// eslint-disable-next-line
 import { validateStepCompletion, ONBOARDING_STEPS } from '../../services/driverService';
 import Button from '../common/Button';
 import Input from '../common/Input';
@@ -12,73 +14,41 @@ const VehicleInfoForm = () => {
     updateStep, 
     goToNextStep, 
     goToPreviousStep,
-    saving 
+    saving,
+    ONBOARDING_STEPS 
   } = useDriverOnboarding();
-  
+
   const [validationErrors, setValidationErrors] = useState([]);
-  const [formInitialized, setFormInitialized] = useState(false);
+  const [selectedFeatures, setSelectedFeatures] = useState([]);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    setValue,
-    watch,
-    reset
+    setValue
   } = useForm({
-    defaultValues: {
-      make: '',
-      model: '',
-      year: '',
-      color: '',
-      licensePlate: '',
-      vehicleType: '',
-      numberOfSeats: '',
-      features: [],
-      condition: '',
-      insuranceCompany: '',
-      insurancePolicyNumber: '',
-      insuranceExpiration: '',
-      registrationState: '',
-      registrationExpiration: ''
-    }
+    mode: 'onChange'
   });
 
-  // Initialize form with minimal data only
+  // Initialize form with saved data from database
   useEffect(() => {
-    if (!formInitialized && driverApplication) {
-      // Only pre-fill basic vehicle type if it exists and is safe
-      if (driverApplication.vehicleInfo && 
-          driverApplication.vehicleInfo.vehicleType) {
-        setValue('vehicleType', driverApplication.vehicleInfo.vehicleType);
+    if (driverApplication) {
+      const savedData = driverApplication[ONBOARDING_STEPS.VEHICLE_INFO] || driverApplication.vehicleInfo || {};
+      if (savedData && Object.keys(savedData).length > 0) {
+        console.log('VehicleInfoForm: Loading saved data:', savedData);
+        Object.keys(savedData).forEach(key => {
+          setValue(key, savedData[key]);
+        });
+        // Set selected features
+        if (savedData.features) {
+          setSelectedFeatures(savedData.features);
+        }
       }
-      
-      setFormInitialized(true);
     }
-  }, [driverApplication, setValue, formInitialized]);
+  }, [driverApplication, setValue, ONBOARDING_STEPS.VEHICLE_INFO]);
 
-  // Clear form when component unmounts or user changes
-  useEffect(() => {
-    return () => {
-      // Clear form data on unmount to prevent data leakage
-      reset({
-        make: '',
-        model: '',
-        year: '',
-        color: '',
-        licensePlate: '',
-        vehicleType: '',
-        numberOfSeats: '',
-        features: [],
-        condition: '',
-        insuranceCompany: '',
-        insurancePolicyNumber: '',
-        insuranceExpiration: '',
-        registrationState: '',
-        registrationExpiration: ''
-      });
-    };
-  }, [reset]);
+  // Keep form data when component unmounts (data is saved to database)
+  // No cleanup needed since we want to retain the data
 
   // Vehicle makes data
   const vehicleMakes = [
@@ -146,8 +116,14 @@ const VehicleInfoForm = () => {
   const onSubmit = async (data) => {
     setValidationErrors([]);
 
+    // Add selected features to the data
+    const formData = {
+      ...data,
+      features: selectedFeatures
+    };
+
     // Validate required fields
-    const validation = validateStepCompletion(ONBOARDING_STEPS.VEHICLE_INFO, data);
+    const validation = validateStepCompletion(ONBOARDING_STEPS.VEHICLE_INFO, formData);
     
     if (!validation.isValid) {
       setValidationErrors(validation.errors);
@@ -158,26 +134,26 @@ const VehicleInfoForm = () => {
     const customErrors = [];
     
     // Validate vehicle year
-    const vehicleYear = parseInt(data.year);
+    const vehicleYear = parseInt(formData.year);
     if (vehicleYear < minYear || vehicleYear > currentYear) {
       customErrors.push(`Vehicle must be between ${minYear} and ${currentYear}`);
     }
 
     // Validate license plate format (basic validation)
     const licensePlateRegex = /^[A-Z0-9\s-]{2,8}$/i;
-    if (!licensePlateRegex.test(data.licensePlate)) {
+    if (!licensePlateRegex.test(formData.licensePlate)) {
       customErrors.push('Please enter a valid license plate number');
     }
 
     // Validate insurance expiration date
-    const insuranceExpiration = new Date(data.insuranceExpiration);
+    const insuranceExpiration = new Date(formData.insuranceExpiration);
     const today = new Date();
     if (insuranceExpiration <= today) {
       customErrors.push('Insurance must be valid for at least 30 days');
     }
 
     // Validate registration expiration date
-    const registrationExpiration = new Date(data.registrationExpiration);
+    const registrationExpiration = new Date(formData.registrationExpiration);
     if (registrationExpiration <= today) {
       customErrors.push('Vehicle registration must be current');
     }
@@ -188,7 +164,7 @@ const VehicleInfoForm = () => {
     }
 
     // Save the data
-    const result = await updateStep(ONBOARDING_STEPS.VEHICLE_INFO, data);
+    const result = await updateStep(ONBOARDING_STEPS.VEHICLE_INFO, formData);
     
     if (result.success) {
       toast.success('Vehicle information saved successfully!');
@@ -197,15 +173,13 @@ const VehicleInfoForm = () => {
   };
 
   const handleFeatureChange = (featureValue) => {
-    const currentFeatures = watch('features') || [];
+    const currentFeatures = selectedFeatures;
     const newFeatures = currentFeatures.includes(featureValue)
       ? currentFeatures.filter(f => f !== featureValue)
       : [...currentFeatures, featureValue];
     
-    setValue('features', newFeatures);
+    setSelectedFeatures(newFeatures);
   };
-
-  const selectedFeatures = watch('features') || [];
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">

@@ -43,44 +43,47 @@ const BackgroundCheckForm = () => {
   const [showSSN, setShowSSN] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);
 
-  // Initialize form with empty data (no pre-filling for security)
+  // Initialize form with saved data from database
   useEffect(() => {
     if (!formInitialized && driverApplication) {
-      // Do NOT pre-fill any sensitive data from database
-      // This prevents data leakage between users
+      // Load saved data from the driver application
+      const savedData = driverApplication[ONBOARDING_STEPS.BACKGROUND_CHECK] || {};
+      
+      if (savedData) {
+        console.log('Loading saved background check data:', savedData);
+        setFormData(prev => ({
+          ...prev,
+          ssn: savedData.ssn || '',
+          currentAddress: {
+            street: savedData.currentAddress?.street || '',
+            city: savedData.currentAddress?.city || '',
+            state: savedData.currentAddress?.state || '',
+            zipCode: savedData.currentAddress?.zipCode || '',
+            yearsAtAddress: savedData.currentAddress?.yearsAtAddress || ''
+          },
+          previousAddress: {
+            street: savedData.previousAddress?.street || '',
+            city: savedData.previousAddress?.city || '',
+            state: savedData.previousAddress?.state || '',
+            zipCode: savedData.previousAddress?.zipCode || '',
+            yearsAtAddress: savedData.previousAddress?.yearsAtAddress || ''
+          },
+          hasPreviousAddress: savedData.hasPreviousAddress || false,
+          consentBackgroundCheck: savedData.consentBackgroundCheck || false,
+          consentCriminalHistory: savedData.consentCriminalHistory || false,
+          consentDrivingRecord: savedData.consentDrivingRecord || false,
+          understandTimeline: savedData.understandTimeline || false
+        }));
+      } else {
+        console.log('No saved background check data found');
+      }
+      
       setFormInitialized(true);
     }
-  }, [driverApplication, formInitialized]);
+  }, [driverApplication, formInitialized, ONBOARDING_STEPS.BACKGROUND_CHECK]);
 
-  // Clear form when component unmounts or user changes
-  useEffect(() => {
-    return () => {
-      // Clear all sensitive form data on unmount
-      setFormData({
-        ssn: '',
-        currentAddress: {
-          street: '',
-          city: '',
-          state: '',
-          zipCode: '',
-          yearsAtAddress: ''
-        },
-        previousAddress: {
-          street: '',
-          city: '',
-          state: '',
-          zipCode: '',
-          yearsAtAddress: ''
-        },
-        hasPreviousAddress: false,
-        consentBackgroundCheck: false,
-        consentCriminalHistory: false,
-        consentDrivingRecord: false,
-        understandTimeline: false
-      });
-      setShowSSN(false);
-    };
-  }, []);
+  // Keep form data when component unmounts (data is saved to database)
+  // No cleanup needed since we want to retain the data
 
   const formatSSN = (value) => {
     // Remove all non-numeric characters
@@ -100,6 +103,8 @@ const BackgroundCheckForm = () => {
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     
+    console.log('Input change:', { name, value, type, checked });
+    
     if (name === 'ssn') {
       const formattedSSN = formatSSN(value);
       setFormData(prev => ({ ...prev, [name]: formattedSSN }));
@@ -114,10 +119,14 @@ const BackgroundCheckForm = () => {
         }
       }));
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? checked : value
-      }));
+      setFormData(prev => {
+        const newData = {
+          ...prev,
+          [name]: type === 'checkbox' ? checked : value
+        };
+        console.log('Updated form data for', name, ':', newData[name]);
+        return newData;
+      });
     }
 
     // Clear error when user starts typing
@@ -129,29 +138,49 @@ const BackgroundCheckForm = () => {
   const validateForm = () => {
     const newErrors = {};
 
+    console.log('Validating form with data:', {
+      ssn: formData.ssn,
+      currentAddress: formData.currentAddress,
+      consentFields: {
+        consentBackgroundCheck: formData.consentBackgroundCheck,
+        consentCriminalHistory: formData.consentCriminalHistory,
+        consentDrivingRecord: formData.consentDrivingRecord,
+        understandTimeline: formData.understandTimeline
+      }
+    });
+
     // SSN validation
     const ssnDigits = formData.ssn.replace(/\D/g, '');
+    console.log('SSN validation:', { ssn: formData.ssn, ssnDigits, ssnDigitsLength: ssnDigits.length });
     if (!formData.ssn.trim()) {
       newErrors.ssn = 'Social Security Number is required';
+      console.log('SSN error: empty');
     } else if (ssnDigits.length !== 9) {
       newErrors.ssn = 'Please enter a valid 9-digit SSN';
+      console.log('SSN error: invalid length');
     }
 
     // Current address validation
+    console.log('Current address validation:', formData.currentAddress);
     if (!formData.currentAddress.street.trim()) {
       newErrors['currentAddress.street'] = 'Current street address is required';
+      console.log('Street error: empty');
     }
     if (!formData.currentAddress.city.trim()) {
       newErrors['currentAddress.city'] = 'Current city is required';
+      console.log('City error: empty');
     }
     if (!formData.currentAddress.state.trim()) {
       newErrors['currentAddress.state'] = 'Current state is required';
+      console.log('State error: empty');
     }
     if (!formData.currentAddress.zipCode.trim()) {
       newErrors['currentAddress.zipCode'] = 'Current ZIP code is required';
+      console.log('ZIP error: empty');
     }
     if (!formData.currentAddress.yearsAtAddress || formData.currentAddress.yearsAtAddress < 0) {
       newErrors['currentAddress.yearsAtAddress'] = 'Years at current address is required';
+      console.log('Years error: invalid');
     }
 
     // Previous address validation (if applicable)
@@ -194,15 +223,33 @@ const BackgroundCheckForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Debug: Log the current form data
+    console.log('Background check form data:', JSON.stringify(formData, null, 2));
+    console.log('Consent fields:', {
+      consentBackgroundCheck: formData.consentBackgroundCheck,
+      consentCriminalHistory: formData.consentCriminalHistory,
+      consentDrivingRecord: formData.consentDrivingRecord,
+      understandTimeline: formData.understandTimeline
+    });
+    console.log('Current address:', formData.currentAddress);
+    console.log('SSN:', formData.ssn);
+    
     if (!validateForm()) {
+      console.log('Validation errors:', errors);
       toast.error('Please correct the errors below');
       return;
     }
 
+    console.log('Background check form - calling updateStep with data:', JSON.stringify(formData, null, 2));
     const result = await updateStep(ONBOARDING_STEPS.BACKGROUND_CHECK, formData);
     
     if (result.success) {
+      console.log('Background check form saved successfully');
+      // Scroll to top before going to next step
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       goToNextStep();
+    } else {
+      console.error('Background check form save failed:', result.error);
     }
   };
 

@@ -18,7 +18,15 @@ const ReviewForm = () => {
   } = useDriverOnboarding();
   
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [validationErrors, setValidationErrors] = useState([]);
+
+  // Check if application is already submitted
+  useEffect(() => {
+    if (driverApplication?.status === 'submitted') {
+      setSubmitted(true);
+    }
+  }, [driverApplication]);
 
   // Validate all required sections are completed
   const validateApplication = useCallback(() => {
@@ -33,6 +41,13 @@ const ReviewForm = () => {
   // Validate on component load
   useEffect(() => {
     if (driverApplication) {
+      console.log('Review form - driver application data:', driverApplication);
+      console.log('Review form - personal info:', driverApplication.personal_info);
+      console.log('Review form - vehicle info:', driverApplication.vehicle_info);
+      console.log('Review form - background check:', driverApplication.background_check);
+      console.log('Review form - payout setup:', driverApplication.payout_setup);
+      console.log('Review form - availability:', driverApplication.availability);
+      
       const errors = validateApplication();
       setValidationErrors(errors);
     }
@@ -55,6 +70,7 @@ const ReviewForm = () => {
       
       if (result.success) {
         toast.success('Application submitted successfully!');
+        setSubmitted(true); // Mark application as submitted
         // The context will automatically reload the application data
       } else {
         throw new Error(result.error);
@@ -105,8 +121,11 @@ const ReviewForm = () => {
     return { status: 'pending', text: 'Pending review', color: 'text-yellow-600' };
   };
 
-  const personalInfo = driverApplication?.personalInfo || {};
-  const vehicleInfo = driverApplication?.vehicleInfo || {};
+  const personalInfo = driverApplication?.personal_info || driverApplication?.personalInfo || {};
+  const vehicleInfo = driverApplication?.vehicle_info || driverApplication?.vehicleInfo || {};
+  const backgroundCheck = driverApplication?.background_check || driverApplication?.backgroundCheck || {};
+  const payoutInfo = driverApplication?.payout_setup || driverApplication?.payoutInfo || {};
+  const availability = driverApplication?.availability || {};
   const documents = driverApplication?.documents || {};
 
   return (
@@ -115,10 +134,16 @@ const ReviewForm = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Review & Submit Application</h1>
-          <p className="text-gray-600">
-            Please review all your information below. You can edit any section by clicking the "Edit" button. 
-            Once you submit, your application will be reviewed within 24-48 hours.
-          </p>
+          {submitted ? (
+            <p className="text-gray-600">
+              Your application has been submitted and is under review. You can no longer edit your information.
+            </p>
+          ) : (
+            <p className="text-gray-600">
+              Please review all your information below. You can edit any section by clicking the "Edit" button. 
+              Once you submit, your application will be reviewed within 24-48 hours.
+            </p>
+          )}
         </div>
 
         {/* Validation Errors */}
@@ -297,6 +322,154 @@ const ReviewForm = () => {
             </div>
           </div>
 
+          {/* Background Check Section */}
+          <div className="border border-gray-200 rounded-lg p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">Background Check</h2>
+              <Button
+                variant="outline"
+                size="small"
+                onClick={() => goToStep(STEPS.BACKGROUND_CHECK)}
+              >
+                Edit
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-gray-700">SSN:</span>
+                <span className="ml-2 text-gray-900">•••-••-{backgroundCheck.ssn?.slice(-4)}</span>
+              </div>
+              <div className="md:col-span-2">
+                <span className="font-medium text-gray-700">Current Address:</span>
+                <span className="ml-2 text-gray-900">
+                  {backgroundCheck.currentAddress?.street}, {backgroundCheck.currentAddress?.city}, {backgroundCheck.currentAddress?.state} {backgroundCheck.currentAddress?.zipCode}
+                </span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Years at Address:</span>
+                <span className="ml-2 text-gray-900">{backgroundCheck.currentAddress?.yearsAtAddress}</span>
+              </div>
+              {backgroundCheck.hasPreviousAddress && (
+                <div className="md:col-span-2">
+                  <span className="font-medium text-gray-700">Previous Address:</span>
+                  <span className="ml-2 text-gray-900">
+                    {backgroundCheck.previousAddress?.street}, {backgroundCheck.previousAddress?.city}, {backgroundCheck.previousAddress?.state} {backgroundCheck.previousAddress?.zipCode}
+                  </span>
+                </div>
+              )}
+              <div className="md:col-span-2">
+                <span className="font-medium text-gray-700">Consents:</span>
+                <div className="ml-2 text-gray-900">
+                  {backgroundCheck.consentBackgroundCheck && <div>✓ Background check consent</div>}
+                  {backgroundCheck.consentCriminalHistory && <div>✓ Criminal history consent</div>}
+                  {backgroundCheck.consentDrivingRecord && <div>✓ Driving record consent</div>}
+                  {backgroundCheck.understandTimeline && <div>✓ Timeline acknowledgment</div>}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Payout Setup Section */}
+          <div className="border border-gray-200 rounded-lg p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">Payout Setup</h2>
+              <Button
+                variant="outline"
+                size="small"
+                onClick={() => goToStep(STEPS.PAYOUT_SETUP)}
+              >
+                Edit
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-gray-700">Account Holder:</span>
+                <span className="ml-2 text-gray-900">{payoutInfo.accountHolderName}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Bank:</span>
+                <span className="ml-2 text-gray-900">{payoutInfo.bankName}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Account Type:</span>
+                <span className="ml-2 text-gray-900 capitalize">{payoutInfo.accountType}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Payout Frequency:</span>
+                <span className="ml-2 text-gray-900 capitalize">{payoutInfo.payoutFrequency}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Tax ID:</span>
+                <span className="ml-2 text-gray-900">•••-••-{payoutInfo.taxId?.slice(-4)}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Minimum Payout:</span>
+                <span className="ml-2 text-gray-900">${payoutInfo.minimumPayoutAmount}</span>
+              </div>
+              <div className="md:col-span-2">
+                <span className="font-medium text-gray-700">Agreements:</span>
+                <div className="ml-2 text-gray-900">
+                  {payoutInfo.agreeToPayoutTerms && <div>✓ Payout terms agreement</div>}
+                  {payoutInfo.agreeTo1099Reporting && <div>✓ Tax reporting agreement</div>}
+                  {payoutInfo.understandFees && <div>✓ Fee structure acknowledgment</div>}
+                  {payoutInfo.consentToTaxReporting && <div>✓ Tax reporting consent</div>}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Availability Section */}
+          <div className="border border-gray-200 rounded-lg p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">Availability</h2>
+              <Button
+                variant="outline"
+                size="small"
+                onClick={() => goToStep(STEPS.AVAILABILITY)}
+              >
+                Edit
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-gray-700">Primary Service Area:</span>
+                <span className="ml-2 text-gray-900">{availability.primaryServiceArea}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Service Radius:</span>
+                <span className="ml-2 text-gray-900">{availability.serviceRadius} miles</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Max Trip Duration:</span>
+                <span className="ml-2 text-gray-900">{availability.maxTripDuration} minutes</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Response Time:</span>
+                <span className="ml-2 text-gray-900">{availability.responseTimeLimit} seconds</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Min Ride Distance:</span>
+                <span className="ml-2 text-gray-900">{availability.minimumRideDistance} miles</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Min Ride Fare:</span>
+                <span className="ml-2 text-gray-900">${availability.minimumRideFare}</span>
+              </div>
+              <div className="md:col-span-2">
+                <span className="font-medium text-gray-700">Special Services:</span>
+                <div className="ml-2 text-gray-900">
+                  {availability.wheelchairAccessible && <div>✓ Wheelchair accessible</div>}
+                  {availability.petFriendly && <div>✓ Pet friendly</div>}
+                  {availability.childSeatAvailable && <div>✓ Child seat available</div>}
+                  {availability.luxuryVehicle && <div>✓ Luxury vehicle</div>}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Application Summary */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-blue-900 mb-3">📋 Application Summary</h3>
@@ -329,7 +502,7 @@ const ReviewForm = () => {
           <Button
             variant="outline"
             onClick={goToPreviousStep}
-            disabled={submitting}
+            disabled={submitting || submitted}
           >
             ← Previous Step
           </Button>
@@ -338,7 +511,7 @@ const ReviewForm = () => {
             variant="primary"
             onClick={handleSubmit}
             loading={submitting}
-            disabled={submitting || validationErrors.length > 0}
+            disabled={submitting || validationErrors.length > 0 || submitted}
             size="large"
             className="px-12"
           >
@@ -347,11 +520,36 @@ const ReviewForm = () => {
                 <LoadingSpinner size="small" variant="white" />
                 <span className="ml-2">Submitting...</span>
               </span>
+            ) : submitted ? (
+              'Application Submitted ✓'
             ) : (
               'Submit Application'
             )}
           </Button>
         </div>
+
+        {/* Submitted Success Message */}
+        {submitted && (
+          <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-6">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-green-800">
+                  Application Successfully Submitted!
+                </h3>
+                <div className="mt-2 text-sm text-green-700">
+                  <p>Your driver application has been submitted and is now under review.</p>
+                  <p className="mt-1">Our team will review your application within 24-48 hours and you'll receive email notifications about your status.</p>
+                  <p className="mt-1">You can no longer edit your application information.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Additional Help */}
         <div className="mt-6 text-center">

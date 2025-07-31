@@ -136,7 +136,7 @@ const OnboardingProgress = ({ currentStep, progress, applicationStatus }) => {
               <h2 className="text-lg font-semibold text-gray-900">Driver Application</h2>
               {applicationStatus && (
                 <p className="text-sm text-gray-600">
-                  Status: <span className="font-medium capitalize">{applicationStatus.replace('_', ' ')}</span>
+                  Status: <span className="font-medium capitalize">{applicationStatus().replace('_', ' ')}</span>
                 </p>
               )}
             </div>

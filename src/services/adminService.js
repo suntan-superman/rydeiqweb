@@ -1,3 +1,4 @@
+/* eslint-disable */
 import {
   collection, 
   doc, 
@@ -28,7 +29,7 @@ export const getDriverApplications = async (currentUser, filters = {}, paginatio
 
     const { status, search, page = 1, pageSize = 20 } = { ...filters, ...pagination };
     
-    let q = collection(db, 'driverApplications');
+    let q = collection(db, 'drivers');
     
     // Add status filter
     if (status && status !== 'all') {
@@ -80,7 +81,7 @@ export const getDriverApplicationDetails = async (currentUser, applicationId) =>
   try {
     checkAdminPermissions(currentUser);
 
-    const docRef = doc(db, 'driverApplications', applicationId);
+    const docRef = doc(db, 'drivers', applicationId);
     const docSnap = await getDoc(docRef);
     
     if (!docSnap.exists()) {
@@ -110,16 +111,20 @@ export const approveDriverApplication = async (currentUser, applicationId, notes
   try {
     checkAdminPermissions(currentUser);
 
-    const docRef = doc(db, 'driverApplications', applicationId);
-    await updateDoc(docRef, {
+    const updateData = {
       status: 'approved',
       approvedAt: new Date().toISOString(),
       approvedBy: currentUser.uid,
       adminNotes: notes,
       updatedAt: new Date().toISOString()
-    });
+    };
 
-    return { success: true };
+    await updateDoc(doc(db, 'drivers', applicationId), updateData);
+
+    return {
+      success: true,
+      message: 'Driver application approved successfully'
+    };
   } catch (error) {
     return {
       success: false,
@@ -136,16 +141,20 @@ export const rejectDriverApplication = async (currentUser, applicationId, reason
   try {
     checkAdminPermissions(currentUser);
 
-    const docRef = doc(db, 'driverApplications', applicationId);
-    await updateDoc(docRef, {
+    const updateData = {
       status: 'rejected',
       rejectedAt: new Date().toISOString(),
       rejectedBy: currentUser.uid,
       rejectionReason: reason,
       updatedAt: new Date().toISOString()
-    });
+    };
 
-    return { success: true };
+    await updateDoc(doc(db, 'drivers', applicationId), updateData);
+
+    return {
+      success: true,
+      message: 'Driver application rejected successfully'
+    };
   } catch (error) {
     return {
       success: false,

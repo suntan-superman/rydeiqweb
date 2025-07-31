@@ -55,56 +55,59 @@ const PayoutSetupForm = () => {
   const [showAccountNumber, setShowAccountNumber] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);
 
-  // Initialize form with empty data (no pre-filling for security)
+  // Initialize form with saved data from database
   useEffect(() => {
     if (!formInitialized && driverApplication) {
-      // Do NOT pre-fill any sensitive banking or tax data from database
-      // This prevents data leakage between users
+      // Load saved data from the driver application
+      const savedData = driverApplication[ONBOARDING_STEPS.PAYOUT_SETUP] || {};
+      
+      if (savedData) {
+        console.log('Loading saved payout setup data:', savedData);
+        setFormData(prev => ({
+          ...prev,
+          // Bank Account Information
+          accountHolderName: savedData.accountHolderName || '',
+          bankName: savedData.bankName || '',
+          routingNumber: savedData.routingNumber || '',
+          accountNumber: savedData.accountNumber || '',
+          confirmAccountNumber: savedData.confirmAccountNumber || '',
+          accountType: savedData.accountType || 'checking',
+          
+          // Tax Information
+          taxIdType: savedData.taxIdType || 'ssn',
+          taxId: savedData.taxId || '',
+          businessName: savedData.businessName || '',
+          taxAddress: {
+            street: savedData.taxAddress?.street || '',
+            city: savedData.taxAddress?.city || '',
+            state: savedData.taxAddress?.state || '',
+            zipCode: savedData.taxAddress?.zipCode || ''
+          },
+          useSameAddressAsPersonal: savedData.useSameAddressAsPersonal !== undefined ? savedData.useSameAddressAsPersonal : true,
+          
+          // Payout Preferences
+          payoutFrequency: savedData.payoutFrequency || 'weekly',
+          minimumPayoutAmount: savedData.minimumPayoutAmount || '25',
+          
+          // Agreements and Consents
+          agreeToPayoutTerms: savedData.agreeToPayoutTerms || false,
+          agreeTo1099Reporting: savedData.agreeTo1099Reporting || false,
+          understandFees: savedData.understandFees || false,
+          consentToTaxReporting: savedData.consentToTaxReporting || false,
+          
+          // Account Verification
+          verificationMethod: savedData.verificationMethod || 'microdeposit'
+        }));
+      } else {
+        console.log('No saved payout setup data found');
+      }
+      
       setFormInitialized(true);
     }
-  }, [driverApplication, formInitialized]);
+  }, [driverApplication, formInitialized, ONBOARDING_STEPS.PAYOUT_SETUP]);
 
-  // Clear form when component unmounts or user changes
-  useEffect(() => {
-    return () => {
-      // Clear all sensitive form data on unmount
-      setFormData({
-        // Bank Account Information
-        accountHolderName: '',
-        bankName: '',
-        routingNumber: '',
-        accountNumber: '',
-        confirmAccountNumber: '',
-        accountType: 'checking',
-        
-        // Tax Information
-        taxIdType: 'ssn',
-        taxId: '',
-        businessName: '',
-        taxAddress: {
-          street: '',
-          city: '',
-          state: '',
-          zipCode: ''
-        },
-        useSameAddressAsPersonal: true,
-        
-        // Payout Preferences
-        payoutFrequency: 'weekly',
-        minimumPayoutAmount: '25',
-        
-        // Agreements and Consents
-        agreeToPayoutTerms: false,
-        agreeTo1099Reporting: false,
-        understandFees: false,
-        consentToTaxReporting: false,
-        
-        // Account Verification
-        verificationMethod: 'microdeposit'
-      });
-      setShowAccountNumber(false);
-    };
-  }, []);
+  // Keep form data when component unmounts (data is saved to database)
+  // No cleanup needed since we want to retain the data
 
   const formatRoutingNumber = (value) => {
     // Remove all non-numeric characters and limit to 9 digits
@@ -142,6 +145,8 @@ const PayoutSetupForm = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
+    
+    console.log('Payout form input change:', { name, value, type, checked });
     
     if (name === 'routingNumber') {
       const formatted = formatRoutingNumber(value);
@@ -183,27 +188,48 @@ const PayoutSetupForm = () => {
   const validateForm = () => {
     const newErrors = {};
 
+    console.log('Validating payout form with data:', {
+      accountHolderName: formData.accountHolderName,
+      bankName: formData.bankName,
+      routingNumber: formData.routingNumber,
+      accountNumber: formData.accountNumber,
+      confirmAccountNumber: formData.confirmAccountNumber,
+      taxId: formData.taxId,
+      agreeToPayoutTerms: formData.agreeToPayoutTerms,
+      agreeTo1099Reporting: formData.agreeTo1099Reporting,
+      understandFees: formData.understandFees,
+      consentToTaxReporting: formData.consentToTaxReporting
+    });
+
     // Bank Account validation
     if (!formData.accountHolderName.trim()) {
       newErrors.accountHolderName = 'Account holder name is required';
+      console.log('Account holder name validation failed - empty');
     }
     if (!formData.bankName.trim()) {
       newErrors.bankName = 'Bank name is required';
+      console.log('Bank name validation failed - empty');
     }
     if (!formData.routingNumber) {
       newErrors.routingNumber = 'Routing number is required';
+      console.log('Routing number validation failed - empty');
     } else if (formData.routingNumber.length !== 9) {
       newErrors.routingNumber = 'Routing number must be 9 digits';
+      console.log('Routing number validation failed - wrong length:', formData.routingNumber.length);
     }
     if (!formData.accountNumber) {
       newErrors.accountNumber = 'Account number is required';
+      console.log('Account number validation failed - empty');
     } else if (formData.accountNumber.length < 4) {
       newErrors.accountNumber = 'Account number must be at least 4 digits';
+      console.log('Account number validation failed - too short:', formData.accountNumber.length);
     }
     if (!formData.confirmAccountNumber) {
       newErrors.confirmAccountNumber = 'Please confirm your account number';
+      console.log('Confirm account number validation failed - empty');
     } else if (formData.accountNumber !== formData.confirmAccountNumber) {
       newErrors.confirmAccountNumber = 'Account numbers do not match';
+      console.log('Account numbers do not match:', formData.accountNumber, 'vs', formData.confirmAccountNumber);
     }
 
     // Tax Information validation
@@ -265,15 +291,24 @@ const PayoutSetupForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    console.log('Payout form submission - formData:', JSON.stringify(formData, null, 2));
+    
     if (!validateForm()) {
+      console.log('Payout form validation failed - errors:', errors);
       toast.error('Please correct the errors below');
       return;
     }
 
+    console.log('Payout form validation passed, saving data...');
     const result = await updateStep(ONBOARDING_STEPS.PAYOUT_SETUP, formData);
     
     if (result.success) {
+      console.log('Payout form saved successfully');
+      // Scroll to top before going to next step
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       goToNextStep();
+    } else {
+      console.error('Payout form save failed:', result.error);
     }
   };
 

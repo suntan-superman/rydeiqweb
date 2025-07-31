@@ -75,77 +75,73 @@ const AvailabilityForm = () => {
   const [errors, setErrors] = useState({});
   const [formInitialized, setFormInitialized] = useState(false);
 
-  // Initialize form with empty data (no pre-filling for security)
+  // Initialize form with saved data from database
   useEffect(() => {
     if (!formInitialized && driverApplication) {
-      // Do NOT pre-fill any availability data from database
-      // This prevents data leakage between users
+      // Load saved data from the driver application
+      const savedData = driverApplication[ONBOARDING_STEPS.AVAILABILITY] || {};
+      
+      if (savedData) {
+        console.log('Loading saved availability data:', savedData);
+        setFormData(prev => ({
+          ...prev,
+          // Weekly Schedule
+          weeklySchedule: savedData.weeklySchedule || prev.weeklySchedule,
+          
+          // Coverage Area
+          primaryServiceArea: savedData.primaryServiceArea || '',
+          serviceRadius: savedData.serviceRadius || '15',
+          preferredZones: savedData.preferredZones || [],
+          airportService: savedData.airportService || false,
+          longDistanceService: savedData.longDistanceService || false,
+          maxTripDuration: savedData.maxTripDuration || '120',
+          
+          // Availability Preferences
+          preferPeakHours: savedData.preferPeakHours || false,
+          weekendAvailability: savedData.weekendAvailability || false,
+          holidayAvailability: savedData.holidayAvailability || false,
+          eveningAvailability: savedData.eveningAvailability || false,
+          earlyMorningAvailability: savedData.earlyMorningAvailability || false,
+          
+          // Notification Settings
+          notificationMethod: savedData.notificationMethod || 'app',
+          responseTimeLimit: savedData.responseTimeLimit || '60',
+          autoAcceptRides: savedData.autoAcceptRides || false,
+          autoAcceptRadius: savedData.autoAcceptRadius || '5',
+          
+          // Break Preferences
+          enableBreaks: savedData.enableBreaks || false,
+          breakDuration: savedData.breakDuration || '30',
+          breakFrequency: savedData.breakFrequency || '4',
+          
+          // Ride Type Preferences
+          preferredRideTypes: savedData.preferredRideTypes || [],
+          minimumRideDistance: savedData.minimumRideDistance || '1',
+          minimumRideFare: savedData.minimumRideFare || '5',
+          
+          // Special Services
+          wheelchairAccessible: savedData.wheelchairAccessible || false,
+          petFriendly: savedData.petFriendly || false,
+          childSeatAvailable: savedData.childSeatAvailable || false,
+          luxuryVehicle: savedData.luxuryVehicle || false,
+          
+          // Emergency Contact
+          emergencyContact: savedData.emergencyContact || {
+            name: '',
+            phone: '',
+            relationship: ''
+          }
+        }));
+      } else {
+        console.log('No saved availability data found');
+      }
+      
       setFormInitialized(true);
     }
-  }, [driverApplication, formInitialized]);
+  }, [driverApplication, formInitialized, ONBOARDING_STEPS.AVAILABILITY]);
 
-  // Clear form when component unmounts or user changes
-  useEffect(() => {
-    return () => {
-      // Clear all form data on unmount
-      setFormData({
-        // Weekly Schedule
-        weeklySchedule: {
-          monday: { enabled: false, startTime: '09:00', endTime: '17:00' },
-          tuesday: { enabled: false, startTime: '09:00', endTime: '17:00' },
-          wednesday: { enabled: false, startTime: '09:00', endTime: '17:00' },
-          thursday: { enabled: false, startTime: '09:00', endTime: '17:00' },
-          friday: { enabled: false, startTime: '09:00', endTime: '17:00' },
-          saturday: { enabled: false, startTime: '10:00', endTime: '18:00' },
-          sunday: { enabled: false, startTime: '10:00', endTime: '18:00' }
-        },
-        
-        // Coverage Area
-        primaryServiceArea: '',
-        serviceRadius: '15',
-        preferredZones: [],
-        airportService: false,
-        longDistanceService: false,
-        maxTripDuration: '120',
-        
-        // Availability Preferences
-        preferPeakHours: false,
-        weekendAvailability: false,
-        holidayAvailability: false,
-        eveningAvailability: false,
-        earlyMorningAvailability: false,
-        
-        // Notification Settings
-        notificationMethod: 'app',
-        responseTimeLimit: '60',
-        autoAcceptRides: false,
-        autoAcceptRadius: '5',
-        
-        // Break Preferences
-        enableBreaks: false,
-        breakDuration: '30',
-        breakFrequency: '4',
-        
-        // Ride Type Preferences
-        preferredRideTypes: [],
-        minimumRideDistance: '1',
-        minimumRideFare: '5',
-        
-        // Special Services
-        wheelchairAccessible: false,
-        petFriendly: false,
-        childSeatAvailable: false,
-        luxuryVehicle: false,
-        
-        // Emergency Contact
-        emergencyContact: {
-          name: '',
-          phone: '',
-          relationship: ''
-        }
-      });
-    };
-  }, []);
+  // Keep form data when component unmounts (data is saved to database)
+  // No cleanup needed since we want to retain the data
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;

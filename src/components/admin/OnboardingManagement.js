@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
-  getDriverApplications, 
+  getDriverApplications
+} from '../../services/adminService';
+import { 
   setOnboardingStatus,
   checkOnboardingStatus
 } from '../../services/driverService';
@@ -11,8 +13,6 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 const OnboardingManagement = () => {
-  console.log('OnboardingManagement: Component rendering');
-  
   const { user } = useAuth();
   const [drivers, setDrivers] = useState([]);
   const [filteredDrivers, setFilteredDrivers] = useState([]);
@@ -27,21 +27,15 @@ const OnboardingManagement = () => {
   });
 
   const isAuthorizedAdmin = user?.email === 'sroy@worksidesoftware.com';
-  console.log('OnboardingManagement: isAuthorizedAdmin:', isAuthorizedAdmin, 'user email:', user?.email);
 
   const loadDrivers = useCallback(async () => {
     try {
       setLoading(true);
-      console.log('OnboardingManagement: loadDrivers called');
-      const result = await getDriverApplications({ status: 'all' });
-      
-      console.log('OnboardingManagement: getDriverApplications result:', result);
+      const result = await getDriverApplications(user, { status: 'all' });
       
       if (result.success) {
-        console.log('Loaded drivers:', result.data); // Debug log
         setDrivers(result.data);
       } else {
-        console.error('Failed to load drivers:', result.error);
         toast.error('Failed to load drivers');
       }
     } catch (error) {
@@ -50,11 +44,10 @@ const OnboardingManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   // Test function to manually trigger driver loading
   const testLoadDrivers = async () => {
-    console.log('Manual test: loadDrivers');
     await loadDrivers();
   };
 
@@ -104,13 +97,11 @@ const OnboardingManagement = () => {
 
   // Load drivers
   useEffect(() => {
-    console.log('OnboardingManagement: useEffect for loadDrivers running');
     loadDrivers();
   }, [loadDrivers]);
 
   // Apply filters
   useEffect(() => {
-    console.log('OnboardingManagement: useEffect for applyFilters running');
     applyFilters();
   }, [applyFilters]);
 
@@ -145,7 +136,8 @@ const OnboardingManagement = () => {
       const result = await checkOnboardingStatus(driverId);
       if (result.success) {
         const driver = drivers.find(d => d.userId === driverId);
-        setSelectedDriver({ ...driver, ...result.data });
+        const combinedDriver = { ...driver, ...result.data };
+        setSelectedDriver(combinedDriver);
         setShowDetailsModal(true);
       } else {
         toast.error('Failed to load driver details');
@@ -257,7 +249,7 @@ const OnboardingManagement = () => {
           {/* Test button for debugging */}
           <button
             onClick={testLoadDrivers}
-            className="w-full px-3 py-2 bg-blue-500 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 bg-green-500 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             Test Load Drivers
           </button>
@@ -371,6 +363,27 @@ const OnboardingManagement = () => {
 // Driver Details Modal Component
 const DriverDetailsModal = ({ driver, onClose, onToggleOnboarding, actionLoading, isAuthorizedAdmin }) => {
   const isCompleted = driver.onboardingStatus?.completed || false;
+  
+  // Handle both data structures - check for step-based data first
+  const personalInfo = driver.personal_info || driver.personalInfo || {};
+  const vehicleInfo = driver.vehicle_info || driver.vehicleInfo || {};
+  const documents = driver.documents || {};
+
+  // Helper function to format Firebase timestamps
+  const formatDate = (dateValue) => {
+    if (!dateValue) return 'Unknown';
+    
+    try {
+      // Handle Firebase timestamp
+      if (dateValue.seconds) {
+        return new Date(dateValue.seconds * 1000).toLocaleString();
+      }
+      // Handle regular date string
+      return new Date(dateValue).toLocaleString();
+    } catch (error) {
+      return 'Invalid Date';
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -388,6 +401,29 @@ const DriverDetailsModal = ({ driver, onClose, onToggleOnboarding, actionLoading
         </div>
         
         <div className="p-6 space-y-6">
+          {/* Basic Information */}
+          <div>
+            <h4 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-gray-500">Driver ID:</span>
+                <span className="ml-2 text-gray-900">{driver.userId}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Email:</span>
+                <span className="ml-2 text-gray-900">{driver.email}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Status:</span>
+                <span className="ml-2 text-gray-900">{driver.status || 'Unknown'}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Created:</span>
+                <span className="ml-2 text-gray-900">{formatDate(driver.createdAt)}</span>
+              </div>
+            </div>
+          </div>
+
           {/* Personal Information */}
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-4">Personal Information</h4>
@@ -395,23 +431,89 @@ const DriverDetailsModal = ({ driver, onClose, onToggleOnboarding, actionLoading
               <div>
                 <span className="text-gray-500">Name:</span>
                 <span className="ml-2 text-gray-900">
-                  {driver.personalInfo?.firstName} {driver.personalInfo?.lastName}
+                  {personalInfo.firstName} {personalInfo.lastName}
                 </span>
               </div>
               <div>
                 <span className="text-gray-500">Email:</span>
-                <span className="ml-2 text-gray-900">{driver.personalInfo?.email}</span>
+                <span className="ml-2 text-gray-900">{personalInfo.email}</span>
               </div>
               <div>
                 <span className="text-gray-500">Phone:</span>
-                <span className="ml-2 text-gray-900">{driver.personalInfo?.phoneNumber}</span>
+                <span className="ml-2 text-gray-900">{personalInfo.phoneNumber || 'Not provided'}</span>
               </div>
               <div>
                 <span className="text-gray-500">Date of Birth:</span>
-                <span className="ml-2 text-gray-900">{driver.personalInfo?.dateOfBirth}</span>
+                <span className="ml-2 text-gray-900">{personalInfo.dateOfBirth || 'Not provided'}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Address:</span>
+                <span className="ml-2 text-gray-900">{personalInfo.address || 'Not provided'}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">City:</span>
+                <span className="ml-2 text-gray-900">{personalInfo.city || 'Not provided'}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">State:</span>
+                <span className="ml-2 text-gray-900">{personalInfo.state || 'Not provided'}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">ZIP Code:</span>
+                <span className="ml-2 text-gray-900">{personalInfo.zipCode || 'Not provided'}</span>
               </div>
             </div>
           </div>
+
+          {/* Vehicle Information */}
+          {Object.keys(vehicleInfo).length > 0 && (
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-4">Vehicle Information</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-gray-500">Make:</span>
+                  <span className="ml-2 text-gray-900">{vehicleInfo.make || 'Not provided'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Model:</span>
+                  <span className="ml-2 text-gray-900">{vehicleInfo.model || 'Not provided'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Year:</span>
+                  <span className="ml-2 text-gray-900">{vehicleInfo.year || 'Not provided'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Color:</span>
+                  <span className="ml-2 text-gray-900">{vehicleInfo.color || 'Not provided'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">License Plate:</span>
+                  <span className="ml-2 text-gray-900">{vehicleInfo.licensePlate || 'Not provided'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Vehicle Type:</span>
+                  <span className="ml-2 text-gray-900">{vehicleInfo.vehicleType || 'Not provided'}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Documents */}
+          {Object.keys(documents).length > 0 && (
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-4">Documents</h4>
+              <div className="grid grid-cols-2 gap-4">
+                {Object.entries(documents).map(([docType, docData]) => (
+                  <div key={docType}>
+                    <span className="text-gray-500">{docType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</span>
+                    <span className="ml-2 text-gray-900">
+                      {docData.url ? '✅ Uploaded' : '❌ Not uploaded'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Onboarding Status */}
           <div>
@@ -430,7 +532,7 @@ const DriverDetailsModal = ({ driver, onClose, onToggleOnboarding, actionLoading
                 <div className="flex items-center justify-between">
                   <span className="text-gray-700">Completed At:</span>
                   <span className="text-gray-900">
-                    {new Date(driver.onboardingStatus.completedAt).toLocaleString()}
+                    {formatDate(driver.onboardingStatus.completedAt)}
                   </span>
                 </div>
               )}
@@ -445,7 +547,7 @@ const DriverDetailsModal = ({ driver, onClose, onToggleOnboarding, actionLoading
               <div className="flex items-center justify-between">
                 <span className="text-gray-700">Last Updated:</span>
                 <span className="text-gray-900">
-                  {new Date(driver.onboardingStatus?.lastUpdated).toLocaleString()}
+                  {formatDate(driver.onboardingStatus?.lastUpdated)}
                 </span>
               </div>
             </div>
@@ -468,7 +570,7 @@ const DriverDetailsModal = ({ driver, onClose, onToggleOnboarding, actionLoading
                 <div className="flex items-center justify-between">
                   <span className="text-gray-700">Created At:</span>
                   <span className="text-gray-900">
-                    {new Date(driver.mobileAppStatus.accountCreatedAt).toLocaleString()}
+                    {formatDate(driver.mobileAppStatus.accountCreatedAt)}
                   </span>
                 </div>
               )}
@@ -477,41 +579,29 @@ const DriverDetailsModal = ({ driver, onClose, onToggleOnboarding, actionLoading
                 <div className="flex items-center justify-between">
                   <span className="text-gray-700">Last Mobile Login:</span>
                   <span className="text-gray-900">
-                    {new Date(driver.mobileAppStatus.lastMobileLogin).toLocaleString()}
+                    {formatDate(driver.mobileAppStatus.lastMobileLogin)}
                   </span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Admin Actions */}
+          {/* Action Buttons */}
           {isAuthorizedAdmin && (
-            <div className="border-t border-gray-200 pt-6">
-              <h4 className="text-lg font-medium text-gray-900 mb-4">Admin Actions</h4>
-              
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                <div className="flex items-start">
-                  <svg className="w-5 h-5 text-yellow-400 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  <div>
-                    <h5 className="text-sm font-medium text-yellow-800">Testing Override</h5>
-                    <p className="text-sm text-yellow-700 mt-1">
-                      This action will override the onboarding status for testing purposes. 
-                      Use this to simulate different onboarding states in the mobile app.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              <Button
-                variant={isCompleted ? "warning" : "success"}
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+              <button
                 onClick={() => onToggleOnboarding(driver.userId, isCompleted)}
-                loading={actionLoading}
-                className="w-full"
+                disabled={actionLoading}
+                className={`px-4 py-2 rounded-md text-white font-medium ${
+                  actionLoading 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : isCompleted 
+                      ? 'bg-yellow-500 hover:bg-yellow-600' 
+                      : 'bg-green-500 hover:bg-green-600'
+                }`}
               >
-                {isCompleted ? 'Set Onboarding to Pending' : 'Mark Onboarding as Complete'}
-              </Button>
+                {actionLoading ? 'Updating...' : isCompleted ? 'Set to Pending' : 'Mark Complete'}
+              </button>
             </div>
           )}
         </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDriverOnboarding } from '../../contexts/DriverOnboardingContext';
@@ -12,6 +12,34 @@ const WelcomeScreen = () => {
   const { isAuthenticated, user, setUser } = useAuth();
   const { startApplication, saving, isApplicationStarted, goToNextStep } = useDriverOnboarding();
   const [checkingEmail, setCheckingEmail] = useState(false);
+  const [emailChecked, setEmailChecked] = useState(false);
+
+  // Automatically check email verification status when component mounts
+  useEffect(() => {
+    const autoCheckEmailVerification = async () => {
+      if (isAuthenticated && user && !user.emailVerified && !emailChecked) {
+        setCheckingEmail(true);
+        try {
+          const result = await checkEmailVerification();
+          if (result.success && result.emailVerified) {
+            // Update the user state with the new email verification status
+            setUser(prevUser => ({
+              ...prevUser,
+              emailVerified: true
+            }));
+            console.log('Email verification status automatically updated');
+          }
+        } catch (error) {
+          console.error('Error auto-checking email verification:', error);
+        } finally {
+          setCheckingEmail(false);
+          setEmailChecked(true);
+        }
+      }
+    };
+
+    autoCheckEmailVerification();
+  }, [isAuthenticated, user, setUser, emailChecked]);
 
   const handleRefreshEmailVerification = async () => {
     setCheckingEmail(true);

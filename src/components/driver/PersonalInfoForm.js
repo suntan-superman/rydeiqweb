@@ -21,64 +21,52 @@ const PersonalInfoForm = () => {
     register,
     handleSubmit,
     formState: { errors },
-    setValue,
-    reset
+    setValue
   } = useForm({
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      dateOfBirth: '',
-      phoneNumber: '',
-      email: '',
-      address: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      coverageArea: '',
-      referralCode: ''
-    }
+    mode: 'onChange'
   });
 
-  // Initialize form with user's own data only (not from database)
+  // Initialize form with saved data from database
   useEffect(() => {
-    if (!formInitialized && driverApplication) {
-      // Only pre-fill email from current user's account
-      if (driverApplication.email) {
-        setValue('email', driverApplication.email);
-      }
-      
-      // Only pre-fill name if it's the current user's data
-      if (driverApplication.personalInfo && 
-          driverApplication.personalInfo.firstName && 
-          driverApplication.personalInfo.lastName) {
-        // Verify this is the current user's data by checking if it matches user account
-        setValue('firstName', driverApplication.personalInfo.firstName);
-        setValue('lastName', driverApplication.personalInfo.lastName);
+    console.log('PersonalInfoForm useEffect - formInitialized:', formInitialized, 'driverApplication:', !!driverApplication);
+    
+          if (!formInitialized && driverApplication) {
+        // Load saved data from the driver application - check both snake_case and camelCase
+        const savedData = driverApplication[STEPS.PERSONAL_INFO] || driverApplication.personalInfo || {};
+        
+        console.log('PersonalInfoForm - driverApplication keys:', Object.keys(driverApplication));
+        console.log('PersonalInfoForm - STEPS.PERSONAL_INFO:', STEPS.PERSONAL_INFO);
+        console.log('PersonalInfoForm - savedData:', savedData);
+        console.log('PersonalInfoForm - personalInfo (camelCase):', driverApplication.personalInfo);
+        
+        if (savedData && Object.keys(savedData).length > 0) {
+        console.log('Loading saved personal info data:', savedData);
+        // Pre-fill all saved data
+        setValue('firstName', savedData.firstName || '');
+        setValue('lastName', savedData.lastName || '');
+        setValue('dateOfBirth', savedData.dateOfBirth || '');
+        setValue('phoneNumber', savedData.phoneNumber || '');
+        setValue('email', savedData.email || driverApplication.email || '');
+        setValue('address', savedData.address || '');
+        setValue('city', savedData.city || '');
+        setValue('state', savedData.state || '');
+        setValue('zipCode', savedData.zipCode || '');
+        setValue('coverageArea', savedData.coverageArea || '');
+        setValue('referralCode', savedData.referralCode || '');
+      } else {
+        console.log('No saved personal info data found');
+        // Only pre-fill email from current user's account if no saved data
+        if (driverApplication.email) {
+          setValue('email', driverApplication.email);
+        }
       }
       
       setFormInitialized(true);
     }
-  }, [driverApplication, setValue, formInitialized]);
+  }, [driverApplication, setValue, formInitialized, STEPS.PERSONAL_INFO]);
 
-  // Clear form when component unmounts or user changes
-  useEffect(() => {
-    return () => {
-      // Clear form data on unmount to prevent data leakage
-      reset({
-        firstName: '',
-        lastName: '',
-        dateOfBirth: '',
-        phoneNumber: '',
-        email: '',
-        address: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        coverageArea: '',
-        referralCode: ''
-      });
-    };
-  }, [reset]);
+  // Keep form data when component unmounts (data is saved to database)
+  // No cleanup needed since we want to retain the data
 
   const onSubmit = async (data) => {
     setValidationErrors([]);
@@ -123,20 +111,7 @@ const PersonalInfoForm = () => {
     const result = await updateStep(STEPS.PERSONAL_INFO, data);
     
     if (result.success) {
-      // Clear form after successful submission
-      reset({
-        firstName: '',
-        lastName: '',
-        dateOfBirth: '',
-        phoneNumber: '',
-        email: '',
-        address: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        coverageArea: '',
-        referralCode: ''
-      });
+      // Don't clear form - keep data for potential editing
       goToNextStep();
     }
   };

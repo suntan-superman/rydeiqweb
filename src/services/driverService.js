@@ -631,7 +631,7 @@ export const validateCompleteApplication = (driverApplication) => {
   const errors = [];
   
   // Personal Information validation
-  const personalInfo = driverApplication.personalInfo || {};
+  const personalInfo = driverApplication.personal_info || driverApplication.personalInfo || {};
   if (!personalInfo.firstName) errors.push('First name is missing');
   if (!personalInfo.lastName) errors.push('Last name is missing');
   if (!personalInfo.dateOfBirth) errors.push('Date of birth is missing');
@@ -659,7 +659,7 @@ export const validateCompleteApplication = (driverApplication) => {
   });
   
   // Vehicle Information validation
-  const vehicleInfo = driverApplication.vehicleInfo || {};
+  const vehicleInfo = driverApplication.vehicle_info || driverApplication.vehicleInfo || {};
   if (!vehicleInfo.make) errors.push('Vehicle make is missing');
   if (!vehicleInfo.model) errors.push('Vehicle model is missing');
   if (!vehicleInfo.year) errors.push('Vehicle year is missing');
@@ -675,7 +675,7 @@ export const validateCompleteApplication = (driverApplication) => {
   if (!vehicleInfo.registrationExpiration) errors.push('Registration expiration date is missing');
   
   // Background Check validation
-  const backgroundCheck = driverApplication.backgroundCheck || {};
+  const backgroundCheck = driverApplication.background_check || driverApplication.backgroundCheck || {};
   const ssnDigits = backgroundCheck.ssn ? backgroundCheck.ssn.replace(/\D/g, '') : '';
   if (!backgroundCheck.ssn) errors.push('Social Security Number is missing');
   else if (ssnDigits.length !== 9) errors.push('Valid Social Security Number is required');
@@ -700,7 +700,7 @@ export const validateCompleteApplication = (driverApplication) => {
   if (!backgroundCheck.understandTimeline) errors.push('Timeline acknowledgment is required');
   
   // Payout Setup validation
-  const payoutInfo = driverApplication.payoutInfo || {};
+  const payoutInfo = driverApplication.payout_setup || driverApplication.payoutInfo || {};
   if (!payoutInfo.accountHolderName) errors.push('Account holder name is missing');
   if (!payoutInfo.bankName) errors.push('Bank name is missing');
   if (!payoutInfo.routingNumber) errors.push('Routing number is missing');

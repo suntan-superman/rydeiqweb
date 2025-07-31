@@ -10,6 +10,7 @@ import AvailabilityForm from '../components/driver/AvailabilityForm';
 import ReviewForm from '../components/driver/ReviewForm';
 import OnboardingProgress from '../components/driver/OnboardingProgress';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { DRIVER_STATUS } from '../services/driverService';
 
 const DriverOnboardingContent = () => {
   const { 
@@ -72,10 +73,11 @@ const DriverOnboardingContent = () => {
 
 // Application Submitted Screen
 const ApplicationSubmittedScreen = () => {
-  const { driverApplication, applicationStatus, DRIVER_STATUS } = useDriverOnboarding();
+  const { driverApplication, applicationStatus } = useDriverOnboarding();
 
   const getStatusMessage = () => {
-    switch (applicationStatus) {
+    const status = applicationStatus();
+    switch (status) {
       case DRIVER_STATUS.REVIEW_PENDING:
         return {
           title: "Application Submitted!",
@@ -154,7 +156,7 @@ const ApplicationSubmittedScreen = () => {
           )}
           
           <div className="space-y-3">
-            {applicationStatus === DRIVER_STATUS.APPROVED && (
+            {applicationStatus() === DRIVER_STATUS.APPROVED && (
               <button className="w-full btn btn-primary">
                 Access Driver Dashboard
               </button>

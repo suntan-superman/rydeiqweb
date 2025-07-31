@@ -105,15 +105,20 @@ export const DriverOnboardingProvider = ({ children }) => {
 
     try {
       setSaving(true);
+      console.log('updateStep called with:', { stepName, stepData: JSON.stringify(stepData, null, 2) });
       const result = await updateDriverStep(user.uid, stepName, stepData);
       
       if (result.success) {
-        setDriverApplication(prev => ({
-          ...prev,
-          ...stepData,
-          currentStep: stepName,
-          updatedAt: new Date().toISOString()
-        }));
+        setDriverApplication(prev => {
+          const updated = {
+            ...prev,
+            [stepName]: stepData,  // Store step data under the step name
+            currentStep: stepName,
+            updatedAt: new Date().toISOString()
+          };
+          console.log('Updated driver application:', { stepName, savedData: updated[stepName] });
+          return updated;
+        });
         setCurrentStep(stepName);
         return { success: true };
       } else {
@@ -147,12 +152,34 @@ export const DriverOnboardingProvider = ({ children }) => {
       const nextStep = stepOrder[currentIndex + 1];
       setCurrentStep(nextStep);
       
-      // Update the current step in the database
+      // Scroll to top of page
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      // Update only the current step in the database (don't overwrite form data)
       if (driverApplication) {
-        await updateStep(nextStep, { currentStep: nextStep });
+        // Only update currentStep, don't overwrite existing form data
+        setDriverApplication(prev => ({
+          ...prev,
+          currentStep: nextStep,
+          updatedAt: new Date().toISOString()
+        }));
+        
+        // Save currentStep to database without overwriting form data
+        try {
+          // Update the currentStep field directly in the database
+          const { doc, updateDoc } = await import('firebase/firestore');
+          const { db } = await import('../services/firebase');
+          const driverAppRef = doc(db, 'driver_applications', user.uid);
+          await updateDoc(driverAppRef, {
+            currentStep: nextStep,
+            updatedAt: new Date().toISOString()
+          });
+        } catch (error) {
+          console.error('Error updating current step:', error);
+        }
       }
     }
-  }, [currentStep, driverApplication, updateStep]);
+  }, [currentStep, driverApplication, user]);
 
   const goToPreviousStep = useCallback(() => {
     const stepOrder = [
@@ -171,6 +198,9 @@ export const DriverOnboardingProvider = ({ children }) => {
     if (currentIndex > 0) {
       const prevStep = stepOrder[currentIndex - 1];
       setCurrentStep(prevStep);
+      
+      // Scroll to top of page
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [currentStep]);
 
@@ -299,8 +329,25 @@ export const DriverOnboardingProvider = ({ children }) => {
     return status === 'completed' || status === 'current' || status === 'accessible';
   }, [getStepStatus]);
 
+  // Calculate progress percentage
+  const progress = useCallback(() => {
+    if (!driverApplication) return 0;
+    
+    const stepProgress = driverApplication.stepProgress || {};
+    const totalSteps = 7; // Exclude WELCOME and SUBMITTED
+    const completedSteps = Object.values(stepProgress).filter(Boolean).length;
+    
+    return Math.round((completedSteps / totalSteps) * 100);
+  }, [driverApplication]);
+
+  // Get application status
+  const applicationStatus = useCallback(() => {
+    if (!driverApplication) return null;
+    return driverApplication.status || 'draft';
+  }, [driverApplication]);
+
   // Add missing goToStep function
-  const goToStep = useCallback((stepKey) => {
+  const goToStep = useCallback(async (stepKey) => {
     const stepOrder = [
       ONBOARDING_STEPS.WELCOME,
       ONBOARDING_STEPS.PERSONAL_INFO,
@@ -316,11 +363,34 @@ export const DriverOnboardingProvider = ({ children }) => {
     const stepIndex = stepOrder.indexOf(stepKey);
     if (stepIndex !== -1 && isStepAccessible(stepKey)) {
       setCurrentStep(stepKey);
+      
+      // Scroll to top of page
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
       if (driverApplication) {
-        updateStep(stepKey, { currentStep: stepKey });
+        // Only update currentStep, don't overwrite existing form data
+        setDriverApplication(prev => ({
+          ...prev,
+          currentStep: stepKey,
+          updatedAt: new Date().toISOString()
+        }));
+        
+        // Save currentStep to database without overwriting form data
+        try {
+          // Update the currentStep field directly in the database
+          const { doc, updateDoc } = await import('firebase/firestore');
+          const { db } = await import('../services/firebase');
+          const driverAppRef = doc(db, 'driver_applications', user.uid);
+          await updateDoc(driverAppRef, {
+            currentStep: stepKey,
+            updatedAt: new Date().toISOString()
+          });
+        } catch (error) {
+          console.error('Error updating current step:', error);
+        }
       }
     }
-  }, [isStepAccessible, driverApplication, updateStep]);
+  }, [isStepAccessible, driverApplication, user]);
 
   const value = {
     driverApplication,
@@ -337,7 +407,9 @@ export const DriverOnboardingProvider = ({ children }) => {
     getStepStatus,
     isStepAccessible,
     goToStep,
-    ONBOARDING_STEPS
+    ONBOARDING_STEPS,
+    progress,
+    applicationStatus
   };
 
   return (

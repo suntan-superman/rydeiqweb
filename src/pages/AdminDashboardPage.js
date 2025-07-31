@@ -11,6 +11,7 @@ import FinancialManagement from '../components/admin/FinancialManagement';
 import SystemSettings from '../components/admin/SystemSettings';
 import SupportCenter from '../components/admin/SupportCenter';
 import OnboardingManagement from '../components/admin/OnboardingManagement';
+import UserManagement from '../components/admin/UserManagement';
 import AIPricingDashboard from '../components/ai/AIPricingDashboard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -33,7 +34,8 @@ const AdminDashboardPage = () => {
     { id: 'ai-pricing', label: 'AI Pricing', icon: '🤖' },
     { id: 'advanced-analytics', label: 'Advanced Analytics', icon: '🔍' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
-    { id: 'support', label: 'Support', icon: '🎧' }
+    { id: 'support', label: 'Support', icon: '🎧' },
+    { id: 'users', label: 'User Management', icon: '👤' }
   ];
 
   // Check admin permissions and redirect if necessary
@@ -104,6 +106,8 @@ const AdminDashboardPage = () => {
         return <SystemSettings />;
       case 'support':
         return <SupportCenter />;
+      case 'users':
+        return <UserManagement />;
       default:
         return <AdminOverview metrics={platformMetrics} onRefresh={() => window.location.reload()} />;
     }
