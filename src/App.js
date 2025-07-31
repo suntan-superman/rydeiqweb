@@ -6,7 +6,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { RideProvider } from './contexts/RideContext';
 import { DriverOnboardingProvider } from './contexts/DriverOnboardingContext';
-import { isAdmin } from './services/authService';
+import { isAdmin, getRedirectPath } from './services/authService';
 import MainLayout from './layouts/MainLayout';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -15,6 +15,14 @@ import DashboardPage from './pages/DashboardPage';
 import DriverDashboardPage from './pages/DriverDashboardPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminSetupPage from './pages/AdminSetupPage';
+import SafetySettingsPage from './pages/SafetySettingsPage';
+import NotificationSettingsPage from './pages/NotificationSettingsPage';
+import AIPricingDashboard from './components/ai/AIPricingDashboard';
+import AnalyticsDashboard from './components/analytics/AnalyticsDashboard';
+import DriverToolsDashboard from './components/driver/DriverToolsDashboard';
+import RiderExperienceDashboard from './components/rider/RiderExperienceDashboard';
+import SustainabilityDashboard from './components/sustainability/SustainabilityDashboard';
+import CommunityDashboard from './components/community/CommunityDashboard';
 import DriverOnboardingPage from './pages/DriverOnboardingPage';
 import RideRequestPage from './pages/RideRequestPage';
 import RideTrackingPage from './pages/RideTrackingPage';
@@ -78,9 +86,9 @@ const AdminRoute = ({ children }) => {
   return children;
 };
 
-// Public Route component (redirects to dashboard if authenticated)
+// Public Route component (redirects to appropriate dashboard if authenticated)
 const PublicRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   
   if (loading) {
     return (
@@ -90,7 +98,13 @@ const PublicRoute = ({ children }) => {
     );
   }
   
-  return !isAuthenticated ? children : <Navigate to="/dashboard" replace />;
+  if (isAuthenticated && user) {
+    // Redirect to appropriate dashboard based on user role
+    const redirectPath = getRedirectPath(user);
+    return <Navigate to={redirectPath} replace />;
+  }
+  
+  return children;
 };
 
 // Not Found component
@@ -202,6 +216,14 @@ function App() {
                       } 
                     />
                     
+                    {/* Development-only admin route alias */}
+                    {process.env.NODE_ENV === 'development' && (
+                      <Route 
+                        path="admin" 
+                        element={<Navigate to="/admin-dashboard" replace />} 
+                      />
+                    )}
+                    
                     <Route 
                       path="admin-setup" 
                       element={
@@ -244,8 +266,86 @@ function App() {
                       } 
                     />
                     
-                    {/* Catch all route */}
-                    <Route path="*" element={<NotFoundPage />} />
+                                <Route
+              path="safety-settings"
+              element={
+                <ProtectedRoute>
+                  <SafetySettingsPage />
+                </ProtectedRoute>
+              }
+            />
+
+                        <Route
+              path="notification-settings"
+              element={
+                <ProtectedRoute>
+                  <NotificationSettingsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* AI Pricing Dashboard - Admin Only */}
+            <Route
+              path="ai-pricing-dashboard"
+              element={
+                <AdminRoute>
+                  <AIPricingDashboard />
+                </AdminRoute>
+              }
+            />
+
+            {/* Analytics Dashboard - Admin Only */}
+            <Route
+              path="admin/analytics"
+              element={
+                <AdminRoute>
+                  <AnalyticsDashboard />
+                </AdminRoute>
+              }
+            />
+
+            {/* Driver Tools Dashboard - Driver Only */}
+            <Route
+              path="driver/tools"
+              element={
+                <ProtectedRoute>
+                  <DriverToolsDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Rider Experience Dashboard - Customer Only */}
+            <Route
+              path="rider/experience"
+              element={
+                <ProtectedRoute>
+                  <RiderExperienceDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Sustainability Dashboard - All Users */}
+            <Route
+              path="sustainability"
+              element={
+                <ProtectedRoute>
+                  <SustainabilityDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Community Dashboard - All Users */}
+            <Route
+              path="community"
+              element={
+                <ProtectedRoute>
+                  <CommunityDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Catch all route */}
+            <Route path="*" element={<NotFoundPage />} />
                   </Route>
                 </Routes>
                 

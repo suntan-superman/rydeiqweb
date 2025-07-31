@@ -1,16 +1,90 @@
 /* eslint-disable */
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { isSuperAdmin } from '../services/authService';
 import Button from '../components/common/Button';
+import SuperUserHelper from '../components/dev/SuperUserHelper';
 
 const HomePage = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [showAdminAccess, setShowAdminAccess] = useState(false);
+  
+  // Check if user is super admin
+  const isSuperUser = isSuperAdmin(user);
+  
+  // Handle admin access
+  const handleAdminAccess = () => {
+    // Use /admin in development for convenience, /admin-dashboard in production
+    const adminRoute = process.env.NODE_ENV === 'development' ? '/admin' : '/admin-dashboard';
+    navigate(adminRoute);
+  };
+  
+  // Handle super user activation (click on logo area or keyboard shortcut)
+  const handleSuperUserActivation = () => {
+    if (isSuperUser) {
+      setShowAdminAccess(!showAdminAccess);
+    }
+  };
+
+  // Keyboard shortcut for super users (Ctrl+Shift+A)
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (isSuperUser && event.ctrlKey && event.shiftKey && event.key === 'A') {
+        event.preventDefault();
+        handleSuperUserActivation();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isSuperUser]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-gray-50">
       {/* Hero Section */}
       <section className="pt-20 pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
+          {/* Super User Admin Access */}
+          {isSuperUser && (
+            <div className="absolute top-4 right-4 z-10">
+              <div 
+                className="cursor-pointer p-2 rounded-full bg-gray-800 bg-opacity-20 hover:bg-opacity-30 transition-all duration-200"
+                onClick={handleSuperUserActivation}
+                title="Super User: Click to toggle admin access"
+              >
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              
+              {showAdminAccess && (
+                <div className="absolute top-12 right-0 bg-white rounded-lg shadow-lg border border-gray-200 p-4 min-w-48">
+                  <div className="text-sm font-medium text-gray-900 mb-2">Super User Access</div>
+                  <Button
+                    onClick={handleAdminAccess}
+                    variant="primary"
+                    size="sm"
+                    className="w-full"
+                  >
+                    🚀 Access Admin Dashboard
+                  </Button>
+                  <div className="text-xs text-gray-500 mt-2">
+                    Full administrative privileges
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
           <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
+            <h1 
+              className={`text-4xl md:text-6xl font-bold text-gray-900 mb-6 ${isSuperUser ? 'cursor-pointer select-none' : ''}`}
+              onClick={isSuperUser ? handleSuperUserActivation : undefined}
+              title={isSuperUser ? "Super User: Click to access admin functions" : undefined}
+            >
               Smart Ride Comparisons
               <span className="block text-primary-600">Save Money Every Trip</span>
             </h1>
@@ -199,9 +273,30 @@ const HomePage = () => {
             >
               Try It Now
             </Button>
+            {/* Super User Quick Admin Access */}
+            {isSuperUser && (
+              <Button
+                onClick={handleAdminAccess}
+                variant="outline"
+                size="large"
+                className="w-full sm:w-auto border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-gray-900"
+                title="Super User: Quick access to admin dashboard"
+              >
+                ⚡ Admin Access
+              </Button>
+            )}
           </div>
+          {/* Super User Hint */}
+          {isSuperUser && (
+            <div className="mt-6 text-yellow-300 text-sm opacity-75">
+              💡 Super User: Press Ctrl+Shift+A or click the title for quick admin access
+            </div>
+          )}
         </div>
       </section>
+      
+      {/* Development Helper */}
+      <SuperUserHelper />
     </div>
   );
 };

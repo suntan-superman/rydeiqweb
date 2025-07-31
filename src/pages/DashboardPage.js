@@ -56,6 +56,26 @@ const DashboardPage = () => {
               >
                 📋 View Ride History
               </a>
+              {user?.role === 'customer' && (
+                <a
+                  href="/rider/experience"
+                  className="block w-full text-left px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md"
+                >
+                  🎯 Enhanced Experience
+                </a>
+              )}
+              <a
+                href="/sustainability"
+                className="block w-full text-left px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md"
+              >
+                🌱 Sustainability
+              </a>
+              <a
+                href="/community"
+                className="block w-full text-left px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md"
+              >
+                👥 Community
+              </a>
               <a
                 href="/driver-onboarding"
                 className="block w-full text-left px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md"

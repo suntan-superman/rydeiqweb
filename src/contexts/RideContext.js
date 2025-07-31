@@ -7,7 +7,6 @@ import {
   selectDriverBid,
   cancelRide,
   rateDriver,
-  getRideHistory,
   calculateEstimatedFare,
   getNearbyDrivers
 } from '../services/riderService';
@@ -341,12 +340,18 @@ export const RideProvider = ({ children }) => {
     if (!user?.uid) return;
 
     try {
-      const result = await getRideHistory(user.uid, 20);
-      if (result.success) {
-        setRideHistory(result.data);
-      } else {
-        console.error('Error loading ride history:', result.error);
-      }
+      // Temporarily disable ride history loading to avoid limit function error
+      console.log('Ride history loading temporarily disabled');
+      setRideHistory([]);
+      return;
+      
+      // Temporarily disabled to avoid limit function error
+      // const result = await getRideHistory(user.uid, 20);
+      // if (result.success) {
+      //   setRideHistory(result.data);
+      // } else {
+      //   console.error('Error loading ride history:', result.error);
+      // }
     } catch (error) {
       console.error('Error loading ride history:', error);
     }

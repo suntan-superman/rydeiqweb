@@ -223,6 +223,105 @@ export const DriverOnboardingProvider = ({ children }) => {
     }
   }, [user]);
 
+  // Add missing startApplication function
+  const startApplication = useCallback(async () => {
+    if (!user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    try {
+      setSaving(true);
+      
+      // Create new driver application if it doesn't exist
+      if (!driverApplication) {
+        const createResult = await createDriverApplication(user.uid, {
+          email: user.email,
+          currentStep: ONBOARDING_STEPS.WELCOME
+        });
+        
+        if (createResult.success) {
+          setDriverApplication(createResult.data);
+          setCurrentStep(ONBOARDING_STEPS.WELCOME);
+          return { success: true };
+        } else {
+          return { success: false, error: createResult.error };
+        }
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error starting application:', error);
+      return { success: false, error: error.message };
+    } finally {
+      setSaving(false);
+    }
+  }, [user, driverApplication]);
+
+  // Add isApplicationStarted computed property
+  const isApplicationStarted = !!driverApplication;
+
+  // Add missing getStepStatus function
+  const getStepStatus = useCallback((stepKey) => {
+    if (!driverApplication) return 'locked';
+    
+    const stepProgress = driverApplication.stepProgress || {};
+    const stepOrder = [
+      ONBOARDING_STEPS.WELCOME,
+      ONBOARDING_STEPS.PERSONAL_INFO,
+      ONBOARDING_STEPS.DOCUMENT_UPLOAD,
+      ONBOARDING_STEPS.VEHICLE_INFO,
+      ONBOARDING_STEPS.BACKGROUND_CHECK,
+      ONBOARDING_STEPS.PAYOUT_SETUP,
+      ONBOARDING_STEPS.AVAILABILITY,
+      ONBOARDING_STEPS.REVIEW,
+      ONBOARDING_STEPS.SUBMITTED
+    ];
+
+    const currentIndex = stepOrder.indexOf(currentStep);
+    const stepIndex = stepOrder.indexOf(stepKey);
+
+    if (stepIndex === -1) return 'locked';
+
+    if (stepProgress[stepKey]) {
+      return 'completed';
+    } else if (stepKey === currentStep) {
+      return 'current';
+    } else if (stepIndex <= currentIndex + 1) {
+      return 'accessible';
+    } else {
+      return 'locked';
+    }
+  }, [driverApplication, currentStep]);
+
+  // Add missing isStepAccessible function
+  const isStepAccessible = useCallback((stepKey) => {
+    const status = getStepStatus(stepKey);
+    return status === 'completed' || status === 'current' || status === 'accessible';
+  }, [getStepStatus]);
+
+  // Add missing goToStep function
+  const goToStep = useCallback((stepKey) => {
+    const stepOrder = [
+      ONBOARDING_STEPS.WELCOME,
+      ONBOARDING_STEPS.PERSONAL_INFO,
+      ONBOARDING_STEPS.DOCUMENT_UPLOAD,
+      ONBOARDING_STEPS.VEHICLE_INFO,
+      ONBOARDING_STEPS.BACKGROUND_CHECK,
+      ONBOARDING_STEPS.PAYOUT_SETUP,
+      ONBOARDING_STEPS.AVAILABILITY,
+      ONBOARDING_STEPS.REVIEW,
+      ONBOARDING_STEPS.SUBMITTED
+    ];
+
+    const stepIndex = stepOrder.indexOf(stepKey);
+    if (stepIndex !== -1 && isStepAccessible(stepKey)) {
+      setCurrentStep(stepKey);
+      if (driverApplication) {
+        updateStep(stepKey, { currentStep: stepKey });
+      }
+    }
+  }, [isStepAccessible, driverApplication, updateStep]);
+
   const value = {
     driverApplication,
     currentStep,
@@ -233,6 +332,11 @@ export const DriverOnboardingProvider = ({ children }) => {
     goToPreviousStep,
     submitApplication,
     updateMobileAppStatus,
+    startApplication,
+    isApplicationStarted,
+    getStepStatus,
+    isStepAccessible,
+    goToStep,
     ONBOARDING_STEPS
   };
 

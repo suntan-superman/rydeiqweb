@@ -61,29 +61,91 @@ const AvailabilityForm = () => {
     // Special Services
     wheelchairAccessible: false,
     petFriendly: false,
-    quietRides: false,
-    musicRequests: false
+    childSeatAvailable: false,
+    luxuryVehicle: false,
+    
+    // Emergency Contact
+    emergencyContact: {
+      name: '',
+      phone: '',
+      relationship: ''
+    }
   });
 
   const [errors, setErrors] = useState({});
+  const [formInitialized, setFormInitialized] = useState(false);
 
-  // Load existing data
+  // Initialize form with empty data (no pre-filling for security)
   useEffect(() => {
-    if (driverApplication?.availability) {
-      setFormData(prev => ({
-        ...prev,
-        ...driverApplication.availability
-      }));
+    if (!formInitialized && driverApplication) {
+      // Do NOT pre-fill any availability data from database
+      // This prevents data leakage between users
+      setFormInitialized(true);
     }
-    
-    // Pre-fill service area from personal info if available
-    if (driverApplication?.personalInfo?.city && !formData.primaryServiceArea) {
-      setFormData(prev => ({
-        ...prev,
-        primaryServiceArea: driverApplication.personalInfo.city
-      }));
-    }
-  }, [driverApplication, formData.primaryServiceArea]);
+  }, [driverApplication, formInitialized]);
+
+  // Clear form when component unmounts or user changes
+  useEffect(() => {
+    return () => {
+      // Clear all form data on unmount
+      setFormData({
+        // Weekly Schedule
+        weeklySchedule: {
+          monday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+          tuesday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+          wednesday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+          thursday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+          friday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+          saturday: { enabled: false, startTime: '10:00', endTime: '18:00' },
+          sunday: { enabled: false, startTime: '10:00', endTime: '18:00' }
+        },
+        
+        // Coverage Area
+        primaryServiceArea: '',
+        serviceRadius: '15',
+        preferredZones: [],
+        airportService: false,
+        longDistanceService: false,
+        maxTripDuration: '120',
+        
+        // Availability Preferences
+        preferPeakHours: false,
+        weekendAvailability: false,
+        holidayAvailability: false,
+        eveningAvailability: false,
+        earlyMorningAvailability: false,
+        
+        // Notification Settings
+        notificationMethod: 'app',
+        responseTimeLimit: '60',
+        autoAcceptRides: false,
+        autoAcceptRadius: '5',
+        
+        // Break Preferences
+        enableBreaks: false,
+        breakDuration: '30',
+        breakFrequency: '4',
+        
+        // Ride Type Preferences
+        preferredRideTypes: [],
+        minimumRideDistance: '1',
+        minimumRideFare: '5',
+        
+        // Special Services
+        wheelchairAccessible: false,
+        petFriendly: false,
+        childSeatAvailable: false,
+        luxuryVehicle: false,
+        
+        // Emergency Contact
+        emergencyContact: {
+          name: '',
+          phone: '',
+          relationship: ''
+        }
+      });
+    };
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -612,23 +674,23 @@ const AvailabilityForm = () => {
               <label className="flex items-center space-x-3">
                 <input
                   type="checkbox"
-                  name="quietRides"
-                  checked={formData.quietRides}
+                  name="childSeatAvailable"
+                  checked={formData.childSeatAvailable}
                   onChange={handleInputChange}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-sm text-gray-700">Quiet rides (minimal conversation)</span>
+                <span className="text-sm text-gray-700">Child seat available</span>
               </label>
               
               <label className="flex items-center space-x-3">
                 <input
                   type="checkbox"
-                  name="musicRequests"
-                  checked={formData.musicRequests}
+                  name="luxuryVehicle"
+                  checked={formData.luxuryVehicle}
                   onChange={handleInputChange}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-sm text-gray-700">Accept music requests</span>
+                <span className="text-sm text-gray-700">Luxury vehicle</span>
               </label>
             </div>
           </div>

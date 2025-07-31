@@ -11,6 +11,7 @@ import FinancialManagement from '../components/admin/FinancialManagement';
 import SystemSettings from '../components/admin/SystemSettings';
 import SupportCenter from '../components/admin/SupportCenter';
 import OnboardingManagement from '../components/admin/OnboardingManagement';
+import AIPricingDashboard from '../components/ai/AIPricingDashboard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
@@ -29,6 +30,8 @@ const AdminDashboardPage = () => {
     { id: 'rides', label: 'Ride Monitoring', icon: '🚗' },
     { id: 'analytics', label: 'Analytics', icon: '📈' },
     { id: 'financial', label: 'Financial', icon: '💰' },
+    { id: 'ai-pricing', label: 'AI Pricing', icon: '🤖' },
+    { id: 'advanced-analytics', label: 'Advanced Analytics', icon: '🔍' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
     { id: 'support', label: 'Support', icon: '🎧' }
   ];
@@ -93,6 +96,10 @@ const AdminDashboardPage = () => {
         return <Analytics />;
       case 'financial':
         return <FinancialManagement />;
+      case 'ai-pricing':
+        return <AIPricingDashboard />;
+      case 'advanced-analytics':
+        return navigate('/admin/analytics');
       case 'settings':
         return <SystemSettings />;
       case 'support':

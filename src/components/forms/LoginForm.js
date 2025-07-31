@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { loginUser, getAuthErrorMessage } from '../../services/authService';
+import { loginUser, getAuthErrorMessage, getRedirectPath } from '../../services/authService';
 import Button from '../common/Button';
 import Input from '../common/Input';
 import toast from 'react-hot-toast';
@@ -17,28 +17,89 @@ const LoginForm = () => {
     handleSubmit,
     formState: { errors },
     setError,
+    setValue,
   } = useForm({
     defaultValues: {
       email: '',
       password: '',
     },
+    mode: 'onChange',
   });
+
+  // Handle browser autofill
+  useEffect(() => {
+    const handleAutofill = () => {
+      // Check for autofilled values and update form
+      const emailInput = document.querySelector('input[type="email"]');
+      const passwordInput = document.querySelector('input[type="password"]');
+      
+      if (emailInput && emailInput.value) {
+        setValue('email', emailInput.value, { shouldValidate: true });
+      }
+      
+      if (passwordInput && passwordInput.value) {
+        setValue('password', passwordInput.value, { shouldValidate: true });
+      }
+    };
+
+    // Listen for autofill events
+    const emailInput = document.querySelector('input[type="email"]');
+    const passwordInput = document.querySelector('input[type="password"]');
+
+    if (emailInput) {
+      emailInput.addEventListener('animationstart', handleAutofill);
+      emailInput.addEventListener('change', handleAutofill);
+    }
+
+    if (passwordInput) {
+      passwordInput.addEventListener('animationstart', handleAutofill);
+      passwordInput.addEventListener('change', handleAutofill);
+    }
+
+    // Also check on mount in case autofill happened before component mounted
+    setTimeout(handleAutofill, 100);
+
+    return () => {
+      if (emailInput) {
+        emailInput.removeEventListener('animationstart', handleAutofill);
+        emailInput.removeEventListener('change', handleAutofill);
+      }
+      if (passwordInput) {
+        passwordInput.removeEventListener('animationstart', handleAutofill);
+        passwordInput.removeEventListener('change', handleAutofill);
+      }
+    };
+  }, [setValue]);
 
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
+      console.log('LoginForm: Starting login process for:', data.email);
       const result = await loginUser(data.email, data.password);
       
+      console.log('LoginForm: Login result:', result);
+      
       if (result.success) {
+        // Set the user state manually to ensure immediate redirection
+        console.log('LoginForm: Login successful, user data:', result.user);
+        console.log('LoginForm: User role:', result.user.role);
+        console.log('LoginForm: Email verified:', result.user.emailVerified);
         setUser(result.user);
         toast.success('Welcome back!');
-        navigate('/dashboard');
+        
+        // Get the appropriate redirect path based on user role
+        const redirectPath = getRedirectPath(result.user);
+        console.log('LoginForm: Redirecting to:', redirectPath);
+        console.log('LoginForm: About to navigate to:', redirectPath);
+        navigate(redirectPath);
       } else {
+        console.log('LoginForm: Login failed:', result.error);
         const errorMessage = getAuthErrorMessage(result.error.code);
         setError('root', { message: errorMessage });
         toast.error(errorMessage);
       }
     } catch (error) {
+      console.error('LoginForm: Unexpected error:', error);
       setError('root', { message: 'An unexpected error occurred' });
       toast.error('An unexpected error occurred');
     } finally {
@@ -65,6 +126,7 @@ const LoginForm = () => {
                 type="email"
                 label="Email address"
                 placeholder="Enter your email"
+                autoComplete="email"
                 {...register('email', {
                   required: 'Email is required',
                   pattern: {
@@ -81,6 +143,7 @@ const LoginForm = () => {
                 type="password"
                 label="Password"
                 placeholder="Enter your password"
+                autoComplete="current-password"
                 {...register('password', {
                   required: 'Password is required',
                   minLength: {

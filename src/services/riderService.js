@@ -11,6 +11,8 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { processPayment as processPaymentWithService } from './paymentService';
+import { notificationService } from './notificationService';
 
 // ===== RIDE REQUEST MANAGEMENT =====
 
@@ -57,6 +59,19 @@ export const createRideRequest = async (rideData) => {
     };
 
     const docRef = await addDoc(collection(db, 'rideRequests'), rideRequest);
+    
+    // Send notification to nearby drivers about new ride request
+    try {
+      const nearbyDrivers = await getNearbyDrivers(pickup.coordinates, 10);
+      if (nearbyDrivers.length > 0) {
+        await notificationService.sendRideRequestToDrivers(
+          { id: docRef.id, ...rideRequest },
+          nearbyDrivers
+        );
+      }
+    } catch (error) {
+      console.error('Failed to send ride request notifications:', error);
+    }
     
     return {
       success: true,
@@ -214,8 +229,20 @@ export const selectDriverBid = async (rideRequestId, driverId) => {
       updatedAt: new Date().toISOString()
     });
 
-    // TODO: Send notification to selected driver
-    // TODO: Send rejection notifications to other drivers
+    // Send notification to customer about driver selection
+    try {
+      const rideRequest = await getRideRequest(rideRequestId);
+      if (rideRequest.success) {
+        await notificationService.sendRideStatusUpdate(
+          rideRequestId,
+          rideRequest.data.customerId,
+          'matched',
+          { driverId }
+        );
+      }
+    } catch (error) {
+      console.error('Failed to send ride status notification:', error);
+    }
 
     return { success: true };
   } catch (error) {
@@ -241,6 +268,20 @@ export const startRide = async (rideRequestId) => {
       startedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
+
+    // Send notification to customer about ride start
+    try {
+      const rideRequest = await getRideRequest(rideRequestId);
+      if (rideRequest.success) {
+        await notificationService.sendRideStatusUpdate(
+          rideRequestId,
+          rideRequest.data.customerId,
+          'started'
+        );
+      }
+    } catch (error) {
+      console.error('Failed to send ride status notification:', error);
+    }
 
     return { success: true };
   } catch (error) {
@@ -277,6 +318,21 @@ export const completeRide = async (rideRequestId, completionData = {}) => {
       route,
       updatedAt: new Date().toISOString()
     });
+
+    // Send notification to customer about ride completion
+    try {
+      const rideRequest = await getRideRequest(rideRequestId);
+      if (rideRequest.success) {
+        await notificationService.sendRideStatusUpdate(
+          rideRequestId,
+          rideRequest.data.customerId,
+          'completed',
+          { finalFare, tip }
+        );
+      }
+    } catch (error) {
+      console.error('Failed to send ride status notification:', error);
+    }
 
     return { success: true };
   } catch (error) {
@@ -442,34 +498,11 @@ const calculateDistance = (coord1, coord2) => {
 
 // ===== PAYMENT INTEGRATION =====
 
-// Process payment (placeholder for Stripe integration)
+// Process payment (now integrated with comprehensive payment system)
 export const processPayment = async (rideRequestId, paymentData) => {
   try {
-    // This would integrate with Stripe or your payment processor
-    const {
-      amount
-    } = paymentData;
-
-    // Placeholder implementation
-    const paymentResult = {
-      success: true,
-      paymentIntentId: `pi_${Date.now()}`,
-      amount,
-      status: 'succeeded'
-    };
-
-    // Update ride with payment information
-    const docRef = doc(db, 'rideRequests', rideRequestId);
-    await updateDoc(docRef, {
-      payment: paymentResult,
-      paidAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
-
-    return {
-      success: true,
-      data: paymentResult
-    };
+    const result = await processPaymentWithService(rideRequestId, paymentData);
+    return result;
   } catch (error) {
     return {
       success: false,

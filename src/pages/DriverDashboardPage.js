@@ -8,6 +8,7 @@ import OnlineToggle from '../components/driver/dashboard/OnlineToggle';
 import QuickActions from '../components/driver/dashboard/QuickActions';
 import TripHistory from '../components/driver/dashboard/TripHistory';
 import DocumentStatus from '../components/driver/dashboard/DocumentStatus';
+import DriverToolsWidget from '../components/driver/dashboard/DriverToolsWidget';
 
 const DriverDashboardPage = () => {
   const { user } = useAuth();
@@ -50,6 +51,9 @@ const DriverDashboardPage = () => {
               
               {/* Quick Actions */}
               <QuickActions />
+              
+              {/* Driver Tools Widget */}
+              <DriverToolsWidget />
               
               {/* Document Status */}
               <DocumentStatus />

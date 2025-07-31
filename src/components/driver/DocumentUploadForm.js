@@ -71,7 +71,18 @@ const DocumentUploadForm = () => {
   ];
 
   const handleFileUpload = async (file, documentType) => {
-    if (!file) return;
+    console.log('handleFileUpload called with:', { fileName: file?.name, documentType, driverApplicationUserId: driverApplication?.userId });
+    
+    if (!file) {
+      console.error('No file provided');
+      return;
+    }
+
+    if (!driverApplication?.userId) {
+      console.error('No driver application user ID found');
+      toast.error('Driver application not found. Please refresh the page.');
+      return;
+    }
 
     // Validate file
     const validation = validateFile(file);
@@ -84,6 +95,7 @@ const DocumentUploadForm = () => {
     setUploadProgress(prev => ({ ...prev, [documentType]: 0 }));
 
     try {
+      console.log('Calling uploadDriverDocument...');
       // Upload to Firebase Storage
       const result = await uploadDriverDocument(driverApplication.userId, documentType, file);
       

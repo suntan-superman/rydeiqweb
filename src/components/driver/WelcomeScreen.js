@@ -1,18 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDriverOnboarding } from '../../contexts/DriverOnboardingContext';
+import { checkEmailVerification } from '../../services/authService';
 import Button from '../common/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
+import toast from 'react-hot-toast';
 
 const WelcomeScreen = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, setUser } = useAuth();
   const { startApplication, saving, isApplicationStarted, goToNextStep } = useDriverOnboarding();
+  const [checkingEmail, setCheckingEmail] = useState(false);
+
+  const handleRefreshEmailVerification = async () => {
+    setCheckingEmail(true);
+    try {
+      const result = await checkEmailVerification();
+      if (result.success) {
+        if (result.emailVerified) {
+          // Update the user state with the new email verification status
+          setUser(prevUser => ({
+            ...prevUser,
+            emailVerified: true
+          }));
+          toast.success('Email verified! You can now continue with your application.');
+        } else {
+          toast.error('Email not yet verified. Please check your inbox and click the verification link.');
+        }
+      } else {
+        toast.error('Failed to check email verification status. Please try again.');
+      }
+    } catch (error) {
+      toast.error('An error occurred while checking email verification.');
+    } finally {
+      setCheckingEmail(false);
+    }
+  };
 
   const handleGetStarted = async () => {
     if (!isAuthenticated) {
       navigate('/login?redirect=driver-onboarding');
+      return;
+    }
+
+    // Check if email is verified
+    if (!user.emailVerified) {
+      toast.error('Please verify your email address before starting driver onboarding. Check your inbox for a verification link.');
       return;
     }
 
@@ -47,6 +81,85 @@ const WelcomeScreen = () => {
             Join the driver-friendly platform that puts more money in your pocket. 
             Set your own rates, keep your earnings, and build your business.
           </p>
+        </div>
+
+        {/* Prominent CTA Section - Moved to top */}
+        <div className="text-center mb-16 bg-white rounded-xl p-8 shadow-lg">
+          <h3 className="text-2xl font-semibold text-gray-900 mb-4">
+            Ready to Start Earning More?
+          </h3>
+          <p className="text-gray-600 mb-6 max-w-lg mx-auto">
+            Join thousands of drivers who have already made the switch to better earnings and more control.
+          </p>
+          
+          {isAuthenticated && (
+            <div className="mb-6">
+              <p className="text-sm text-gray-600 mb-2">
+                Welcome back, {user?.displayName || user?.email}
+              </p>
+              {!user?.emailVerified && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <svg className="h-5 w-5 text-yellow-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      <p className="text-sm text-yellow-800">
+                        Please verify your email address before starting driver onboarding. Check your inbox for a verification link.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleRefreshEmailVerification}
+                      disabled={checkingEmail}
+                      className="ml-4 px-3 py-1 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-md transition-colors disabled:opacity-50"
+                    >
+                      {checkingEmail ? (
+                        <LoadingSpinner size="small" variant="yellow" />
+                      ) : (
+                        'Refresh'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <Button
+            onClick={handleGetStarted}
+            size="large"
+            variant="primary"
+            loading={saving}
+            className="px-12 py-4 text-lg"
+          >
+            {saving ? (
+              <LoadingSpinner size="small" variant="white" />
+            ) : isApplicationStarted ? (
+              'Continue Application'
+            ) : (
+              'Get Started'
+            )}
+          </Button>
+
+          <div className="mt-4 text-sm text-gray-500">
+            <p>
+              🚗 Application takes less than 15 minutes • 📱 Start earning in 24-48 hours
+            </p>
+          </div>
+
+          {!isAuthenticated && (
+            <div className="mt-4 text-sm text-gray-600">
+              <p>
+                Already have an account?{' '}
+                <button
+                  onClick={() => navigate('/login?redirect=driver-onboarding')}
+                  className="text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  Sign in here
+                </button>
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Benefits Section */}
@@ -107,7 +220,7 @@ const WelcomeScreen = () => {
         </div>
 
         {/* Additional Benefits */}
-        <div className="bg-white rounded-xl p-8 shadow-lg mb-12">
+        <div className="bg-white rounded-xl p-8 shadow-lg">
           <h3 className="text-2xl font-semibold text-gray-900 text-center mb-8">
             Why Independent Drivers Choose AnyRyde
           </h3>
@@ -160,60 +273,6 @@ const WelcomeScreen = () => {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* CTA Section */}
-        <div className="text-center">
-          <h3 className="text-2xl font-semibold text-gray-900 mb-4">
-            Ready to Start Earning More?
-          </h3>
-          <p className="text-gray-600 mb-8 max-w-lg mx-auto">
-            Join thousands of drivers who have already made the switch to better earnings and more control.
-          </p>
-          
-          {isAuthenticated && (
-            <div className="mb-4">
-              <p className="text-sm text-gray-600">
-                Welcome back, {user?.displayName || user?.email}
-              </p>
-            </div>
-          )}
-
-          <Button
-            onClick={handleGetStarted}
-            size="large"
-            variant="primary"
-            loading={saving}
-            className="px-12 py-4 text-lg"
-          >
-            {saving ? (
-              <LoadingSpinner size="small" variant="white" />
-            ) : isApplicationStarted ? (
-              'Continue Application'
-            ) : (
-              'Get Started'
-            )}
-          </Button>
-
-          <div className="mt-6 text-sm text-gray-500">
-            <p>
-              🚗 Application takes less than 15 minutes • 📱 Start earning in 24-48 hours
-            </p>
-          </div>
-
-          {!isAuthenticated && (
-            <div className="mt-6 text-sm text-gray-600">
-              <p>
-                Already have an account?{' '}
-                <button
-                  onClick={() => navigate('/login?redirect=driver-onboarding')}
-                  className="text-primary-600 hover:text-primary-700 font-medium"
-                >
-                  Sign in here
-                </button>
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </div>

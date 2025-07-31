@@ -15,26 +15,57 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Cache busting - force reload of latest code
+  console.log('AuthContext version:', Date.now());
 
   useEffect(() => {
     const unsubscribe = onAuthStateChange(async (firebaseUser) => {
       try {
         if (firebaseUser) {
-          // Get additional user data from Firestore
-          const userData = await getUserData(firebaseUser.uid);
-          
-          setUser({
+          console.log('Auth state changed - Firebase user:', {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            emailVerified: firebaseUser.emailVerified,
-            photoURL: firebaseUser.photoURL,
-            ...(userData.success ? userData.data : {}),
+            emailVerified: firebaseUser.emailVerified
           });
+
+          // Get additional user data from Firestore first
+          const userData = await getUserData(firebaseUser.uid);
+          
+          if (userData.success) {
+            const userDoc = userData.data;
+            console.log('User data from Firestore:', userDoc);
+            
+            // Note: Email verification is handled in loginUser function
+            // AuthContext only manages the user state after successful authentication
+            console.log('Setting user in AuthContext - emailVerified:', firebaseUser.emailVerified);
+
+            // Set the user with combined data
+            setUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              emailVerified: firebaseUser.emailVerified,
+              photoURL: firebaseUser.photoURL,
+              ...userDoc,
+            });
+          } else {
+            console.log('Failed to get user data from Firestore:', userData.error);
+            // If we can't get user data, still allow login but with basic info
+            setUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              emailVerified: firebaseUser.emailVerified,
+              photoURL: firebaseUser.photoURL,
+            });
+          }
         } else {
+          console.log('No Firebase user - setting user to null');
           setUser(null);
         }
       } catch (error) {
+        console.error('Error in auth state change:', error);
         setError(error.message);
         setUser(null);
       } finally {

@@ -155,13 +155,38 @@ export const updateDriverStep = async (userId, stepName, stepData) => {
 // Upload driver document
 export const uploadDriverDocument = async (userId, documentType, file) => {
   try {
+    console.log('uploadDriverDocument called with:', { userId, documentType, fileName: file.name, fileSize: file.size });
+    
+    // Check authentication status
+    const { getAuth } = await import('firebase/auth');
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    
+    console.log('Current user authentication status:', {
+      isAuthenticated: !!currentUser,
+      uid: currentUser?.uid,
+      email: currentUser?.email,
+      emailVerified: currentUser?.emailVerified
+    });
+    
+    if (!currentUser) {
+      throw new Error('User not authenticated');
+    }
+    
     const fileExtension = file.name.split('.').pop();
     const fileName = `${documentType}.${fileExtension}`;
     const storageRef = ref(storage, `drivers/${userId}/documents/${fileName}`);
     
+    console.log('Storage reference created:', storageRef.fullPath);
+    
     // Upload file
+    console.log('Starting file upload...');
     const snapshot = await uploadBytes(storageRef, file);
+    console.log('File upload completed:', snapshot);
+    
+    console.log('Getting download URL...');
     const downloadURL = await getDownloadURL(snapshot.ref);
+    console.log('Download URL obtained:', downloadURL);
     
     // Update driver document info in Firestore
     const documentData = {
@@ -174,11 +199,18 @@ export const uploadDriverDocument = async (userId, documentType, file) => {
       updatedAt: serverTimestamp()
     };
     
+    console.log('Updating Firestore with document data...');
     await updateDoc(doc(db, 'drivers', userId), documentData);
+    console.log('Firestore update completed');
     
     return { success: true, url: downloadURL };
   } catch (error) {
     console.error('Error uploading document:', error);
+    console.error('Error details:', {
+      code: error.code,
+      message: error.message,
+      stack: error.stack
+    });
     return { success: false, error: error.message };
   }
 };

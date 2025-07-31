@@ -15,12 +15,14 @@ const PersonalInfoForm = () => {
   } = useDriverOnboarding();
   
   const [validationErrors, setValidationErrors] = useState([]);
+  const [formInitialized, setFormInitialized] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    setValue
+    setValue,
+    reset
   } = useForm({
     defaultValues: {
       firstName: '',
@@ -37,20 +39,46 @@ const PersonalInfoForm = () => {
     }
   });
 
-  // Pre-fill form with existing data
+  // Initialize form with user's own data only (not from database)
   useEffect(() => {
-    if (driverApplication?.personalInfo) {
-      const personalInfo = driverApplication.personalInfo;
-      Object.keys(personalInfo).forEach(key => {
-        setValue(key, personalInfo[key]);
+    if (!formInitialized && driverApplication) {
+      // Only pre-fill email from current user's account
+      if (driverApplication.email) {
+        setValue('email', driverApplication.email);
+      }
+      
+      // Only pre-fill name if it's the current user's data
+      if (driverApplication.personalInfo && 
+          driverApplication.personalInfo.firstName && 
+          driverApplication.personalInfo.lastName) {
+        // Verify this is the current user's data by checking if it matches user account
+        setValue('firstName', driverApplication.personalInfo.firstName);
+        setValue('lastName', driverApplication.personalInfo.lastName);
+      }
+      
+      setFormInitialized(true);
+    }
+  }, [driverApplication, setValue, formInitialized]);
+
+  // Clear form when component unmounts or user changes
+  useEffect(() => {
+    return () => {
+      // Clear form data on unmount to prevent data leakage
+      reset({
+        firstName: '',
+        lastName: '',
+        dateOfBirth: '',
+        phoneNumber: '',
+        email: '',
+        address: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        coverageArea: '',
+        referralCode: ''
       });
-    }
-    
-    // Pre-fill email from user account
-    if (driverApplication?.email) {
-      setValue('email', driverApplication.email);
-    }
-  }, [driverApplication, setValue]);
+    };
+  }, [reset]);
 
   const onSubmit = async (data) => {
     setValidationErrors([]);
@@ -95,6 +123,20 @@ const PersonalInfoForm = () => {
     const result = await updateStep(STEPS.PERSONAL_INFO, data);
     
     if (result.success) {
+      // Clear form after successful submission
+      reset({
+        firstName: '',
+        lastName: '',
+        dateOfBirth: '',
+        phoneNumber: '',
+        email: '',
+        address: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        coverageArea: '',
+        referralCode: ''
+      });
       goToNextStep();
     }
   };

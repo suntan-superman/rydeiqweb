@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { logoutUser } from '../../services/authService';
 import Button from '../common/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
+import NotificationWidget from '../notifications/NotificationWidget';
 import toast from 'react-hot-toast';
 
 const Header = () => {
@@ -87,6 +88,9 @@ const Header = () => {
           <div className="flex items-center space-x-4">
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
+                {/* Notification Widget */}
+                <NotificationWidget />
+                
                 <div className="hidden md:flex items-center space-x-2">
                   <span className="text-sm text-gray-700">
                     Welcome, {user?.displayName || user?.email}

@@ -41,16 +41,46 @@ const BackgroundCheckForm = () => {
 
   const [errors, setErrors] = useState({});
   const [showSSN, setShowSSN] = useState(false);
+  const [formInitialized, setFormInitialized] = useState(false);
 
-  // Load existing data
+  // Initialize form with empty data (no pre-filling for security)
   useEffect(() => {
-    if (driverApplication?.backgroundCheck) {
-      setFormData(prev => ({
-        ...prev,
-        ...driverApplication.backgroundCheck
-      }));
+    if (!formInitialized && driverApplication) {
+      // Do NOT pre-fill any sensitive data from database
+      // This prevents data leakage between users
+      setFormInitialized(true);
     }
-  }, [driverApplication]);
+  }, [driverApplication, formInitialized]);
+
+  // Clear form when component unmounts or user changes
+  useEffect(() => {
+    return () => {
+      // Clear all sensitive form data on unmount
+      setFormData({
+        ssn: '',
+        currentAddress: {
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          yearsAtAddress: ''
+        },
+        previousAddress: {
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          yearsAtAddress: ''
+        },
+        hasPreviousAddress: false,
+        consentBackgroundCheck: false,
+        consentCriminalHistory: false,
+        consentDrivingRecord: false,
+        understandTimeline: false
+      });
+      setShowSSN(false);
+    };
+  }, []);
 
   const formatSSN = (value) => {
     // Remove all non-numeric characters

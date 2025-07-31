@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection rules
+    match /users/{userId} {
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null; // Allow any authenticated user to create their own user document
+    }
+
+    // Drivers collection rules
+    match /drivers/{driverId} {
+      allow read, update: if request.auth != null && request.auth.uid == driverId;
+      allow create: if request.auth != null && request.auth.uid == driverId; // Only allow drivers to create their own driver document
+    }
+
+    // Driver Applications collection rules
+    match /driverApplications/{applicationId} {
+      allow read, update: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+
+    // Notifications collection rules
+    match /notifications/{notificationId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Rides collection rules
+    match /rides/{rideId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.driverId == request.auth.uid || 
+         resource.data.riderId == request.auth.uid);
+    }
+
+    // Ride requests collection rules
+    match /rideRequests/{requestId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.driverId == request.auth.uid || 
+         resource.data.riderId == request.auth.uid);
+    }
+
+    // Earnings collection rules
+    match /earnings/{earningId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Payments collection rules
+    match /payments/{paymentId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || 
+         resource.data.driverId == request.auth.uid);
+    }
+
+    // Emergency alerts collection rules
+    match /emergencyAlerts/{alertId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || 
+         request.auth.token.role == 'admin');
+    }
+
+    // Safety incidents collection rules
+    match /safetyIncidents/{incidentId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Messages collection rules
+    match /messages/{messageId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.senderId == request.auth.uid || 
+         resource.data.receiverId == request.auth.uid);
+    }
+
+    // Admin collection rules (for admin management)
+    match /admins/{adminId} {
+      allow read, write: if request.auth != null && 
+        (request.auth.uid == adminId || 
+         request.auth.token.role == 'super_admin');
+    }
+
+    // Analytics collection rules (for admin access)
+    match /analytics/{analyticsId} {
+      allow read, write: if request.auth != null && 
+        request.auth.token.role in ['admin', 'super_admin'];
+    }
+
+    // Default deny for all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+} 

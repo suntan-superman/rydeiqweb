@@ -53,30 +53,58 @@ const PayoutSetupForm = () => {
 
   const [errors, setErrors] = useState({});
   const [showAccountNumber, setShowAccountNumber] = useState(false);
+  const [formInitialized, setFormInitialized] = useState(false);
 
-  // Load existing data
+  // Initialize form with empty data (no pre-filling for security)
   useEffect(() => {
-    if (driverApplication?.payoutInfo) {
-      setFormData(prev => ({
-        ...prev,
-        ...driverApplication.payoutInfo
-      }));
+    if (!formInitialized && driverApplication) {
+      // Do NOT pre-fill any sensitive banking or tax data from database
+      // This prevents data leakage between users
+      setFormInitialized(true);
     }
-    
-    // Pre-fill tax address from personal info if using same address
-    if (driverApplication?.personalInfo && formData.useSameAddressAsPersonal) {
-      const personalInfo = driverApplication.personalInfo;
-      setFormData(prev => ({
-        ...prev,
+  }, [driverApplication, formInitialized]);
+
+  // Clear form when component unmounts or user changes
+  useEffect(() => {
+    return () => {
+      // Clear all sensitive form data on unmount
+      setFormData({
+        // Bank Account Information
+        accountHolderName: '',
+        bankName: '',
+        routingNumber: '',
+        accountNumber: '',
+        confirmAccountNumber: '',
+        accountType: 'checking',
+        
+        // Tax Information
+        taxIdType: 'ssn',
+        taxId: '',
+        businessName: '',
         taxAddress: {
-          street: personalInfo.address || '',
-          city: personalInfo.city || '',
-          state: personalInfo.state || '',
-          zipCode: personalInfo.zipCode || ''
-        }
-      }));
-    }
-  }, [driverApplication, formData.useSameAddressAsPersonal]);
+          street: '',
+          city: '',
+          state: '',
+          zipCode: ''
+        },
+        useSameAddressAsPersonal: true,
+        
+        // Payout Preferences
+        payoutFrequency: 'weekly',
+        minimumPayoutAmount: '25',
+        
+        // Agreements and Consents
+        agreeToPayoutTerms: false,
+        agreeTo1099Reporting: false,
+        understandFees: false,
+        consentToTaxReporting: false,
+        
+        // Account Verification
+        verificationMethod: 'microdeposit'
+      });
+      setShowAccountNumber(false);
+    };
+  }, []);
 
   const formatRoutingNumber = (value) => {
     // Remove all non-numeric characters and limit to 9 digits

@@ -16,13 +16,15 @@ const VehicleInfoForm = () => {
   } = useDriverOnboarding();
   
   const [validationErrors, setValidationErrors] = useState([]);
+  const [formInitialized, setFormInitialized] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     setValue,
-    watch
+    watch,
+    reset
   } = useForm({
     defaultValues: {
       make: '',
@@ -42,19 +44,41 @@ const VehicleInfoForm = () => {
     }
   });
 
-  // Pre-fill form with existing data
+  // Initialize form with minimal data only
   useEffect(() => {
-    if (driverApplication?.vehicleInfo) {
-      const vehicleInfo = driverApplication.vehicleInfo;
-      Object.keys(vehicleInfo).forEach(key => {
-        if (key === 'features' && Array.isArray(vehicleInfo[key])) {
-          setValue(key, vehicleInfo[key]);
-        } else {
-          setValue(key, vehicleInfo[key]);
-        }
-      });
+    if (!formInitialized && driverApplication) {
+      // Only pre-fill basic vehicle type if it exists and is safe
+      if (driverApplication.vehicleInfo && 
+          driverApplication.vehicleInfo.vehicleType) {
+        setValue('vehicleType', driverApplication.vehicleInfo.vehicleType);
+      }
+      
+      setFormInitialized(true);
     }
-  }, [driverApplication, setValue]);
+  }, [driverApplication, setValue, formInitialized]);
+
+  // Clear form when component unmounts or user changes
+  useEffect(() => {
+    return () => {
+      // Clear form data on unmount to prevent data leakage
+      reset({
+        make: '',
+        model: '',
+        year: '',
+        color: '',
+        licensePlate: '',
+        vehicleType: '',
+        numberOfSeats: '',
+        features: [],
+        condition: '',
+        insuranceCompany: '',
+        insurancePolicyNumber: '',
+        insuranceExpiration: '',
+        registrationState: '',
+        registrationExpiration: ''
+      });
+    };
+  }, [reset]);
 
   // Vehicle makes data
   const vehicleMakes = [

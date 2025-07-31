@@ -127,6 +127,9 @@ class GoogleMapsService {
             case error.TIMEOUT:
               errorMessage = 'Location request timed out';
               break;
+            default:
+              // handle default case
+              break;
           }
           
           reject(new Error(errorMessage));
