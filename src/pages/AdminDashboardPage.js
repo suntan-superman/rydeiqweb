@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { isAdmin } from '../services/authService';
 import { getPlatformMetrics } from '../services/adminService';
@@ -19,12 +19,13 @@ import toast from 'react-hot-toast';
 const AdminDashboardPage = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('overview');
   const [platformMetrics, setPlatformMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Navigation tabs configuration
-  const tabs = [
+  const tabs = useMemo(() => [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'drivers', label: 'Driver Management', icon: '👥' },
     { id: 'onboarding', label: 'Onboarding', icon: '✅' },
@@ -36,7 +37,7 @@ const AdminDashboardPage = () => {
     { id: 'settings', label: 'Settings', icon: '⚙️' },
     { id: 'support', label: 'Support', icon: '🎧' },
     { id: 'users', label: 'User Management', icon: '👤' }
-  ];
+  ], []);
 
   // Check admin permissions and redirect if necessary
   useEffect(() => {
@@ -68,6 +69,15 @@ const AdminDashboardPage = () => {
     loadMetrics();
   }, [user]);
 
+  // Set active tab based on URL parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam && tabs.some(tab => tab.id === tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [location.search, tabs]);
+
   // Show loading while checking authentication
   if (authLoading || loading) {
     return (
@@ -86,7 +96,16 @@ const AdminDashboardPage = () => {
     console.log('AdminDashboardPage: renderTabContent called with activeTab:', activeTab);
     switch (activeTab) {
       case 'overview':
-        return <AdminOverview metrics={platformMetrics} onRefresh={() => window.location.reload()} />;
+        return <AdminOverview 
+          metrics={platformMetrics} 
+          onRefresh={() => window.location.reload()}
+          onTabChange={(tabId) => {
+            setActiveTab(tabId);
+            const url = new URL(window.location);
+            url.searchParams.set('tab', tabId);
+            navigate(url.pathname + url.search, { replace: true });
+          }}
+        />;
       case 'drivers':
         return <DriverManagement />;
       case 'onboarding':
@@ -109,7 +128,16 @@ const AdminDashboardPage = () => {
       case 'users':
         return <UserManagement />;
       default:
-        return <AdminOverview metrics={platformMetrics} onRefresh={() => window.location.reload()} />;
+        return <AdminOverview 
+          metrics={platformMetrics} 
+          onRefresh={() => window.location.reload()}
+          onTabChange={(tabId) => {
+            setActiveTab(tabId);
+            const url = new URL(window.location);
+            url.searchParams.set('tab', tabId);
+            navigate(url.pathname + url.search, { replace: true });
+          }}
+        />;
     }
   };
 
@@ -143,7 +171,13 @@ const AdminDashboardPage = () => {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  // Update URL with tab parameter
+                  const url = new URL(window.location);
+                  url.searchParams.set('tab', tab.id);
+                  navigate(url.pathname + url.search, { replace: true });
+                }}
                 className={`flex items-center space-x-2 px-3 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'

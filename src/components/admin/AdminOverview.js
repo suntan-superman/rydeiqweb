@@ -1,7 +1,43 @@
 import React from 'react';
 import Button from '../common/Button';
 
-const AdminOverview = ({ metrics, onRefresh }) => {
+const AdminOverview = ({ metrics, onRefresh, onTabChange }) => {
+
+  // Handle quick action clicks
+  const handleQuickAction = (action) => {
+    console.log('AdminOverview: handleQuickAction called with action:', action);
+    switch (action) {
+      case 'review-applications':
+        console.log('AdminOverview: Navigating to onboarding tab');
+        onTabChange('onboarding');
+        break;
+      case 'monitor-rides':
+        console.log('AdminOverview: Navigating to rides tab');
+        onTabChange('rides');
+        break;
+      case 'generate-reports':
+        console.log('AdminOverview: Navigating to analytics tab');
+        onTabChange('analytics');
+        break;
+      case 'system-settings':
+        console.log('AdminOverview: Navigating to settings tab');
+        onTabChange('settings');
+        break;
+      default:
+        console.log('AdminOverview: Unknown action:', action);
+        break;
+    }
+  };
+
+  // Extract metrics with defaults
+  const {
+    totalUsers = 0,
+    activeDrivers = 0,
+    revenue = { total: 0, commission: 0, averageRide: 0 },
+    drivers = { pending: 0, approved: 0, total: 0 },
+    rides = { total: 0, completed: 0, completionRate: 0 }
+  } = metrics || {};
+
   if (!metrics) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -10,23 +46,21 @@ const AdminOverview = ({ metrics, onRefresh }) => {
     );
   }
 
-  const { drivers, rides, revenue } = metrics;
-
   const statCards = [
     {
-      title: 'Total Drivers',
-      value: drivers.total,
-      subtitle: `${drivers.active} active`,
-      change: `${drivers.approvalRate}% approval rate`,
+      title: 'Total Users',
+      value: totalUsers.toLocaleString(),
+      subtitle: `${activeDrivers} active drivers`,
+      change: `${((activeDrivers / totalUsers) * 100).toFixed(1)}% driver rate`,
       icon: '👥',
       color: 'blue'
     },
     {
-      title: 'Pending Applications',
-      value: drivers.pending,
-      subtitle: 'Awaiting review',
-      change: 'Requires attention',
-      icon: '⏳',
+      title: 'Active Drivers',
+      value: activeDrivers,
+      subtitle: `${drivers.approved} approved`,
+      change: `${drivers.pending} pending applications`,
+      icon: '🚗',
       color: 'yellow'
     },
     {
@@ -49,24 +83,28 @@ const AdminOverview = ({ metrics, onRefresh }) => {
 
   const quickActions = [
     {
+      id: 'review-applications',
       title: 'Review Driver Applications',
       description: `${drivers.pending} applications pending`,
       action: 'Review Now',
       urgent: drivers.pending > 0
     },
     {
+      id: 'monitor-rides',
       title: 'Monitor Active Rides',
       description: 'View real-time ride activity',
       action: 'Monitor',
       urgent: false
     },
     {
+      id: 'generate-reports',
       title: 'Generate Reports',
       description: 'Create analytics reports',
       action: 'Generate',
       urgent: false
     },
     {
+      id: 'system-settings',
       title: 'System Settings',
       description: 'Configure platform settings',
       action: 'Configure',
@@ -150,6 +188,10 @@ const AdminOverview = ({ metrics, onRefresh }) => {
                   variant={action.urgent ? 'primary' : 'outline'}
                   size="small"
                   className="ml-4"
+                  onClick={() => {
+                    console.log('AdminOverview: Button clicked for action:', action.id);
+                    handleQuickAction(action.id);
+                  }}
                 >
                   {action.action}
                 </Button>
