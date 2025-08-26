@@ -17,14 +17,16 @@ export const USER_ROLES = {
   CUSTOMER: 'customer',
   DRIVER: 'driver',
   ADMIN: 'admin',
-  SUPER_ADMIN: 'super_admin'
+  SUPER_ADMIN: 'super_admin',
+  HEALTHCARE_PROVIDER: 'healthcare_provider'
 };
 
 // User types for registration
 export const USER_TYPES = {
   PASSENGER: 'passenger',
   DRIVER: 'driver',
-  ADMINISTRATOR: 'administrator'
+  ADMINISTRATOR: 'administrator',
+  HEALTHCARE_PROVIDER: 'healthcare_provider'
 };
 
 // Get the appropriate redirect path based on user role and status
@@ -63,6 +65,10 @@ export const getRedirectPath = (user) => {
         console.log('getRedirectPath: Admin -> /dashboard');
         return '/dashboard';
       }
+
+    case USER_ROLES.HEALTHCARE_PROVIDER:
+      console.log('getRedirectPath: Healthcare provider -> /medical-portal');
+      return '/medical-portal';
       
     case USER_ROLES.CUSTOMER:
     default:
@@ -137,6 +143,8 @@ export const registerUser = async ({ email, password, firstName, lastName, userT
     } else if (userType === USER_TYPES.ADMINISTRATOR) {
       // Administrators start as pending and need approval
       role = USER_ROLES.CUSTOMER; // Default role until approved
+    } else if (userType === USER_TYPES.HEALTHCARE_PROVIDER) {
+      role = USER_ROLES.HEALTHCARE_PROVIDER;
     }
 
     // Update user profile with name
@@ -178,6 +186,26 @@ export const registerUser = async ({ email, password, firstName, lastName, userT
         approvedAt: null,
         approvedBy: null,
         notes: ''
+      };
+    }
+
+    // Add healthcare provider-specific fields
+    if (userType === USER_TYPES.HEALTHCARE_PROVIDER) {
+      userData.healthcareProvider = {
+        organizationName: '',
+        facilityType: '',
+        nemtEnabled: true,
+        hipaaCompliant: true,
+        verificationStatus: 'pending',
+        requestedAt: new Date().toISOString(),
+        verifiedAt: null,
+        verifiedBy: null,
+        certifications: [],
+        billingInfo: {
+          taxId: '',
+          billingAddress: {},
+          preferredInvoiceFormat: 'detailed'
+        }
       };
     }
 
@@ -763,6 +791,8 @@ export const getRoleDisplayName = (role) => {
       return 'Admin';
     case USER_ROLES.SUPER_ADMIN:
       return 'Super Admin';
+    case USER_ROLES.HEALTHCARE_PROVIDER:
+      return 'Healthcare Provider';
     default:
       return 'Unknown';
   }

@@ -2,7 +2,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { registerLicense } from '@syncfusion/ej2-base';
 import { Toaster } from 'react-hot-toast';
+
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { RideProvider } from './contexts/RideContext';
 import { DriverOnboardingProvider } from './contexts/DriverOnboardingContext';
@@ -27,6 +29,7 @@ import DriverOnboardingPage from './pages/DriverOnboardingPage';
 import RideRequestPage from './pages/RideRequestPage';
 import RideTrackingPage from './pages/RideTrackingPage';
 import RideHistoryPage from './pages/RideHistoryPage';
+import MedicalPortalPage from './pages/MedicalPortalPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
 import CareersPage from './pages/CareersPage';
@@ -151,7 +154,12 @@ const ComparePageOld = () => {
   );
 };
 
-function App() {
+const App = () => {
+  // Register Syncfusion license
+registerLicense(
+  "ORg4AjUWIQA/Gnt3VVhhQlJDfV5AQmBIYVp/TGpJfl96cVxMZVVBJAtUQF1hTH5bd0diUX1WcnNQT2lVWkd2"
+);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -213,6 +221,15 @@ function App() {
                         <AdminRoute>
                           <AdminDashboardPage />
                         </AdminRoute>
+                      } 
+                    />
+                    
+                    <Route 
+                      path="medical-portal" 
+                      element={
+                        <ProtectedRoute>
+                          <MedicalPortalPage />
+                        </ProtectedRoute>
                       } 
                     />
                     
