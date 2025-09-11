@@ -30,6 +30,7 @@ import '../../styles/syncfusion.css';
 
 // Status color mapping (moved outside component to avoid dependency issues)
 const statusColors = {
+  'scheduled': '#8B5CF6',     // Purple
   'assigned': '#2563EB',      // Blue
   'in_progress': '#16A34A',   // Green  
   'completed': '#1F2937',     // Gray

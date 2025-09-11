@@ -43,9 +43,10 @@ class DriverAssignmentService {
    * @param {Object} pickupCoords - {lat, lng}
    * @param {number} radiusMiles - Search radius in miles
    * @param {Object} rideRequirements - {requiresWheelchair, requiresAssistance, etc.}
+   * @param {Object} medicalRequirements - Enhanced medical requirements for filtering
    * @returns {Array} Array of available drivers
    */
-  async findNearbyDrivers(pickupCoords, radiusMiles = 15, rideRequirements = {}) {
+  async findNearbyDrivers(pickupCoords, radiusMiles = 15, rideRequirements = {}, medicalRequirements = null) {
     try {
       // Query for online, available drivers
       const driversQuery = query(
@@ -78,6 +79,7 @@ class DriverAssignmentService {
           // Check ride requirements
           let meetsRequirements = true;
           
+          // Legacy requirements check
           if (rideRequirements.requiresWheelchair && !driver.vehicleInfo?.vehicle_info?.features?.includes('wheelchair_accessible')) {
             meetsRequirements = false;
           }
@@ -87,11 +89,17 @@ class DriverAssignmentService {
             // You might want to add a specific field for this
           }
 
+          // Enhanced medical requirements check
+          if (medicalRequirements && meetsRequirements) {
+            meetsRequirements = this.meetsMedicalRequirements(driver, medicalRequirements);
+          }
+
           if (meetsRequirements) {
             nearbyDrivers.push({
               ...driver,
               distance: Math.round(distance * 10) / 10, // Round to 1 decimal
-              estimatedArrival: this.calculateETA(distance)
+              estimatedArrival: this.calculateETA(distance),
+              medicalQualified: medicalRequirements ? this.hasValidMedicalCertifications(driver) : false
             });
           }
         }
@@ -115,6 +123,62 @@ class DriverAssignmentService {
     const avgSpeedMph = 30;
     const etaHours = distance / avgSpeedMph;
     return Math.ceil(etaHours * 60); // Convert to minutes and round up
+  }
+
+  /**
+   * Check if driver meets medical requirements
+   * @param {Object} driver - Driver object
+   * @param {Object} medicalRequirements - Medical requirements object
+   * @returns {boolean} Whether driver meets requirements
+   */
+  meetsMedicalRequirements(driver, medicalRequirements) {
+    // Check wheelchair accessibility
+    if (medicalRequirements.wheelchairAccessible) {
+      const hasWheelchairAccess = driver.vehicleInfo?.vehicle_info?.features?.includes('wheelchair_accessible') ||
+                                  driver.vehicleCapabilities?.wheelchairAccessible;
+      if (!hasWheelchairAccess) return false;
+    }
+
+    // Check stretcher requirement
+    if (medicalRequirements.stretcherRequired && !driver.vehicleCapabilities?.stretcherCapable) {
+      return false;
+    }
+
+    // Check oxygen support
+    if (medicalRequirements.oxygenSupport && !driver.vehicleCapabilities?.oxygenSafe) {
+      return false;
+    }
+
+    // Check priority level - emergency requires special qualification
+    if (medicalRequirements.priorityLevel === 'emergency' && !driver.servicePreferences?.acceptsEmergencyRides) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Check if driver has valid medical certifications
+   * @param {Object} driver - Driver object
+   * @returns {boolean} Whether driver has valid certifications
+   */
+  hasValidMedicalCertifications(driver) {
+    const now = new Date();
+    const certifications = driver.medicalCertifications;
+
+    if (!certifications) return false;
+
+    // Check medical transport license
+    if (!certifications.medicalTransportLicense?.certified) return false;
+    if (certifications.medicalTransportLicense.expirationDate && 
+        new Date(certifications.medicalTransportLicense.expirationDate) <= now) return false;
+
+    // Check background check
+    if (!certifications.backgroundCheck?.completed) return false;
+    if (certifications.backgroundCheck.expirationDate && 
+        new Date(certifications.backgroundCheck.expirationDate) <= now) return false;
+
+    return true;
   }
 
   /**

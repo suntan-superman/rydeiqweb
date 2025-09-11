@@ -157,9 +157,9 @@ const ComparePageOld = () => {
 const App = () => {
   // Register Syncfusion license
 registerLicense(
-  "ORg4AjUWIQA/Gnt3VVhhQlJDfV5AQmBIYVp/TGpJfl96cVxMZVVBJAtUQF1hTH5bd0diUX1WcnNQT2lVWkd2"
+  "Ngo9BigBOggjHTQxAR8/V1JEaF1cWmhIfEx1RHxQdld5ZFRHallYTnNWUj0eQnxTdEBjUX1YcXZUTmRVUUd/V0leYw=="
 );
-
+  
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

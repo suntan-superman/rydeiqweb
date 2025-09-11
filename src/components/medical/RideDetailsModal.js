@@ -31,6 +31,7 @@ const RideDetailsModal = ({ open, onClose, ride, user, onShowDriverTracking, onA
   }, [ride]);
 
   const statusColors = {
+    'scheduled': { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-200' },
     'assigned': { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200' },
     'in_progress': { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-200' },
     'completed': { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-200' },
@@ -157,6 +158,7 @@ const RideDetailsModal = ({ open, onClose, ride, user, onShowDriverTracking, onA
                     onChange={(e) => handleStatusChange(e.target.value)}
                     className="w-48 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
+                    <option value="scheduled">Scheduled</option>
                     <option value="assigned">Assigned</option>
                     <option value="in_progress">In Progress</option>
                     <option value="completed">Completed</option>

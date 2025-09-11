@@ -21,6 +21,7 @@ const LocationPicker = ({ onLocationsSet }) => {
   const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
   const [showDestinationSuggestions, setShowDestinationSuggestions] = useState(false);
   const [loadingGeocode, setLoadingGeocode] = useState(false);
+  const [useNewAPI, setUseNewAPI] = useState(false);
 
   const pickupInputRef = useRef(null);
   const destinationInputRef = useRef(null);
@@ -54,43 +55,78 @@ const LocationPicker = ({ onLocationsSet }) => {
   const loadGoogleMapsAPI = () => {
     if (!window.google) {
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}&libraries=places&loading=async`;
       script.async = true;
       script.defer = true;
       script.onload = () => {
-        autocompleteService.current = new window.google.maps.places.AutocompleteService();
+        // Temporarily use legacy API until new API documentation is clearer
+        if (false && window.google.maps.places.AutocompleteSuggestion) {
+          setUseNewAPI(true);
+        } else {
+          autocompleteService.current = new window.google.maps.places.AutocompleteService();
+        }
         geocoderService.current = new window.google.maps.Geocoder();
       };
       document.head.appendChild(script);
     }
   };
 
-  // Get place suggestions from Google Places API
+  // Get place suggestions from Google Places API (with new/legacy API support)
   const getPlaceSuggestions = async (input, callback) => {
-    if (!input.trim() || !autocompleteService.current) {
+    if (!input.trim()) {
       callback([]);
       return;
     }
 
-    const request = {
-      input: input,
-      types: ['establishment', 'geocode'],
-      componentRestrictions: { country: 'us' }, // Restrict to US for now
-    };
+    if (!useNewAPI && !autocompleteService.current) {
+      callback([]);
+      return;
+    }
 
-    autocompleteService.current.getPlacePredictions(request, (predictions, status) => {
-      if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
-        const suggestions = predictions.slice(0, 5).map(prediction => ({
-          placeId: prediction.place_id,
-          address: prediction.description,
-          mainText: prediction.structured_formatting.main_text,
-          secondaryText: prediction.structured_formatting.secondary_text
+    try {
+      if (useNewAPI && window.google?.maps?.places?.AutocompleteSuggestion) {
+        // Use new AutocompleteSuggestion API
+        const request = {
+          input: input
+          // Using minimal request to avoid parameter validation issues
+        };
+
+        const { suggestions: newSuggestions } = await window.google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
+        
+        const suggestionList = newSuggestions.slice(0, 5).map(suggestion => ({
+          placeId: suggestion.placePrediction?.placeId || suggestion.queryPrediction?.placeId,
+          address: suggestion.placePrediction?.text?.text || suggestion.queryPrediction?.text?.text,
+          mainText: suggestion.placePrediction?.structuredFormat?.mainText?.text || suggestion.queryPrediction?.text?.text,
+          secondaryText: suggestion.placePrediction?.structuredFormat?.secondaryText?.text || ''
         }));
-        callback(suggestions);
+        
+        callback(suggestionList);
       } else {
-        callback([]);
+        // Fallback to legacy AutocompleteService
+        const request = {
+          input: input,
+          types: ['establishment', 'geocode'],
+          componentRestrictions: { country: 'us' },
+        };
+
+        autocompleteService.current.getPlacePredictions(request, (predictions, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+            const suggestions = predictions.slice(0, 5).map(prediction => ({
+              placeId: prediction.place_id,
+              address: prediction.description,
+              mainText: prediction.structured_formatting.main_text,
+              secondaryText: prediction.structured_formatting.secondary_text
+            }));
+            callback(suggestions);
+          } else {
+            callback([]);
+          }
+        });
       }
-    });
+    } catch (error) {
+      console.error('Error getting place suggestions:', error);
+      callback([]);
+    }
   };
 
   // Get coordinates for a place using place ID

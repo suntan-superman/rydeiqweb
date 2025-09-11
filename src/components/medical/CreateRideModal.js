@@ -10,12 +10,26 @@ import {
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import driverAssignmentService from '../../services/driverAssignmentService';
+import StablePlacesInput from './StablePlacesInput';
 
 const CreateRideModal = ({ open, onClose, initialDateTime, user }) => {
+  // Helper function to get default appointment date/time
+  const getDefaultDateTime = () => {
+    if (initialDateTime) {
+      return new Date(initialDateTime).toISOString().slice(0, 16);
+    }
+    
+    // Default to today + next rounded hour
+    const now = new Date();
+    const nextHour = new Date(now);
+    nextHour.setHours(now.getHours() + 1, 0, 0, 0); // Round up to next hour
+    return nextHour.toISOString().slice(0, 16); // Format as YYYY-MM-DDTHH:MM
+  };
+
   const [formData, setFormData] = useState({
     patientId: '',
     appointmentType: '',
-    appointmentDateTime: initialDateTime ? new Date(initialDateTime).toISOString().slice(0, 16) : '',
+    appointmentDateTime: getDefaultDateTime(),
     estimatedDuration: 60,
     pickupLocation: {
       facilityName: '',
@@ -42,6 +56,12 @@ const CreateRideModal = ({ open, onClose, initialDateTime, user }) => {
   const [errors, setErrors] = useState({});
   const [autoAssignDrivers, setAutoAssignDrivers] = useState(true);
   const [notificationStatus, setNotificationStatus] = useState('');
+  
+  // Store coordinates for enhanced driver matching
+  const [locationCoordinates, setLocationCoordinates] = useState({
+    pickup: null,
+    dropoff: null
+  });
 
   const appointmentTypes = [
     'Medical Appointment',
@@ -96,6 +116,48 @@ const CreateRideModal = ({ open, onClose, initialDateTime, user }) => {
         [field]: value
       }
     }));
+
+    // Clear related error
+    if (locationType === 'pickupLocation' && field === 'address') {
+      setErrors(prev => ({ ...prev, pickupAddress: '' }));
+    }
+    if (locationType === 'dropoffLocation' && field === 'address') {
+      setErrors(prev => ({ ...prev, dropoffAddress: '' }));
+    }
+  };
+
+  // Handle pickup location selection from Google Places
+  const handlePickupLocationSelect = (placeData) => {
+    setFormData(prev => ({
+      ...prev,
+      pickupLocation: {
+        ...prev.pickupLocation,
+        address: placeData.address,
+        facilityName: placeData.facilityName || prev.pickupLocation.facilityName
+      }
+    }));
+    setLocationCoordinates(prev => ({
+      ...prev,
+      pickup: placeData.coordinates
+    }));
+    setErrors(prev => ({ ...prev, pickupAddress: '' }));
+  };
+
+  // Handle dropoff location selection from Google Places
+  const handleDropoffLocationSelect = (placeData) => {
+    setFormData(prev => ({
+      ...prev,
+      dropoffLocation: {
+        ...prev.dropoffLocation,
+        address: placeData.address,
+        facilityName: placeData.facilityName || placeData.name || prev.dropoffLocation.facilityName
+      }
+    }));
+    setLocationCoordinates(prev => ({
+      ...prev,
+      dropoff: placeData.coordinates
+    }));
+    setErrors(prev => ({ ...prev, dropoffAddress: '' }));
   };
 
   const handleEmergencyContactChange = (field, value) => {
@@ -158,10 +220,18 @@ const CreateRideModal = ({ open, onClose, initialDateTime, user }) => {
       const appointmentDate = new Date(formData.appointmentDateTime);
       const estimatedEndTime = new Date(appointmentDate.getTime() + formData.estimatedDuration * 60000);
 
-      // Get coordinates for pickup location
-      setNotificationStatus('Getting location coordinates...');
-      const pickupCoords = await driverAssignmentService.geocodeAddress(formData.pickupLocation.address);
-      const destinationCoords = await driverAssignmentService.geocodeAddress(formData.dropoffLocation.address);
+      // Use coordinates from Google Places or fallback to geocoding
+      setNotificationStatus('Processing location data...');
+      let pickupCoords = locationCoordinates.pickup;
+      let destinationCoords = locationCoordinates.dropoff;
+      
+      // Fallback to geocoding if coordinates not available
+      if (!pickupCoords) {
+        pickupCoords = await driverAssignmentService.geocodeAddress(formData.pickupLocation.address);
+      }
+      if (!destinationCoords) {
+        destinationCoords = await driverAssignmentService.geocodeAddress(formData.dropoffLocation.address);
+      }
 
       const rideData = {
         // Basic Info
@@ -170,6 +240,40 @@ const CreateRideModal = ({ open, onClose, initialDateTime, user }) => {
         appointmentDateTime: appointmentDate.toISOString(),
         estimatedEndTime: estimatedEndTime.toISOString(),
         estimatedDuration: parseInt(formData.estimatedDuration),
+        
+        // Source differentiation for medical portal
+        sourceType: 'medical_portal',
+        sourceMetadata: {
+          portalType: 'healthcare_facility',
+          organizationId: user.uid,
+          organizationName: user.organizationName || user.displayName,
+          departmentId: 'medical_scheduling',
+          bookingUserRole: 'medical_scheduler'
+        },
+        
+        // Medical requirements
+        medicalRequirements: {
+          priorityLevel: formData.requiresWheelchair || formData.requiresAssistance ? 'urgent' : 'routine',
+          wheelchairAccessible: formData.requiresWheelchair,
+          stretcherRequired: false,
+          oxygenSupport: false,
+          assistanceLevel: formData.requiresAssistance ? 'full' : 'none',
+          medicalEquipment: formData.requiresWheelchair ? ['wheelchair'] : [],
+          specialInstructions: formData.specialInstructions || '',
+          appointmentType: formData.appointmentType,
+          isEmergency: false,
+          requiresWheelchair: formData.requiresWheelchair,
+          requiresAssistance: formData.requiresAssistance
+        },
+        
+        // Compliance requirements for medical transport
+        complianceRequirements: {
+          hipaCompliant: true,
+          driverBackgroundCheck: true,
+          medicalTransportCertification: true,
+          insuranceRequired: 'medical_transport',
+          documentationLevel: 'standard'
+        },
         
         // Status
         status: 'assigned',
@@ -221,10 +325,11 @@ const CreateRideModal = ({ open, onClose, initialDateTime, user }) => {
         
         // Audit Log
         auditLog: [{
-          action: 'ride_created',
+          action: 'medical_ride_created',
           timestamp: new Date().toISOString(),
           userId: user.uid,
-          userRole: user.role || 'healthcare_provider'
+          userRole: user.role || 'medical_scheduler',
+          sourceType: 'medical_portal'
         }]
       };
 
@@ -244,6 +349,15 @@ const CreateRideModal = ({ open, onClose, initialDateTime, user }) => {
           {
             requiresWheelchair: formData.requiresWheelchair,
             requiresAssistance: formData.requiresAssistance
+          },
+          // Pass medical requirements for enhanced filtering
+          {
+            priorityLevel: formData.requiresWheelchair || formData.requiresAssistance ? 'urgent' : 'routine',
+            wheelchairAccessible: formData.requiresWheelchair,
+            stretcherRequired: false,
+            oxygenSupport: false,
+            assistanceLevel: formData.requiresAssistance ? 'full' : 'none',
+            appointmentType: formData.appointmentType
           }
         );
 
@@ -276,7 +390,7 @@ const CreateRideModal = ({ open, onClose, initialDateTime, user }) => {
         setFormData({
           patientId: '',
           appointmentType: '',
-          appointmentDateTime: '',
+          appointmentDateTime: getDefaultDateTime(),
           estimatedDuration: 60,
           pickupLocation: { facilityName: '', address: '', specialInstructions: '' },
           dropoffLocation: { facilityName: '', address: '', specialInstructions: '' },
@@ -492,17 +606,15 @@ const CreateRideModal = ({ open, onClose, initialDateTime, user }) => {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                          Address *
-                        </label>
-                        <input
-                          type="text"
+                        <StablePlacesInput
+                          label="Address"
                           value={formData.pickupLocation.address}
-                          onChange={(e) => handleLocationChange('pickupLocation', 'address', e.target.value)}
-                          className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                            errors.pickupAddress ? 'border-red-300' : 'border-gray-300'
-                          }`}
-                          placeholder="Enter pickup address"
+                          onChange={(value) => handleLocationChange('pickupLocation', 'address', value)}
+                          onPlaceSelect={handlePickupLocationSelect}
+                          placeholder="Enter pickup address..."
+                          required
+                          id="pickup-address"
+                          className={errors.pickupAddress ? 'border-red-300' : ''}
                         />
                         {errors.pickupAddress && <p className="text-red-500 text-xs mt-1">{errors.pickupAddress}</p>}
                       </div>
@@ -544,17 +656,16 @@ const CreateRideModal = ({ open, onClose, initialDateTime, user }) => {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                          Address *
-                        </label>
-                        <input
-                          type="text"
+                        <StablePlacesInput
+                          label="Address"
                           value={formData.dropoffLocation.address}
-                          onChange={(e) => handleLocationChange('dropoffLocation', 'address', e.target.value)}
-                          className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                            errors.dropoffAddress ? 'border-red-300' : 'border-gray-300'
-                          }`}
-                          placeholder="Enter dropoff address"
+                          onChange={(value) => handleLocationChange('dropoffLocation', 'address', value)}
+                          onPlaceSelect={handleDropoffLocationSelect}
+                          placeholder="Enter destination address..."
+                          required
+                          facilitiesOnly={true}
+                          id="dropoff-address"
+                          className={errors.dropoffAddress ? 'border-red-300' : ''}
                         />
                         {errors.dropoffAddress && <p className="text-red-500 text-xs mt-1">{errors.dropoffAddress}</p>}
                       </div>
