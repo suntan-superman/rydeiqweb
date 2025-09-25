@@ -39,6 +39,10 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import CookiePolicyPage from './pages/CookiePolicyPage';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import EmailVerificationDialog from './components/auth/EmailVerificationDialog';
+import EmailVerificationSuccessPage from './pages/EmailVerificationSuccessPage';
+import SmartRedirectPage from './pages/SmartRedirectPage';
+import OnboardingPage from './pages/OnboardingPage';
 import './App.css';
 
 // Create a client for React Query
@@ -193,6 +197,31 @@ registerLicense(
                         <PublicRoute>
                           <RegisterPage />
                         </PublicRoute>
+                      } 
+                    />
+                    <Route 
+                      path="onboarding" 
+                      element={
+                        <ProtectedRoute>
+                          <OnboardingPage />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="email-verified" 
+                      element={<EmailVerificationSuccessPage />} 
+                    />
+                    <Route 
+                      path="email-verification-success" 
+                      element={<EmailVerificationSuccessPage />} 
+                    />
+                    
+                    <Route 
+                      path="smart-redirect" 
+                      element={
+                        <ProtectedRoute>
+                          <SmartRedirectPage />
+                        </ProtectedRoute>
                       } 
                     />
                     
@@ -391,6 +420,9 @@ registerLicense(
                   }}
                 />
               </div>
+              
+              {/* Global Email Verification Dialog */}
+              <GlobalEmailVerificationDialog />
             </Router>
           </DriverOnboardingProvider>
         </RideProvider>
@@ -398,5 +430,27 @@ registerLicense(
     </QueryClientProvider>
   );
 }
+
+// Global Email Verification Dialog Component
+const GlobalEmailVerificationDialog = () => {
+  const { showEmailVerificationDialog, setShowEmailVerificationDialog, user } = useAuth();
+
+  const handleVerified = () => {
+    setShowEmailVerificationDialog(false);
+    // The AuthContext will handle updating the user state
+  };
+
+  const handleClose = () => {
+    setShowEmailVerificationDialog(false);
+  };
+
+  return (
+    <EmailVerificationDialog
+      isOpen={showEmailVerificationDialog}
+      onClose={handleClose}
+      onVerified={handleVerified}
+    />
+  );
+};
 
 export default App;

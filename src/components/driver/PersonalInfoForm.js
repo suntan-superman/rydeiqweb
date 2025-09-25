@@ -4,6 +4,8 @@ import { useDriverOnboarding } from '../../contexts/DriverOnboardingContext';
 import { validateStepCompletion, ONBOARDING_STEPS } from '../../services/driverService';
 import Button from '../common/Button';
 import Input from '../common/Input';
+import PhoneInput from '../common/PhoneInput';
+import { phoneValidationRules, emergencyPhoneValidationRules } from '../../utils/phoneValidation';
 
 const PersonalInfoForm = () => {
   const { 
@@ -53,6 +55,10 @@ const PersonalInfoForm = () => {
         setValue('zipCode', savedData.zipCode || '');
         setValue('coverageArea', savedData.coverageArea || '');
         setValue('referralCode', savedData.referralCode || '');
+        setValue('emergencyContactName', savedData.emergencyContactName || '');
+        setValue('emergencyContactPhone', savedData.emergencyContactPhone || '');
+        setValue('emergencyContactRelationship', savedData.emergencyContactRelationship || '');
+        setValue('emergencyContactEmail', savedData.emergencyContactEmail || '');
       } else {
         console.log('No saved personal info data found');
         // Only pre-fill email from current user's account if no saved data
@@ -214,14 +220,11 @@ const PersonalInfoForm = () => {
               error={errors.email?.message}
             />
             
-            <Input
+            <PhoneInput
               label="Phone Number"
-              type="tel"
               required
               placeholder="(555) 123-4567"
-              {...register('phoneNumber', {
-                required: 'Phone number is required'
-              })}
+              {...register('phoneNumber', phoneValidationRules)}
               error={errors.phoneNumber?.message}
             />
           </div>
@@ -300,7 +303,67 @@ const PersonalInfoForm = () => {
             </div>
           </div>
 
-          {/* Coverage Area */}
+          {/* Emergency Contact Information */}
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-gray-900">Emergency Contact Information</h3>
+            <p className="text-sm text-gray-600">
+              Please provide at least one emergency contact for safety purposes. This information will be used in case of emergencies during rides.
+            </p>
+            
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Input
+                  label="Emergency Contact Name"
+                  type="text"
+                  required
+                  {...register('emergencyContactName', {
+                    required: 'Emergency contact name is required',
+                    minLength: {
+                      value: 2,
+                      message: 'Name must be at least 2 characters'
+                    }
+                  })}
+                  error={errors.emergencyContactName?.message}
+                />
+                
+                <PhoneInput
+                  label="Emergency Contact Phone"
+                  required
+                  placeholder="(555) 123-4567"
+                  {...register('emergencyContactPhone', emergencyPhoneValidationRules)}
+                  error={errors.emergencyContactPhone?.message}
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                <Input
+                  label="Relationship"
+                  type="text"
+                  required
+                  placeholder="e.g., Spouse, Parent, Sibling"
+                  {...register('emergencyContactRelationship', {
+                    required: 'Relationship is required'
+                  })}
+                  error={errors.emergencyContactRelationship?.message}
+                />
+                
+                <Input
+                  label="Emergency Contact Email (Optional)"
+                  type="email"
+                  placeholder="contact@example.com"
+                  {...register('emergencyContactEmail', {
+                    pattern: {
+                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                      message: 'Please enter a valid email address'
+                    }
+                  })}
+                  error={errors.emergencyContactEmail?.message}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Service Information */}
           <div className="space-y-6">
             <h3 className="text-lg font-semibold text-gray-900">Service Information</h3>
             

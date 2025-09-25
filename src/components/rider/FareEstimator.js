@@ -21,28 +21,59 @@ const FareEstimator = ({ onRideTypeChange }) => {
       description: 'Affordable rides with reliable drivers',
       icon: '🚗',
       features: ['Standard vehicle', 'Professional driver', 'Up to 4 passengers'],
-      multiplier: 1.0
+      multiplier: 1.0,
+      category: 'basic'
     },
     [RIDE_TYPES.PREMIUM]: {
       name: 'Premium',
       description: 'Luxury vehicles and top-rated drivers',
       icon: '🚙',
       features: ['Luxury vehicle', 'Top-rated driver', 'Premium experience'],
-      multiplier: 1.5
+      multiplier: 1.5,
+      category: 'basic'
     },
     [RIDE_TYPES.WHEELCHAIR]: {
       name: 'Wheelchair Accessible',
       description: 'Vehicles equipped for wheelchair access',
       icon: '♿',
       features: ['Wheelchair accessible', 'Trained driver', 'Extra assistance'],
-      multiplier: 1.2
+      multiplier: 1.2,
+      category: 'accessibility'
     },
     [RIDE_TYPES.PET_FRIENDLY]: {
       name: 'Pet Friendly',
       description: 'Drivers who welcome your furry friends',
       icon: '🐕',
       features: ['Pet-friendly driver', 'Pet seat covers', 'Extra space'],
-      multiplier: 1.1
+      multiplier: 1.1,
+      category: 'accessibility'
+    },
+    [RIDE_TYPES.TOW_TRUCK]: {
+      name: 'Tow Truck',
+      description: 'Professional towing services for your vehicle',
+      icon: '🚚',
+      features: ['Professional tow truck', 'Licensed operator', 'Vehicle transport', 'Emergency service'],
+      multiplier: 2.5,
+      category: 'specialty',
+      specialRequirements: ['Vehicle information required', 'Towing destination needed', 'Payment upfront']
+    },
+    [RIDE_TYPES.COMPANION_DRIVER]: {
+      name: 'Companion Driver',
+      description: 'Two drivers for enhanced safety and assistance',
+      icon: '👥',
+      features: ['Two professional drivers', 'Enhanced safety', 'Extra assistance', 'High-value transport'],
+      multiplier: 2.0,
+      category: 'specialty',
+      specialRequirements: ['Special reason required', 'Advanced booking', 'Security clearance']
+    },
+    [RIDE_TYPES.MEDICAL]: {
+      name: 'Medical Transport',
+      description: 'Specialized medical transportation with trained drivers',
+      icon: '🏥',
+      features: ['Medical training', 'Wheelchair accessible', 'Emergency equipment', 'HIPAA compliant'],
+      multiplier: 1.8,
+      category: 'medical',
+      specialRequirements: ['Medical documentation', 'Appointment details', 'Special needs assessment']
     }
   }), [RIDE_TYPES]);
 
@@ -50,16 +81,38 @@ const FareEstimator = ({ onRideTypeChange }) => {
     const config = rideTypeConfigs[rideType];
     const baseFare = estimatedFare / config.multiplier;
     
+    // Calculate EPA-based fuel cost estimate
+    const epaFuelCost = calculateEPAFuelCost();
+    
     const breakdown = {
       baseFare: baseFare * 0.7,
       perMileRate: baseFare * 0.2,
       timeRate: baseFare * 0.1,
       serviceType: baseFare * (config.multiplier - 1),
-      total: estimatedFare
+      total: estimatedFare,
+      epaFuelCost
     };
 
     setFareBreakdown(breakdown);
   }, [rideType, estimatedFare, rideTypeConfigs]);
+
+  // Calculate EPA-based fuel cost estimate
+  const calculateEPAFuelCost = () => {
+    // Mock distance calculation - in production, this would use real distance
+    const estimatedDistance = 5.2; // miles
+    const averageMPG = 25; // EPA average for ride-sharing vehicles
+    const fuelPricePerGallon = 3.50; // Current average fuel price
+    const fuelUsed = estimatedDistance / averageMPG;
+    const fuelCost = fuelUsed * fuelPricePerGallon;
+    
+    return {
+      distance: estimatedDistance,
+      mpg: averageMPG,
+      fuelUsed: Math.round(fuelUsed * 100) / 100,
+      fuelPricePerGallon,
+      totalFuelCost: Math.round(fuelCost * 100) / 100
+    };
+  };
 
   const calculateCompetitorFares = useCallback(() => {
     // Simulate competitor pricing (in production, you'd call their APIs or use estimates)

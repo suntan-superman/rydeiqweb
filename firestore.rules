@@ -82,6 +82,72 @@ service cloud.firestore {
         request.auth.token.role in ['admin', 'super_admin'];
     }
 
+    // Driver Bids collection rules
+    match /driverBids/{bidId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.driverId == request.auth.uid || 
+         resource.data.riderId == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+    }
+
+    // Ride Matching collection rules
+    match /rideMatching/{matchId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.driverId == request.auth.uid || 
+         resource.data.riderId == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+    }
+
+    // Video Recordings collection rules
+    match /videoRecordings/{recordingId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.driverId == request.auth.uid || 
+         resource.data.riderId == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+    }
+
+    // Medical Appointments collection rules
+    match /medicalAppointments/{appointmentId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.patientId == request.auth.uid || 
+         resource.data.driverId == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+    }
+
+    // Paired Drivers collection rules
+    match /pairedDrivers/{pairId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.primaryDriverId == request.auth.uid || 
+         resource.data.secondaryDriverId == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+    }
+
+    // Analytics Events collection rules
+    match /analyticsEvents/{eventId} {
+      allow read, write: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+
+    // Fare Configuration collection rules (public read access for authenticated users)
+    match /fareConfiguration/{configId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        request.auth.token.role in ['admin', 'super_admin'];
+    }
+
+    // App Configuration collection rules (public read access for authenticated users)
+    match /appConfig/{configId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Service Areas collection rules (public read access for authenticated users)
+    match /serviceAreas/{areaId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        request.auth.token.role in ['admin', 'super_admin'];
+    }
+
     // Default deny for all other collections
     match /{document=**} {
       allow read, write: if false;

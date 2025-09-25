@@ -10,6 +10,7 @@ import {
   calculateEstimatedFare,
   getNearbyDrivers
 } from '../services/riderService';
+import { validateProfileCompletion } from '../services/profileValidationService';
 import toast from 'react-hot-toast';
 
 const RideContext = createContext();
@@ -39,7 +40,10 @@ export const RIDE_TYPES = {
   STANDARD: 'standard',
   PREMIUM: 'premium',
   WHEELCHAIR: 'wheelchair',
-  PET_FRIENDLY: 'pet_friendly'
+  PET_FRIENDLY: 'pet_friendly',
+  TOW_TRUCK: 'tow_truck',
+  COMPANION_DRIVER: 'companion_driver',
+  MEDICAL: 'medical'
 };
 
 export const RideProvider = ({ children }) => {
@@ -129,6 +133,20 @@ export const RideProvider = ({ children }) => {
     if (!pickupLocation || !destinationLocation) {
       setError('Please select pickup and destination locations');
       return { success: false };
+    }
+
+    // Validate profile completion before allowing ride request
+    try {
+      const profileValidation = await validateProfileCompletion(user.uid);
+      if (!profileValidation.success || !profileValidation.isComplete) {
+        setError('Please complete your profile before booking a ride');
+        toast.error('Profile incomplete. Please complete your profile to book rides.');
+        return { success: false, error: 'Profile incomplete' };
+      }
+    } catch (error) {
+      console.error('Error validating profile:', error);
+      setError('Failed to validate profile');
+      return { success: false, error: 'Profile validation failed' };
     }
 
     setLoading(true);
@@ -341,7 +359,7 @@ export const RideProvider = ({ children }) => {
 
     try {
       // Temporarily disable ride history loading to avoid limit function error
-      console.log('Ride history loading temporarily disabled');
+      // console.log('Ride history loading temporarily disabled');
       setRideHistory([]);
       return;
       

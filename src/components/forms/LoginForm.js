@@ -5,11 +5,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import { loginUser, getAuthErrorMessage, getRedirectPath } from '../../services/authService';
 import Button from '../common/Button';
 import Input from '../common/Input';
+import EmailVerificationDialog from '../auth/EmailVerificationDialog';
 import toast from 'react-hot-toast';
 
 const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { setUser } = useAuth();
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [unverifiedUser, setUnverifiedUser] = useState(null);
+  const { setUser, setShowEmailVerificationDialog } = useAuth();
   const navigate = useNavigate();
 
   const {
@@ -18,6 +21,8 @@ const LoginForm = () => {
     formState: { errors },
     setError,
     setValue,
+    clearErrors,
+    watch,
   } = useForm({
     defaultValues: {
       email: '',
@@ -25,6 +30,16 @@ const LoginForm = () => {
     },
     mode: 'onChange',
   });
+
+  const watchedEmail = watch('email');
+  const watchedPassword = watch('password');
+
+  // Clear errors when user starts typing
+  useEffect(() => {
+    if (errors.email || errors.password) {
+      clearErrors(['email', 'password']);
+    }
+  }, [watchedEmail, watchedPassword, clearErrors, errors]);
 
   // Handle browser autofill
   useEffect(() => {
@@ -85,18 +100,65 @@ const LoginForm = () => {
         console.log('LoginForm: User role:', result.user.role);
         console.log('LoginForm: Email verified:', result.user.emailVerified);
         setUser(result.user);
-        toast.success('Welcome back!');
+        
+        // Show success message with user's name
+        const userName = result.user.displayName || result.user.firstName || 'User';
+        toast.success(`Welcome back, ${userName}!`, {
+          duration: 3000,
+          style: {
+            background: '#f0fdf4',
+            color: '#166534',
+            border: '1px solid #bbf7d0',
+          }
+        });
         
         // Get the appropriate redirect path based on user role
         const redirectPath = getRedirectPath(result.user);
         console.log('LoginForm: Redirecting to:', redirectPath);
         console.log('LoginForm: About to navigate to:', redirectPath);
-        navigate(redirectPath);
+        
+        // Small delay to show success message before redirect
+        setTimeout(() => {
+          navigate(redirectPath);
+        }, 500);
       } else {
         console.log('LoginForm: Login failed:', result.error);
+        
+        // Check if it's an email verification issue
+        if (result.error.code === 'auth/email-not-verified' && result.user) {
+          console.log('LoginForm: Email not verified, showing verification dialog');
+          setUnverifiedUser(result.user);
+          setShowEmailVerification(true);
+          setShowEmailVerificationDialog(true);
+          return;
+        }
+        
         const errorMessage = getAuthErrorMessage(result.error.code);
-        setError('root', { message: errorMessage });
-        toast.error(errorMessage);
+        
+        // Set field-specific errors for better UX
+        if (result.error.code === 'auth/user-not-found' || 
+            result.error.code === 'auth/wrong-password' || 
+            result.error.code === 'auth/invalid-credential') {
+          setError('email', { 
+            type: 'manual', 
+            message: 'Invalid email or password' 
+          });
+          setError('password', { 
+            type: 'manual', 
+            message: 'Invalid email or password' 
+          });
+        } else {
+          setError('root', { message: errorMessage });
+        }
+        
+        toast.error(errorMessage, {
+          duration: 4000,
+          style: {
+            background: '#fee2e2',
+            color: '#dc2626',
+            border: '1px solid #fecaca',
+          }
+        });
       }
     } catch (error) {
       console.error('LoginForm: Unexpected error:', error);
@@ -105,6 +167,29 @@ const LoginForm = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleEmailVerified = () => {
+    console.log('LoginForm: Email verified, proceeding with login');
+    setShowEmailVerification(false);
+    setShowEmailVerificationDialog(false);
+    setUnverifiedUser(null);
+    
+    // Refresh the user and proceed with login
+    if (unverifiedUser) {
+      setUser(unverifiedUser);
+      toast.success('Email verified! Welcome back!');
+      
+      // Get the appropriate redirect path based on user role
+      const redirectPath = getRedirectPath(unverifiedUser);
+      navigate(redirectPath);
+    }
+  };
+
+  const handleCloseEmailVerification = () => {
+    setShowEmailVerification(false);
+    setShowEmailVerificationDialog(false);
+    setUnverifiedUser(null);
   };
 
   return (
@@ -274,6 +359,13 @@ const LoginForm = () => {
           </p>
         </div>
       </div>
+
+      {/* Email Verification Dialog */}
+      <EmailVerificationDialog
+        isOpen={showEmailVerification}
+        onClose={handleCloseEmailVerification}
+        onVerified={handleEmailVerified}
+      />
     </div>
   );
 };

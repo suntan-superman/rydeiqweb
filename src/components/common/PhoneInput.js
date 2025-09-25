@@ -1,0 +1,130 @@
+import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
+
+const PhoneInput = ({
+  label,
+  placeholder = "(555) 123-4567",
+  value,
+  onChange,
+  error,
+  disabled = false,
+  required = false,
+  className = '',
+  id,
+  name,
+  ...props
+}) => {
+  const [displayValue, setDisplayValue] = useState('');
+
+  // Format phone number as user types
+  const formatPhoneNumber = (input) => {
+    // Remove all non-numeric characters
+    const phoneNumber = input.replace(/\D/g, '');
+    
+    // Don't format if empty
+    if (!phoneNumber) return '';
+    
+    // Format based on length
+    if (phoneNumber.length <= 3) {
+      return `(${phoneNumber}`;
+    } else if (phoneNumber.length <= 6) {
+      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+    } else {
+      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+    }
+  };
+
+  // Handle input change
+  const handleChange = (e) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setDisplayValue(formatted);
+    
+    // Extract just the numbers for the actual value
+    const phoneNumber = formatted.replace(/\D/g, '');
+    
+    // Call the parent onChange with the raw phone number
+    if (onChange) {
+      const syntheticEvent = {
+        ...e,
+        target: {
+          ...e.target,
+          value: phoneNumber
+        }
+      };
+      onChange(syntheticEvent);
+    }
+  };
+
+  // Update display value when external value changes
+  useEffect(() => {
+    if (value !== undefined) {
+      setDisplayValue(formatPhoneNumber(value));
+    }
+  }, [value]);
+
+  const inputClasses = `
+    w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent
+    ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
+    ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}
+    ${className}
+  `;
+
+  return (
+    <div className="space-y-1">
+      {label && (
+        <label
+          htmlFor={id || name}
+          className="block text-sm font-medium text-gray-700"
+        >
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+      )}
+      <input
+        type="tel"
+        id={id || name}
+        name={name}
+        value={displayValue}
+        onChange={handleChange}
+        placeholder={placeholder}
+        disabled={disabled}
+        required={required}
+        className={inputClasses}
+        maxLength={14} // (555) 123-4567 = 14 characters
+        {...props}
+      />
+      {error && (
+        <p className="text-sm text-red-600 flex items-center">
+          <svg
+            className="h-4 w-4 mr-1"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+};
+
+PhoneInput.propTypes = {
+  label: PropTypes.string,
+  placeholder: PropTypes.string,
+  value: PropTypes.string,
+  onChange: PropTypes.func,
+  error: PropTypes.string,
+  disabled: PropTypes.bool,
+  required: PropTypes.bool,
+  className: PropTypes.string,
+  id: PropTypes.string,
+  name: PropTypes.string,
+};
+
+export default PhoneInput;

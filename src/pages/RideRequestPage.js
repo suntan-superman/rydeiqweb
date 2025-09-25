@@ -1,16 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useRide } from '../contexts/RideContext';
 import { useNavigate } from 'react-router-dom';
 import LocationPicker from '../components/rider/LocationPicker';
 import FareEstimator from '../components/rider/FareEstimator';
 import DriverBidsList from '../components/rider/DriverBidsList';
+import SpecialtyRideForm from '../components/rider/SpecialtyRideForm';
+import ProfileCompletionModal from '../components/common/ProfileCompletionModal';
 import Button from '../components/common/Button';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+// import rideRequestService from '../services/rideRequestService';
+import { validateProfileCompletion } from '../services/profileValidationService';
 import toast from 'react-hot-toast';
 
 const RideRequestPage = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const {
     pickupLocation,
@@ -33,8 +37,12 @@ const RideRequestPage = () => {
     RIDE_STATUS
   } = useRide();
 
-  const [currentStep, setCurrentStep] = useState('location'); // location, preferences, confirm, bidding
+  const [currentStep, setCurrentStep] = useState('location'); // location, preferences, specialty, confirm, bidding
   const [showSpecialRequests, setShowSpecialRequests] = useState(false);
+  const [setSpecialtyRideData] = useState(null);
+  const [setShowSpecialtyForm] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [setProfileValidation] = useState(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -43,16 +51,45 @@ const RideRequestPage = () => {
     }
   }, [isAuthenticated, navigate]);
 
+  const validateUserProfile = useCallback(async () => {
+    try {
+      const result = await validateProfileCompletion(user.uid);
+      setProfileValidation(result);
+      
+      if (!result.success || !result.isComplete) {
+        setShowProfileModal(true);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Error validating profile:', error);
+      toast.error('Failed to validate profile');
+      return false;
+    }
+  }, [user.uid, setProfileValidation]);
+
+  // Validate profile completion when component mounts
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      validateUserProfile();
+    }
+  }, [isAuthenticated, user, validateUserProfile]);
+
   // Handle step progression
   useEffect(() => {
     if (pickupLocation && destinationLocation) {
       if (currentStep === 'location') {
-        setCurrentStep('preferences');
+        // Check if specialty ride type requires special form
+        if (['tow_truck', 'companion_driver', 'medical'].includes(rideType)) {
+          setCurrentStep('specialty');
+        } else {
+          setCurrentStep('preferences');
+        }
       }
     } else {
       setCurrentStep('location');
     }
-  }, [pickupLocation, destinationLocation, currentStep]);
+  }, [pickupLocation, destinationLocation, currentStep, rideType]);
 
   // Handle ride status changes
   useEffect(() => {
@@ -66,6 +103,12 @@ const RideRequestPage = () => {
   const handleRequestRide = async () => {
     if (!canRequestRide) {
       toast.error('Please complete all required fields');
+      return;
+    }
+
+    // Validate profile before allowing ride request
+    const isProfileComplete = await validateUserProfile();
+    if (!isProfileComplete) {
       return;
     }
 
@@ -94,6 +137,23 @@ const RideRequestPage = () => {
         setCurrentStep('location');
       }
     }
+  };
+
+  const handleSpecialtyFormSubmit = async (formData) => {
+    try {
+      setSpecialtyRideData(formData);
+      setShowSpecialtyForm(false);
+      setCurrentStep('preferences');
+      toast.success('Specialty ride details saved');
+    } catch (error) {
+      console.error('Error saving specialty ride data:', error);
+      throw error;
+    }
+  };
+
+  const handleSpecialtyFormCancel = () => {
+    setShowSpecialtyForm(false);
+    setCurrentStep('preferences');
   };
 
   const formatTimeRemaining = (milliseconds) => {
@@ -144,18 +204,33 @@ const RideRequestPage = () => {
               <span className="font-medium">Location</span>
             </div>
             <div className="w-12 h-0.5 bg-gray-200"></div>
+            {['tow_truck', 'companion_driver', 'medical'].includes(rideType) && (
+              <>
+                <div className={`flex items-center space-x-2 ${currentStep === 'specialty' ? 'text-blue-600' : 'text-gray-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'specialty' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>2</div>
+                  <span className="font-medium">Specialty</span>
+                </div>
+                <div className="w-12 h-0.5 bg-gray-200"></div>
+              </>
+            )}
             <div className={`flex items-center space-x-2 ${currentStep === 'preferences' ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${['preferences', 'confirm', 'bidding'].includes(currentStep) ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>2</div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${['preferences', 'confirm', 'bidding'].includes(currentStep) ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
+                {['tow_truck', 'companion_driver', 'medical'].includes(rideType) ? '3' : '2'}
+              </div>
               <span className="font-medium">Preferences</span>
             </div>
             <div className="w-12 h-0.5 bg-gray-200"></div>
             <div className={`flex items-center space-x-2 ${currentStep === 'confirm' ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${['confirm', 'bidding'].includes(currentStep) ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>3</div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${['confirm', 'bidding'].includes(currentStep) ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
+                {['tow_truck', 'companion_driver', 'medical'].includes(rideType) ? '4' : '3'}
+              </div>
               <span className="font-medium">Confirm</span>
             </div>
             <div className="w-12 h-0.5 bg-gray-200"></div>
             <div className={`flex items-center space-x-2 ${currentStep === 'bidding' ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'bidding' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>4</div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'bidding' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
+                {['tow_truck', 'companion_driver', 'medical'].includes(rideType) ? '5' : '4'}
+              </div>
               <span className="font-medium">Driver Bids</span>
             </div>
           </div>
@@ -173,11 +248,20 @@ const RideRequestPage = () => {
         {/* Step Content */}
         <div className="space-y-6">
           {/* Step 1: Location Selection */}
-          {(currentStep === 'location' || currentStep === 'preferences') && (
-            <LocationPicker onLocationsSet={() => setCurrentStep('preferences')} />
+          {currentStep === 'location' && (
+            <LocationPicker onLocationsSet={() => {}} />
           )}
 
-          {/* Step 2: Ride Preferences */}
+          {/* Step 2: Specialty Ride Form */}
+          {currentStep === 'specialty' && (
+            <SpecialtyRideForm
+              rideType={rideType}
+              onFormSubmit={handleSpecialtyFormSubmit}
+              onCancel={handleSpecialtyFormCancel}
+            />
+          )}
+
+          {/* Step 3: Ride Preferences */}
           {(currentStep === 'preferences' || currentStep === 'confirm') && pickupLocation && destinationLocation && (
             <>
               <FareEstimator onRideTypeChange={() => {}} />
@@ -399,6 +483,16 @@ const RideRequestPage = () => {
           )}
         </div>
       </div>
+
+      {/* Profile Completion Modal */}
+      <ProfileCompletionModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        onComplete={() => {
+          setShowProfileModal(false);
+          // Allow user to continue with ride request
+        }}
+      />
     </div>
   );
 };

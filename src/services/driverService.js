@@ -474,6 +474,10 @@ export const validateStepCompletion = (stepName, data) => {
       if (!data.dateOfBirth) errors.push('Date of birth is required');
       if (!data.phoneNumber) errors.push('Phone number is required');
       if (!data.address) errors.push('Address is required');
+      // Emergency contact validation
+      if (!data.emergencyContactName) errors.push('Emergency contact name is required');
+      if (!data.emergencyContactPhone) errors.push('Emergency contact phone is required');
+      if (!data.emergencyContactRelationship) errors.push('Emergency contact relationship is required');
       break;
       
     case ONBOARDING_STEPS.VEHICLE_INFO:

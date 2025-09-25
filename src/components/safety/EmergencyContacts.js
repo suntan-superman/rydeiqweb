@@ -209,7 +209,7 @@ const ContactCard = ({ contact, onEdit, onRemove, isEditing, onSave, onCancel })
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               required
             />
           </div>
@@ -223,7 +223,7 @@ const ContactCard = ({ contact, onEdit, onRemove, isEditing, onSave, onCancel })
               name="phone"
               value={formData.phone}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               required
             />
           </div>
@@ -237,7 +237,7 @@ const ContactCard = ({ contact, onEdit, onRemove, isEditing, onSave, onCancel })
               name="relationship"
               value={formData.relationship}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               placeholder="e.g., Spouse, Parent, Friend"
             />
           </div>
@@ -251,7 +251,7 @@ const ContactCard = ({ contact, onEdit, onRemove, isEditing, onSave, onCancel })
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
 
@@ -281,8 +281,8 @@ const ContactCard = ({ contact, onEdit, onRemove, isEditing, onSave, onCancel })
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-blue-600 font-medium">
+            <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
+              <span className="text-primary-600 font-medium">
                 {contact.name.charAt(0).toUpperCase()}
               </span>
             </div>
@@ -299,7 +299,7 @@ const ContactCard = ({ contact, onEdit, onRemove, isEditing, onSave, onCancel })
         <div className="flex space-x-2">
           <button
             onClick={() => onEdit(contact)}
-            className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+            className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
             title="Edit contact"
           >
             ✏️

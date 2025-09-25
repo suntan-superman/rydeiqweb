@@ -9,8 +9,9 @@ import {
   PhoneIcon,
   ChatBubbleLeftIcon
 } from '@heroicons/react/24/outline';
-import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import medicalAppointmentService from '../../services/medicalAppointmentService';
 
 const DispatcherDashboard = ({ user }) => {
   const [activeRides, setActiveRides] = useState([]);
@@ -20,24 +21,17 @@ const DispatcherDashboard = ({ user }) => {
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'map'
 
   useEffect(() => {
-    // Listen for real-time updates on medical ride requests
-    const ridesQuery = query(
-      collection(db, 'medicalRideRequests'),
-      where('organizationId', '==', user.uid)
-    );
-
-    const unsubscribe = onSnapshot(ridesQuery, (snapshot) => {
-      const rides = [];
-      snapshot.forEach((doc) => {
-        rides.push({ id: doc.id, ...doc.data() });
-      });
-
-      // Separate active and pending rides
-      const active = rides.filter(ride => 
-        ['assigned', 'in_progress', 'pickup_complete'].includes(ride.status)
+    // Load medical appointments using the new service
+    loadMedicalAppointments();
+    
+    // Set up real-time listener for medical appointments
+    const unsubscribe = medicalAppointmentService.subscribeToAppointments((appointments) => {
+      // Separate active and pending appointments
+      const active = appointments.filter(apt => 
+        ['assigned', 'in_progress'].includes(apt.status)
       );
-      const pending = rides.filter(ride => 
-        ['pending', 'driver_assigned'].includes(ride.status)
+      const pending = appointments.filter(apt => 
+        ['scheduled'].includes(apt.status)
       );
 
       setActiveRides(active);
@@ -47,26 +41,55 @@ const DispatcherDashboard = ({ user }) => {
     return () => unsubscribe();
   }, [user.uid]);
 
+  const loadMedicalAppointments = async () => {
+    try {
+      // Load all appointments for the organization
+      const appointments = await medicalAppointmentService.getAllAppointments(100);
+      
+      // Separate active and pending appointments
+      const active = appointments.filter(apt => 
+        ['assigned', 'in_progress'].includes(apt.status)
+      );
+      const pending = appointments.filter(apt => 
+        ['scheduled'].includes(apt.status)
+      );
+
+      setActiveRides(active);
+      setPendingRides(pending);
+    } catch (error) {
+      console.error('Error loading medical appointments:', error);
+    }
+  };
+
   const updateRideStatus = async (rideId, newStatus, notes = '') => {
     try {
-      await updateDoc(doc(db, 'medicalRideRequests', rideId), {
-        status: newStatus,
-        updatedAt: new Date().toISOString(),
-        dispatcherNotes: notes,
-        auditLog: [
-          ...selectedRide?.auditLog || [],
-          {
-            action: `status_changed_to_${newStatus}`,
-            timestamp: new Date().toISOString(),
-            userId: user.uid,
-            userRole: user.role,
-            notes
-          }
-        ]
-      });
+      // Use the medical appointment service to update status
+      let result;
+      
+      if (newStatus === 'assigned') {
+        result = await medicalAppointmentService.assignDriver(rideId, selectedRide?.driverId, user.uid);
+      } else if (newStatus === 'in_progress') {
+        result = await medicalAppointmentService.startRide(rideId, selectedRide?.driverId);
+      } else if (newStatus === 'completed') {
+        result = await medicalAppointmentService.completeRide(rideId, { notes });
+      } else if (newStatus === 'cancelled') {
+        result = await medicalAppointmentService.cancelAppointment(rideId, notes);
+      } else {
+        // For other statuses, use the updatePairStatus method
+        result = await medicalAppointmentService.updatePairStatus(rideId, newStatus, { 
+          notes,
+          dispatcherId: user.uid,
+          updatedAt: new Date().toISOString()
+        });
+      }
+      
+      if (!result.success) {
+        console.error('Error updating appointment status:', result.error);
+        alert('Error updating appointment status. Please try again.');
+      }
     } catch (error) {
-      console.error('Error updating ride status:', error);
-      alert('Error updating ride status. Please try again.');
+      console.error('Error updating appointment status:', error);
+      alert('Error updating appointment status. Please try again.');
     }
   };
 

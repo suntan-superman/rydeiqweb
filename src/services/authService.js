@@ -37,44 +37,70 @@ export const getRedirectPath = (user) => {
     email: user.email,
     role: user.role,
     emailVerified: user.emailVerified,
-    onboardingCompleted: user.onboardingCompleted
+    onboardingCompleted: user.onboardingCompleted,
+    userTypes: user.userTypes,
+    activeUserType: user.activeUserType
   });
   
   // Note: Email verification is already checked in loginUser function
   // Users reaching this point should already be verified
   
-  // Role-based redirection
-  switch (user.role) {
-    case USER_ROLES.DRIVER:
-      // Check if driver has completed onboarding
-      if (user.onboardingCompleted) {
-        console.log('getRedirectPath: Driver with completed onboarding -> /driver-dashboard');
-        return '/driver-dashboard';
-      } else {
-        console.log('getRedirectPath: Driver with incomplete onboarding -> /driver-onboarding');
-        return '/driver-onboarding';
-      }
-      
-    case USER_ROLES.ADMIN:
-    case USER_ROLES.SUPER_ADMIN:
-      // Only specific emails should go to admin dashboard
-      if (user.email === 'sroy@worksidesoftware.com') {
-        console.log('getRedirectPath: Super admin -> /admin-dashboard');
-        return '/admin-dashboard';
-      } else {
-        console.log('getRedirectPath: Admin -> /dashboard');
-        return '/dashboard';
-      }
-
-    case USER_ROLES.HEALTHCARE_PROVIDER:
-      console.log('getRedirectPath: Healthcare provider -> /medical-portal');
-      return '/medical-portal';
-      
-    case USER_ROLES.CUSTOMER:
-    default:
-      console.log('getRedirectPath: Customer -> /dashboard');
-      return '/dashboard';
+  // Check if user has multiple user types - if so, let SmartRedirect handle it
+  const userTypes = user.userTypes || [user.userType];
+  if (userTypes.length > 1) {
+    console.log('getRedirectPath: User has multiple types, using SmartRedirect');
+    return '/smart-redirect';
   }
+  
+  // Single user type - check onboarding and redirect accordingly
+  const currentUserType = user.activeUserType || user.userType;
+  
+  // Super admin goes to admin dashboard
+  if (user.role === USER_ROLES.SUPER_ADMIN && user.email === 'sroy@worksidesoftware.com') {
+    console.log('getRedirectPath: Super admin -> /admin-dashboard');
+    return '/admin-dashboard';
+  }
+  
+  // Healthcare providers go to medical portal
+  if (user.role === USER_ROLES.HEALTHCARE_PROVIDER) {
+    console.log('getRedirectPath: Healthcare provider -> /medical-portal');
+    return '/medical-portal';
+  }
+  
+  // For drivers, check onboarding status
+  if (currentUserType === USER_TYPES.DRIVER) {
+    if (!user.onboardingCompleted) {
+      console.log('getRedirectPath: Driver with incomplete onboarding -> /driver-onboarding');
+      return '/driver-onboarding';
+    } else {
+      console.log('getRedirectPath: Driver with completed onboarding -> /driver-dashboard');
+      return '/driver-dashboard';
+    }
+  }
+  
+  // For riders, check if they have complete onboarding
+  if (currentUserType === USER_TYPES.PASSENGER) {
+    // Check for complete onboarding requirements
+    const hasBasicProfile = user.firstName && user.lastName && user.emergencyContact?.name;
+    const hasProfilePicture = !!user.profilePicture;
+    const hasPaymentMethod = !!(user.paymentMethod && user.paymentMethod.type);
+    const hasTermsAccepted = !!user.termsAccepted;
+    const hasOnboardingComplete = !!user.onboardingComplete;
+    
+    const isFullyOnboarded = hasBasicProfile && hasProfilePicture && hasPaymentMethod && hasTermsAccepted && hasOnboardingComplete;
+    
+    if (!isFullyOnboarded) {
+      console.log('getRedirectPath: Rider with incomplete onboarding -> /onboarding');
+      return '/onboarding';
+    } else {
+      console.log('getRedirectPath: Rider with complete onboarding -> /dashboard');
+      return '/dashboard';
+    }
+  }
+  
+  // All other users go to unified dashboard
+  console.log('getRedirectPath: User -> /dashboard (unified)');
+  return '/dashboard';
 };
 
 // Check if user exists in Firebase Auth
@@ -91,13 +117,20 @@ export const checkUserExistsInAuth = async (email, currentUser) => {
       // Try to sign in - if this fails with user-not-found, the email doesn't exist
       await signInWithEmailAndPassword(auth, email, tempPassword);
       // If we get here, the user exists but we used wrong password
+      console.log('✅ User exists in Firebase Auth');
       return { exists: true, error: null };
     } catch (error) {
       console.log('User existence check error:', error.code);
       if (error.code === 'auth/user-not-found') {
+        console.log('✅ User does not exist - safe to register');
         return { exists: false, error: null };
       } else if (error.code === 'auth/wrong-password') {
         // User exists but wrong password - this means email is taken
+        console.log('⚠️ User exists but wrong password - email is taken');
+        return { exists: true, error: null };
+      } else if (error.code === 'auth/invalid-credential') {
+        // This might indicate the user exists but is in a weird state
+        console.log('⚠️ Invalid credential - user might exist in weird state');
         return { exists: true, error: null };
       } else {
         // For any other error, assume user doesn't exist and continue with registration
@@ -112,29 +145,326 @@ export const checkUserExistsInAuth = async (email, currentUser) => {
   }
 };
 
-// Register new user with user type
-export const registerUser = async ({ email, password, firstName, lastName, userType = USER_TYPES.PASSENGER, city }) => {
+// Force delete user from Firebase Auth (for debugging purposes)
+export const forceDeleteUser = async (email, password) => {
   try {
-    console.log('Starting user registration with data:', { email, firstName, lastName, userType, city });
+    console.log('🗑️ Attempting to force delete user:', email);
     
-    // Check if user already exists
-    const userCheck = await checkUserExistsInAuth(email);
-    if (userCheck.exists) {
-      console.log('User already exists in Firebase Auth');
-      return {
-        success: false,
-        error: {
-          code: 'auth/email-already-in-use',
-          message: 'An account with this email already exists. Please try signing in instead.',
-          details: 'User already exists in Firebase Auth'
-        }
-      };
-    }
+    // First, try to sign in with the user
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    
+    console.log('✅ User signed in successfully, deleting user:', user.uid);
+    
+    // Delete the user
+    await user.delete();
+    
+    console.log('✅ User deleted successfully');
+    return { success: true, message: 'User deleted successfully' };
+  } catch (error) {
+    console.error('❌ Failed to delete user:', error);
+    return { 
+      success: false, 
+      error: {
+        code: error.code,
+        message: error.message
+      }
+    };
+  }
+};
+
+// Force registration without user existence check (for debugging purposes)
+export const forceRegisterUser = async ({ email, password, firstName, lastName, userType = USER_TYPES.PASSENGER, city, emergencyContactName, emergencyContactPhone, emergencyContactRelationship, emergencyContactEmail }) => {
+  try {
+    console.log('🚀 Force registering user (bypassing existence check):', { email, firstName, lastName, userType, city });
     
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
     console.log('Firebase user created successfully:', user.uid);
+
+    // Determine role based on user type
+    let role = USER_ROLES.CUSTOMER;
+    if (userType === USER_TYPES.DRIVER) {
+      role = USER_ROLES.DRIVER;
+    } else if (userType === USER_TYPES.ADMINISTRATOR) {
+      role = USER_ROLES.ADMINISTRATOR;
+    } else if (userType === USER_TYPES.HEALTHCARE_PROVIDER) {
+      role = USER_ROLES.HEALTHCARE_PROVIDER;
+    }
+
+    // Update user profile
+    await updateProfile(user, {
+      displayName: `${firstName} ${lastName}`,
+    });
+
+    // Create user document in Firestore
+    const userData = {
+      uid: user.uid,
+      email: user.email,
+      firstName,
+      lastName,
+      displayName: user.displayName,
+      emailVerified: false,
+      preferences: {
+        notifications: true,
+        darkMode: false,
+        language: 'en',
+      },
+      // Emergency contact information
+      emergencyContact: {
+        name: emergencyContactName || '',
+        phone: emergencyContactPhone || '',
+        relationship: emergencyContactRelationship || '',
+        email: emergencyContactEmail || ''
+      }
+    };
+
+    // Add city for drivers
+    if (userType === USER_TYPES.DRIVER && city) {
+      userData.city = city;
+    }
+
+    // Add admin-specific fields for administrators
+    if (userType === USER_TYPES.ADMINISTRATOR) {
+      userData.adminStatus = {
+        requested: true,
+        requestedAt: new Date().toISOString(),
+        approved: false,
+        approvedAt: null,
+        approvedBy: null,
+        notes: ''
+      };
+    }
+
+    // Add healthcare provider-specific fields
+    if (userType === USER_TYPES.HEALTHCARE_PROVIDER) {
+      userData.healthcareProvider = {
+        organizationName: '',
+        facilityType: '',
+        nemtEnabled: true,
+        hipaaCompliant: true,
+        verificationStatus: 'pending',
+        requestedAt: new Date().toISOString(),
+        verifiedAt: null,
+        verifiedBy: null,
+        certifications: [],
+        billingInfo: {
+          taxId: '',
+          billingAddress: {},
+          preferredInvoiceFormat: 'detailed'
+        }
+      };
+    }
+
+    // Save user data to Firestore
+    await setDoc(doc(db, 'users', user.uid), userData);
+    console.log('User data saved to Firestore successfully');
+
+    // Send email verification
+    try {
+      console.log('📧 Sending email verification...');
+      await sendEmailVerification(user, {
+        url: `${window.location.origin}/email-verified`,
+        handleCodeInApp: true
+      });
+      console.log('✅ Email verification sent successfully');
+    } catch (emailError) {
+      console.error('❌ Failed to send email verification:', emailError);
+      // Don't fail registration if email verification fails
+    }
+
+    return {
+      success: true,
+      data: {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        emailVerified: user.emailVerified,
+        role: role,
+        userType: userType,
+      },
+    };
+  } catch (error) {
+    console.error('Force registration error:', error);
+    console.error('Error code:', error.code);
+    console.error('Error message:', error.message);
+    
+    return {
+      success: false,
+      error: {
+        code: error.code,
+        message: error.message,
+        details: error
+      }
+    };
+  }
+};
+
+// Add new user type to existing account
+export const addUserTypeToAccount = async ({ user, userType, city, emergencyContactName, emergencyContactPhone, emergencyContactRelationship, emergencyContactEmail }) => {
+  try {
+    console.log(`➕ Adding ${userType} profile to existing account`);
+    
+    // Check if user already has this user type
+    if (user.userTypes && user.userTypes.includes(userType)) {
+      return {
+        success: false,
+        error: {
+          code: 'auth/user-type-exists',
+          message: `You already have a ${userType} profile.`
+        }
+      };
+    }
+    
+    // Determine role based on user type
+    let role = USER_ROLES.CUSTOMER;
+    if (userType === USER_TYPES.DRIVER) {
+      role = USER_ROLES.DRIVER;
+    } else if (userType === USER_TYPES.ADMINISTRATOR) {
+      role = USER_ROLES.ADMINISTRATOR;
+    } else if (userType === USER_TYPES.HEALTHCARE_PROVIDER) {
+      role = USER_ROLES.HEALTHCARE_PROVIDER;
+    }
+    
+    // Prepare update data
+    const updatedUserTypes = [...(user.userTypes || [user.userType]), userType];
+    const updatedData = {
+      userTypes: updatedUserTypes,
+      activeUserType: userType,
+      role: role,
+      userType: userType
+    };
+    
+    // Add user type specific data
+    if (userType === USER_TYPES.DRIVER && city) {
+      updatedData.city = city;
+    }
+    
+    // Add emergency contact data
+    if (emergencyContactName || emergencyContactPhone || emergencyContactRelationship || emergencyContactEmail) {
+      updatedData.emergencyContact = {
+        name: emergencyContactName || user.emergencyContact?.name || '',
+        phone: emergencyContactPhone || user.emergencyContact?.phone || '',
+        relationship: emergencyContactRelationship || user.emergencyContact?.relationship || '',
+        email: emergencyContactEmail || user.emergencyContact?.email || ''
+      };
+    }
+    
+    // Update Firestore document
+    await setDoc(doc(db, 'users', user.uid), updatedData, { merge: true });
+    
+    // Update user in context
+    const updatedUser = {
+      ...user,
+      ...updatedData
+    };
+    
+    return {
+      success: true,
+      data: updatedUser,
+      message: `Successfully added ${userType} profile to your account!`
+    };
+  } catch (error) {
+    console.error('Error adding user type:', error);
+    return {
+      success: false,
+      error: {
+        code: 'auth/add-user-type-failed',
+        message: 'Failed to add user type. Please try again.'
+      }
+    };
+  }
+};
+
+// Switch user type for existing user
+export const switchUserType = async (user, newUserType) => {
+  try {
+    console.log(`🔄 Switching user type from ${user.userType} to ${newUserType}`);
+    
+    // Check if user has this user type
+    if (!user.userTypes || !user.userTypes.includes(newUserType)) {
+      return {
+        success: false,
+        error: {
+          code: 'auth/user-type-not-found',
+          message: `You don't have a ${newUserType} profile. Please register as a ${newUserType} first.`
+        }
+      };
+    }
+    
+    // Update user data in Firestore
+    const updatedData = {
+      activeUserType: newUserType,
+      userType: newUserType,
+      role: newUserType === USER_TYPES.DRIVER ? USER_ROLES.DRIVER : 
+            newUserType === USER_TYPES.ADMINISTRATOR ? USER_ROLES.ADMINISTRATOR :
+            newUserType === USER_TYPES.HEALTHCARE_PROVIDER ? USER_ROLES.HEALTHCARE_PROVIDER :
+            USER_ROLES.CUSTOMER
+    };
+    
+    await setDoc(doc(db, 'users', user.uid), updatedData, { merge: true });
+    
+    // Update user in context
+    const updatedUser = {
+      ...user,
+      ...updatedData
+    };
+    
+    return {
+      success: true,
+      data: updatedUser,
+      message: `Switched to ${newUserType} profile successfully!`
+    };
+  } catch (error) {
+    console.error('Error switching user type:', error);
+    return {
+      success: false,
+      error: {
+        code: 'auth/switch-failed',
+        message: 'Failed to switch user type. Please try again.'
+      }
+    };
+  }
+};
+
+// Register new user with user type
+export const registerUser = async ({ email, password, firstName, lastName, phone, userType = USER_TYPES.PASSENGER, city, emergencyContactName, emergencyContactPhone, emergencyContactRelationship, emergencyContactEmail }) => {
+  try {
+    console.log('Starting user registration with data:', { email, firstName, lastName, userType, city });
+    
+    // Try to create the user directly - Firebase will tell us if email already exists
+    let user, userCredential;
+    
+    try {
+      console.log('🔄 Attempting to create user with email:', email);
+      console.log('🔄 User type:', userType);
+      console.log('🔄 Firebase auth state before creation:', auth.currentUser?.email);
+      
+      userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      user = userCredential.user;
+      console.log('✅ User created successfully:', user.uid);
+    } catch (createError) {
+      console.log('❌ User creation failed with error:', createError);
+      console.log('❌ Error code:', createError.code);
+      console.log('❌ Error message:', createError.message);
+      
+      if (createError.code === 'auth/email-already-in-use') {
+        // User already exists - guide them to sign in
+        console.log('⚠️ Email already in use - returning error');
+        return {
+          success: false,
+          error: {
+            code: 'auth/email-already-in-use',
+            message: `An account with this email already exists. If you want to add a ${userType} profile to your existing account, please sign in first and then add the new profile from your dashboard.`
+          }
+        };
+      } else {
+        // Other errors (weak password, invalid email, etc.)
+        console.log('❌ Other error - rethrowing:', createError.code);
+        throw createError;
+      }
+    }
 
     // Determine role based on user type
     let role = USER_ROLES.CUSTOMER;
@@ -160,9 +490,13 @@ export const registerUser = async ({ email, password, firstName, lastName, userT
       email: user.email,
       firstName,
       lastName,
+      phone: phone || '', // Add phone number to user data
       displayName: `${firstName} ${lastName}`,
       role: role,
       userType: userType,
+      // Support multiple user types for the same email
+      userTypes: [userType], // Array of user types this email is registered for
+      activeUserType: userType, // Currently active user type
       createdAt: new Date().toISOString(),
       emailVerified: false,
       preferences: {
@@ -170,6 +504,13 @@ export const registerUser = async ({ email, password, firstName, lastName, userT
         darkMode: false,
         language: 'en',
       },
+      // Emergency contact information
+      emergencyContact: {
+        name: emergencyContactName || '',
+        phone: emergencyContactPhone || '',
+        relationship: emergencyContactRelationship || '',
+        email: emergencyContactEmail || ''
+      }
     };
 
     // Add city for drivers
@@ -214,12 +555,62 @@ export const registerUser = async ({ email, password, firstName, lastName, userT
     console.log('Firestore document created successfully');
 
     // Send email verification
-    await sendEmailVerification(user);
-    console.log('Email verification sent successfully');
+    try {
+      console.log('📧 Attempting to send email verification to:', user.email);
+      console.log('📧 User object:', { uid: user.uid, email: user.email, emailVerified: user.emailVerified });
+      console.log('📧 Firebase auth current user:', auth.currentUser);
+      console.log('📧 Auth domain:', process.env.REACT_APP_FIREBASE_AUTH_DOMAIN);
+      console.log('📧 Project ID:', process.env.REACT_APP_FIREBASE_PROJECT_ID);
+      
+      // Ensure we're using the current authenticated user
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('No authenticated user found');
+      }
+      
+      if (currentUser.uid !== user.uid) {
+        throw new Error('User ID mismatch between registration and auth');
+      }
+      
+      console.log('📧 Sending verification email with current user:', {
+        uid: currentUser.uid,
+        email: currentUser.email,
+        emailVerified: currentUser.emailVerified
+      });
+      
+      await sendEmailVerification(currentUser, {
+        url: `${window.location.origin}/email-verified`,
+        handleCodeInApp: true
+      });
+      console.log('✅ Email verification sent successfully');
+    } catch (emailError) {
+      console.error('❌ Failed to send email verification:', emailError);
+      console.error('❌ Email error details:', {
+        code: emailError.code,
+        message: emailError.message,
+        stack: emailError.stack
+      });
+      
+      // Don't fail the entire registration if email verification fails
+      // The user can request a new verification email later
+      console.warn('⚠️ Registration completed but email verification failed. User can request verification later.');
+      
+      // Show specific error message to help with debugging
+      if (emailError.code === 'auth/too-many-requests') {
+        console.warn('⚠️ Too many verification emails sent. Please wait before trying again.');
+      } else if (emailError.code === 'auth/invalid-email') {
+        console.warn('⚠️ Invalid email address provided.');
+      } else if (emailError.code === 'auth/user-not-found') {
+        console.warn('⚠️ User not found when trying to send verification email.');
+      } else if (emailError.code === 'auth/network-request-failed') {
+        console.warn('⚠️ Network error when sending verification email.');
+      } else if (emailError.code === 'auth/operation-not-allowed') {
+        console.warn('⚠️ Email verification is not enabled for this project.');
+      }
+    }
 
-    // IMPORTANT: Sign out the user immediately after registration to prevent automatic login
-    await signOut(auth);
-    console.log('User signed out after registration');
+    // Keep user signed in after registration to allow email verification dialog to show
+    console.log('✅ User registration completed successfully - keeping user signed in for email verification');
 
     return {
       success: true,
@@ -237,6 +628,19 @@ export const registerUser = async ({ email, password, firstName, lastName, userT
     console.error('Error code:', error.code);
     console.error('Error message:', error.message);
     
+    // Handle specific Firebase errors with better messages
+    if (error.code === 'auth/email-already-in-use') {
+      console.log('💡 Email already in use - this might be a Firebase caching issue');
+      return {
+        success: false,
+        error: {
+          code: error.code,
+          message: 'This email is already registered. If you just deleted this user, please wait 2-3 minutes for Firebase to clear the cache, then try again.',
+          details: 'Firebase caching issue - user was deleted but cache hasn\'t cleared yet'
+        }
+      };
+    }
+    
     return {
       success: false,
       error: {
@@ -248,11 +652,62 @@ export const registerUser = async ({ email, password, firstName, lastName, userT
   }
 };
 
+// Resend email verification
+export const resendEmailVerification = async (user) => {
+  try {
+    console.log('📧 Resending email verification to:', user.email);
+    console.log('📧 User object:', { uid: user.uid, email: user.email, emailVerified: user.emailVerified });
+    console.log('📧 Firebase auth current user:', auth.currentUser);
+    
+    // Ensure we're using the current authenticated user
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('No authenticated user found');
+    }
+    
+    if (currentUser.uid !== user.uid) {
+      throw new Error('User ID mismatch between context and auth');
+    }
+    
+    console.log('📧 Resending verification email with current user:', {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      emailVerified: currentUser.emailVerified
+    });
+    
+    await sendEmailVerification(currentUser, {
+      url: `${window.location.origin}/email-verified`,
+      handleCodeInApp: true
+    });
+    console.log('✅ Email verification resent successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Failed to resend email verification:', error);
+    console.error('❌ Resend error details:', {
+      code: error.code,
+      message: error.message,
+      stack: error.stack
+    });
+    
+    return { 
+      success: false, 
+      error: {
+        code: error.code,
+        message: error.message
+      }
+    };
+  }
+};
+
 // Login user
 export const loginUser = async (email, password) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
+
+    // Get user data from Firestore first
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    const userData = userDoc.exists() ? userDoc.data() : null;
 
     // Refresh the user's email verification status to get the latest state
     const refreshResult = await refreshUserEmailVerification(user);
@@ -260,20 +715,23 @@ export const loginUser = async (email, password) => {
 
     // Check if email is verified - users must verify email before logging in
     if (!isEmailVerified) {
-      // Sign out the user immediately since they shouldn't be logged in
-      await signOut(auth);
+      // Don't sign out the user - let them stay logged in to show verification dialog
       return {
         success: false,
         error: {
           code: 'auth/email-not-verified',
           message: 'Please verify your email address before signing in. Check your inbox for a verification link.',
         },
+        user: {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          emailVerified: user.emailVerified,
+          role: userData?.role || 'customer',
+          userType: userData?.userType || 'passenger',
+        },
       };
     }
-
-    // Get user data from Firestore
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    const userData = userDoc.exists() ? userDoc.data() : null;
 
     // Fix existing user records that don't have a role field
     if (userData && !userData.role) {
@@ -517,9 +975,9 @@ export const getUserData = async (uid) => {
 export const getAuthErrorMessage = (errorCode) => {
   switch (errorCode) {
     case 'auth/user-not-found':
-      return 'No user found with this email address.';
     case 'auth/wrong-password':
-      return 'Incorrect password.';
+    case 'auth/invalid-credential':
+      return 'Invalid email or password. Please check your credentials and try again.';
     case 'auth/email-already-in-use':
       return 'An account with this email already exists.';
     case 'auth/weak-password':
@@ -529,11 +987,15 @@ export const getAuthErrorMessage = (errorCode) => {
     case 'auth/too-many-requests':
       return 'Too many failed attempts. Please try again later.';
     case 'auth/network-request-failed':
-      return 'Network error. Please check your connection.';
+      return 'Network error. Please check your connection and try again.';
     case 'auth/email-not-verified':
       return 'Please verify your email address before signing in. Check your inbox for a verification link.';
+    case 'auth/user-disabled':
+      return 'This account has been disabled. Please contact support.';
+    case 'auth/operation-not-allowed':
+      return 'This sign-in method is not allowed. Please contact support.';
     default:
-      return 'An error occurred. Please try again.';
+      return 'Invalid email or password. Please check your credentials and try again.';
   }
 };
 

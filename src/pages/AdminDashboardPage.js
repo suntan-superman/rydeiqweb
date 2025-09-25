@@ -5,6 +5,11 @@ import { isAdmin } from '../services/authService';
 import { getPlatformMetrics } from '../services/adminService';
 import AdminOverview from '../components/admin/AdminOverview';
 import DriverManagement from '../components/admin/DriverManagement';
+import DriverBidManagement from '../components/admin/DriverBidManagement';
+import SpecialtyRideManagement from '../components/admin/SpecialtyRideManagement';
+import VideoManagement from '../components/admin/VideoManagement';
+import PairedDriverManagement from '../components/admin/PairedDriverManagement';
+import MedicalPortalDashboard from '../components/medical/MedicalPortalDashboard';
 import RideMonitoring from '../components/admin/RideMonitoring';
 import Analytics from '../components/admin/Analytics';
 import FinancialManagement from '../components/admin/FinancialManagement';
@@ -28,6 +33,11 @@ const AdminDashboardPage = () => {
   const tabs = useMemo(() => [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'drivers', label: 'Driver Management', icon: '👥' },
+    { id: 'bids', label: 'Bid Management', icon: '💰' },
+    { id: 'specialty-rides', label: 'Specialty Rides', icon: '🚚' },
+    { id: 'videos', label: 'Video Management', icon: '🎥' },
+    { id: 'paired-drivers', label: 'Paired Drivers', icon: '👥' },
+    { id: 'medical', label: 'Medical Portal', icon: '🏥' },
     { id: 'onboarding', label: 'Onboarding', icon: '✅' },
     { id: 'rides', label: 'Ride Monitoring', icon: '🚗' },
     { id: 'analytics', label: 'Analytics', icon: '📈' },
@@ -108,6 +118,16 @@ const AdminDashboardPage = () => {
         />;
       case 'drivers':
         return <DriverManagement />;
+      case 'bids':
+        return <DriverBidManagement />;
+      case 'specialty-rides':
+        return <SpecialtyRideManagement />;
+      case 'videos':
+        return <VideoManagement />;
+      case 'paired-drivers':
+        return <PairedDriverManagement />;
+      case 'medical':
+        return <MedicalPortalDashboard user={user} />;
       case 'onboarding':
         console.log('AdminDashboardPage: Rendering OnboardingManagement component');
         return <OnboardingManagement />;

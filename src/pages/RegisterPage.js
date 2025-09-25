@@ -1,15 +1,23 @@
 /* eslint-disable */
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../contexts/AuthContext';
-import { registerUser, USER_TYPES } from '../services/authService';
+import { registerUser, USER_TYPES, checkEmailVerification } from '../services/authService';
+import { getTermsForUserType, getTermsTitleForUserType } from '../services/termsService';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
+import PhoneInput from '../components/common/PhoneInput';
+import { phoneValidationRules, emergencyPhoneValidationRules } from '../utils/phoneValidation';
+// Debug components removed for clean interface
 
 // Separate form component that gets recreated each time
 const RegistrationForm = ({ userType, onSubmit, isLoading }) => {
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [termsContent, setTermsContent] = useState('');
+  const [termsTitle, setTermsTitle] = useState('');
+  
   const { register, handleSubmit, watch, formState: { errors }, reset, setValue } = useForm({
     defaultValues: {
       firstName: '',
@@ -20,32 +28,51 @@ const RegistrationForm = ({ userType, onSubmit, isLoading }) => {
       confirmPassword: '',
       acceptTerms: false,
       acceptDriverTerms: false,
-      city: ''
+      city: '',
+      emergencyContactName: '',
+      emergencyContactPhone: '',
+      emergencyContactRelationship: '',
+      emergencyContactEmail: ''
     },
     mode: 'onChange' // Enable real-time validation
   });
 
   const password = watch('password');
+  const watchedValues = watch();
 
-  // Simplified form clearing - only use React Hook Form reset
+  // Check if all required fields are filled for rider registration
+  const isFormValid = () => {
+    if (userType === USER_TYPES.PASSENGER) {
+      return (
+        watchedValues.firstName?.trim() &&
+        watchedValues.lastName?.trim() &&
+        watchedValues.email?.trim() &&
+        watchedValues.phone?.trim() &&
+        watchedValues.password?.trim() &&
+        watchedValues.confirmPassword?.trim() &&
+        watchedValues.emergencyContactName?.trim() &&
+        watchedValues.emergencyContactPhone?.trim() &&
+        watchedValues.emergencyContactRelationship?.trim() &&
+        watchedValues.acceptTerms &&
+        !errors.firstName &&
+        !errors.lastName &&
+        !errors.email &&
+        !errors.phone &&
+        !errors.password &&
+        !errors.confirmPassword &&
+        !errors.emergencyContactName &&
+        !errors.emergencyContactPhone &&
+        !errors.emergencyContactRelationship
+      );
+    }
+    // For other user types, use existing validation
+    return true;
+  };
+
+  // Don't auto-reset form on userType change to prevent form clearing on errors
   useEffect(() => {
     console.log('Form component mounted for user type:', userType);
-    
-    // Reset form to empty state
-    reset({
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      password: '',
-      confirmPassword: '',
-      acceptTerms: false,
-      acceptDriverTerms: false,
-      city: ''
-    });
-
-    console.log('Form reset completed for user type:', userType);
-  }, [userType, reset]);
+  }, [userType]);
 
   // Generate unique form ID
   const formId = `registration-form-${userType}-${Date.now()}`;
@@ -55,6 +82,15 @@ const RegistrationForm = ({ userType, onSubmit, isLoading }) => {
     const formData = watch();
     console.log('Current form data:', formData);
     console.log('Current errors:', errors);
+  };
+
+  // Show terms modal
+  const handleShowTerms = () => {
+    const content = getTermsForUserType(userType);
+    const title = getTermsTitleForUserType(userType);
+    setTermsContent(content);
+    setTermsTitle(title);
+    setShowTermsModal(true);
   };
 
   // Test form submission handler
@@ -159,16 +195,105 @@ const RegistrationForm = ({ userType, onSubmit, isLoading }) => {
           <label className="block text-sm font-medium text-gray-700">
             Phone Number *
           </label>
-          <input
-            type="tel"
-            {...register('phone', { required: 'Phone number is required' })}
-            placeholder="+1 (555) 123-4567"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          <PhoneInput
+            {...register('phone', phoneValidationRules)}
+            placeholder="(555) 123-4567"
             autoComplete="nope"
           />
           {errors.phone && (
             <p className="text-sm text-red-600">{errors.phone.message}</p>
           )}
+        </div>
+
+        {/* Emergency Contact Information */}
+        <div className="space-y-4">
+          <div className="border-t border-gray-200 pt-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Emergency Contact</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Please provide an emergency contact for safety purposes. This information will be used in case of emergencies during rides.
+            </p>
+            
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Emergency Contact Name *
+                  </label>
+                  <input
+                    type="text"
+                    {...register('emergencyContactName', { 
+                      required: 'Emergency contact name is required',
+                      minLength: {
+                        value: 2,
+                        message: 'Name must be at least 2 characters'
+                      }
+                    })}
+                    placeholder="Jane Doe"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    autoComplete="nope"
+                  />
+                  {errors.emergencyContactName && (
+                    <p className="text-sm text-red-600">{errors.emergencyContactName.message}</p>
+                  )}
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Emergency Contact Phone *
+                  </label>
+                  <PhoneInput
+                    {...register('emergencyContactPhone', emergencyPhoneValidationRules)}
+                    placeholder="(555) 123-4567"
+                    autoComplete="nope"
+                  />
+                  {errors.emergencyContactPhone && (
+                    <p className="text-sm text-red-600">{errors.emergencyContactPhone.message}</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Relationship *
+                  </label>
+                  <input
+                    type="text"
+                    {...register('emergencyContactRelationship', { 
+                      required: 'Relationship is required'
+                    })}
+                    placeholder="e.g., Spouse, Parent, Sibling"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    autoComplete="nope"
+                  />
+                  {errors.emergencyContactRelationship && (
+                    <p className="text-sm text-red-600">{errors.emergencyContactRelationship.message}</p>
+                  )}
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Emergency Contact Email (Optional)
+                  </label>
+                  <input
+                    type="email"
+                    {...register('emergencyContactEmail', {
+                      pattern: {
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: 'Please enter a valid email address'
+                      }
+                    })}
+                    placeholder="contact@example.com"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    autoComplete="nope"
+                  />
+                  {errors.emergencyContactEmail && (
+                    <p className="text-sm text-red-600">{errors.emergencyContactEmail.message}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {userType === USER_TYPES.DRIVER && (
@@ -250,16 +375,20 @@ const RegistrationForm = ({ userType, onSubmit, isLoading }) => {
         <div className="flex items-start">
           <input
             type="checkbox"
-            {...register('acceptTerms', { required: 'You must accept the terms' })}
+            {...register('acceptTerms', { required: 'You must accept the terms and conditions to continue' })}
             className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded mt-0.5"
             autoComplete="nope"
           />
           <div className="ml-3 text-sm">
             <label className="text-gray-700">
               I agree to the{' '}
-              <Link to="/terms" className="text-primary-600 hover:text-primary-700">
-                Terms of Service
-              </Link>{' '}
+              <button
+                type="button"
+                onClick={handleShowTerms}
+                className="text-primary-600 hover:text-primary-700 underline font-medium"
+              >
+                Terms of Use for {userType === USER_TYPES.DRIVER ? 'Drivers' : 'Riders'}
+              </button>{' '}
               and{' '}
               <Link to="/privacy" className="text-primary-600 hover:text-primary-700">
                 Privacy Policy
@@ -275,17 +404,20 @@ const RegistrationForm = ({ userType, onSubmit, isLoading }) => {
           <div className="flex items-start">
             <input
               type="checkbox"
-              {...register('acceptDriverTerms', { required: 'You must accept the driver terms' })}
+              {...register('acceptDriverTerms', { required: 'You must accept the driver terms and conditions' })}
               className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded mt-0.5"
               autoComplete="nope"
             />
             <div className="ml-3 text-sm">
               <label className="text-gray-700">
-                I agree to the{' '}
-                <Link to="/driver-terms" className="text-primary-600 hover:text-primary-700">
-                  Driver Agreement
-                </Link>{' '}
-                and understand that background check and document verification are required
+                I understand that background check and document verification are required, and I agree to the{' '}
+                <button
+                  type="button"
+                  onClick={handleShowTerms}
+                  className="text-primary-600 hover:text-primary-700 underline font-medium"
+                >
+                  Driver Terms of Use
+                </button>
               </label>
               {errors.acceptDriverTerms && (
                 <p className="text-red-600 text-sm mt-1">{errors.acceptDriverTerms.message}</p>
@@ -297,7 +429,7 @@ const RegistrationForm = ({ userType, onSubmit, isLoading }) => {
         <Button
           type="submit"
           size="large"
-          disabled={isLoading}
+          disabled={isLoading || !isFormValid()}
           className="w-full"
         >
           {isLoading ? 'Creating Account...' : `Create ${
@@ -311,7 +443,7 @@ const RegistrationForm = ({ userType, onSubmit, isLoading }) => {
         {/* Debug buttons - remove in production */}
         {process.env.NODE_ENV === 'development' && (
           <div className="space-y-2 mt-4">
-            <button
+            {/* <button
               type="button"
               onClick={() => {
                 reset({
@@ -330,17 +462,17 @@ const RegistrationForm = ({ userType, onSubmit, isLoading }) => {
               className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
             >
               🧹 Manual Clear Form (Debug)
-            </button>
+            </button> */}
             
-            <button
+            {/* <button
               type="button"
               onClick={logFormState}
               className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
             >
               🔍 Log Form State (Debug)
-            </button>
+            </button> */}
             
-            <button
+            {/* <button
               type="button"
               onClick={() => {
                 const formData = watch();
@@ -350,7 +482,7 @@ const RegistrationForm = ({ userType, onSubmit, isLoading }) => {
               className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
             >
               📝 Test Form Submission (Debug)
-            </button>
+            </button> */}
           </div>
         )}
       </form>
@@ -363,6 +495,57 @@ const RegistrationForm = ({ userType, onSubmit, isLoading }) => {
           </Link>
         </p>
       </div>
+
+      {/* Terms Modal */}
+      {showTermsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">{termsTitle}</h3>
+                <button
+                  onClick={() => setShowTermsModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              <div 
+                className="prose prose-sm max-w-none text-gray-700"
+                dangerouslySetInnerHTML={{ 
+                  __html: termsContent.replace(/\n/g, '<br>').replace(/# /g, '<h3 class="text-lg font-semibold text-gray-900 mb-2 mt-4">').replace(/## /g, '<h4 class="text-md font-semibold text-gray-900 mb-2 mt-3">').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                }}
+              />
+            </div>
+            <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <div className="flex justify-end space-x-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowTermsModal(false)}
+                >
+                  Close
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => {
+                    setValue('acceptTerms', true);
+                    setShowTermsModal(false);
+                    toast.success('Terms accepted!');
+                  }}
+                >
+                  Accept Terms
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -370,27 +553,50 @@ const RegistrationForm = ({ userType, onSubmit, isLoading }) => {
 const RegisterPage = () => {
   const [userType, setUserType] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [formKey, setFormKey] = useState(0);
-  const { setUser } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { user, setUser } = useAuth();
   const navigate = useNavigate();
+
+  // Check if user is coming from email verification
+  useEffect(() => {
+    const checkEmailVerificationStatus = async () => {
+      // If user is logged in and email is verified, redirect to appropriate dashboard
+      if (user && user.emailVerified) {
+        console.log('✅ User email is verified, redirecting to dashboard');
+        if (user.userType === 'driver') {
+          navigate('/driver-dashboard');
+        } else if (user.userType === 'admin') {
+          navigate('/admin-dashboard');
+        } else if (user.userType === 'healthcare_provider') {
+          navigate('/medical-portal');
+        } else {
+          navigate('/dashboard');
+        }
+        return;
+      }
+
+      // If there's a verification parameter in the URL, redirect to verification success page
+      if (searchParams.get('verified') === 'true' || searchParams.get('emailVerified') === 'true') {
+        console.log('📧 Email verification detected, redirecting to success page');
+        navigate('/email-verified');
+        return;
+      }
+    };
+
+    checkEmailVerificationStatus();
+  }, [user, navigate, searchParams]);
 
   const handleUserTypeChange = (newUserType) => {
     setUserType(newUserType);
-    // Force complete component recreation
-    setFormKey(prev => prev + 1);
-    console.log('User type changed to:', newUserType, 'Form key:', formKey + 1);
+    console.log('User type changed to:', newUserType);
   };
 
-  // Clear form when user type changes
+  // Form handling when user type changes
   useEffect(() => {
     if (userType) {
-      console.log('Form should be cleared for user type:', userType);
-      // Force a small delay to ensure the new form component is mounted
-      setTimeout(() => {
-        console.log('Form cleared and recreated for:', userType);
-      }, 100);
+      console.log('User type selected:', userType);
     }
-  }, [userType, formKey]);
+  }, [userType]);
 
   const onSubmit = async (data) => {
     setIsLoading(true);
@@ -402,35 +608,54 @@ const RegisterPage = () => {
         password: data.password,
         firstName: data.firstName,
         lastName: data.lastName,
+        phone: data.phone, // Add phone number to registration
         userType: userType,
-        ...(userType === USER_TYPES.DRIVER && { city: data.city })
+        ...(userType === USER_TYPES.DRIVER && { city: data.city }),
+        emergencyContactName: data.emergencyContactName,
+        emergencyContactPhone: data.emergencyContactPhone,
+        emergencyContactRelationship: data.emergencyContactRelationship,
+        emergencyContactEmail: data.emergencyContactEmail
       });
       
       console.log('Registration result:', result);
       
       if (result.success) {
-        // Don't automatically log in the user - let them verify email first
-        // setUser(result.user); // Commented out to prevent auto-login
-        
-        if (userType === USER_TYPES.DRIVER) {
-          toast.success('Account created successfully! Please check your email to verify your account, then sign in to complete your driver onboarding.');
-          navigate('/login');
-        } else if (userType === USER_TYPES.ADMINISTRATOR) {
-          toast.success('Admin request submitted! Please check your email to verify your account, then sign in. Your request will be reviewed by a super administrator.');
-          navigate('/login');
-        } else if (userType === USER_TYPES.HEALTHCARE_PROVIDER) {
-          toast.success('Healthcare provider account created! Please check your email to verify your account, then sign in to access the medical portal.');
+        // Check if this is adding a new user type to existing account
+        if (result.message && result.message.includes('Successfully added')) {
+          toast.success(result.message);
           navigate('/login');
         } else {
-          toast.success('Account created successfully! Please check your email to verify your account, then sign in to start booking rides.');
-          navigate('/login');
+          // New account creation
+          if (userType === USER_TYPES.DRIVER) {
+            toast.success('Account created successfully! Please check your email to verify your account, then sign in to complete your driver onboarding.');
+            navigate('/login');
+          } else if (userType === USER_TYPES.ADMINISTRATOR) {
+            toast.success('Admin request submitted! Please check your email to verify your account, then sign in. Your request will be reviewed by a super administrator.');
+            navigate('/login');
+          } else if (userType === USER_TYPES.HEALTHCARE_PROVIDER) {
+            toast.success('Healthcare provider account created! Please check your email to verify your account, then sign in to access the medical portal.');
+            navigate('/login');
+          } else {
+            toast.success('Account created successfully! Please check your email to verify your account, then sign in to start booking rides.');
+            navigate('/login');
+          }
         }
       } else {
         console.error('Registration failed:', result.error);
         
         // Handle specific error cases
         if (result.error.code === 'auth/email-already-in-use') {
-          toast.error('An account with this email already exists. Please try signing in instead.');
+          toast.error(result.error.message, {
+            duration: 6000,
+            action: {
+              label: 'Sign In Instead',
+              onClick: () => navigate('/login')
+            }
+          });
+        } else if (result.error.code === 'auth/user-type-exists') {
+          toast.error(result.error.message);
+        } else if (result.error.code === 'auth/wrong-password') {
+          toast.error(result.error.message);
         } else if (result.error.code === 'auth/weak-password') {
           toast.error('Password is too weak. Please choose a stronger password.');
         } else if (result.error.code === 'auth/invalid-email') {
@@ -662,8 +887,10 @@ const RegisterPage = () => {
           </button>
         </div>
 
-        <RegistrationForm key={`${userType}-${formKey}-${Date.now()}`} userType={userType} onSubmit={onSubmit} isLoading={isLoading} />
+        <RegistrationForm userType={userType} onSubmit={onSubmit} isLoading={isLoading} />
+        
       </div>
+
     </div>
   );
 };

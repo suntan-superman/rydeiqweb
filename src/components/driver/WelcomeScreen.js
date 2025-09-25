@@ -158,10 +158,17 @@ const WelcomeScreen = () => {
             size="large"
             variant="primary"
             loading={saving}
-            className="px-12 py-4 text-lg"
+            disabled={isAuthenticated && !user?.emailVerified}
+            className={`px-12 py-4 text-lg ${
+              isAuthenticated && !user?.emailVerified 
+                ? 'opacity-50 cursor-not-allowed' 
+                : ''
+            }`}
           >
             {saving ? (
               <LoadingSpinner size="small" variant="white" />
+            ) : isAuthenticated && !user?.emailVerified ? (
+              'Verify Email to Continue'
             ) : isApplicationStarted ? (
               'Continue Application'
             ) : (
@@ -174,6 +181,37 @@ const WelcomeScreen = () => {
               🚗 Application takes less than 15 minutes • 📱 Start earning in 24-48 hours
             </p>
           </div>
+
+          {/* Email verification message */}
+          {isAuthenticated && !user?.emailVerified && (
+            <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <span className="text-2xl">📧</span>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    Email Verification Required
+                  </h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <p>
+                      Please check your email ({user?.email}) and click the verification link to continue with your driver application.
+                    </p>
+                    <p className="mt-1">
+                      Didn't receive the email? Check your spam folder or{' '}
+                      <button
+                        onClick={handleRefreshEmailVerification}
+                        disabled={checkingEmail}
+                        className="text-yellow-800 underline hover:text-yellow-900 disabled:opacity-50"
+                      >
+                        resend verification email
+                      </button>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {!isAuthenticated && (
             <div className="mt-4 text-sm text-gray-600">

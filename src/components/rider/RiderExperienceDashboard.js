@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { riderExperienceService } from '../../services/riderExperienceService';
+// import rideRequestService from '../../services/rideRequestService';
 import Button from '../common/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -8,6 +9,7 @@ import toast from 'react-hot-toast';
 const RiderExperienceDashboard = () => {
   const { user } = useAuth();
   const [isInitialized, setIsInitialized] = useState(false);
+  
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -80,7 +82,7 @@ const RiderExperienceDashboard = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <OverviewTab dashboardData={dashboardData} />;
+        return <OverviewTab dashboardData={dashboardData} user={user} />;
       case 'scheduling':
         return <SchedulingTab dashboardData={dashboardData} />;
       case 'preferences':
@@ -96,7 +98,7 @@ const RiderExperienceDashboard = () => {
       case 'loyalty':
         return <LoyaltyTab dashboardData={dashboardData} />;
       default:
-        return <OverviewTab dashboardData={dashboardData} />;
+        return <OverviewTab dashboardData={dashboardData} user={user} />;
     }
   };
 
@@ -179,7 +181,7 @@ const RiderExperienceDashboard = () => {
 };
 
 // Overview Tab
-const OverviewTab = ({ dashboardData }) => {
+const OverviewTab = ({ dashboardData, user }) => {
   if (!dashboardData) {
     return (
       <div className="text-center py-8">
@@ -194,6 +196,74 @@ const OverviewTab = ({ dashboardData }) => {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-gray-900">Rider Overview</h2>
+      
+      {/* User Profile Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Your Profile</h3>
+        <div className="flex items-center space-x-4">
+          {/* Profile Picture */}
+          <div className="flex-shrink-0">
+            {user?.profilePicture ? (
+              <img
+                src={user.profilePicture}
+                alt="Profile"
+                className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+              />
+            ) : (
+              <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center">
+                <span className="text-xl font-medium text-gray-700">
+                  {user?.firstName?.[0]}{user?.lastName?.[0]}
+                </span>
+              </div>
+            )}
+          </div>
+          
+          {/* User Info */}
+          <div className="flex-1">
+            <h4 className="text-lg font-medium text-gray-900">
+              {user?.firstName} {user?.lastName}
+            </h4>
+            <p className="text-sm text-gray-600">{user?.email}</p>
+            <p className="text-sm text-gray-500">Rider Account</p>
+          </div>
+          
+                  {/* Payment Method */}
+                  <div className="flex-shrink-0">
+                    {user?.paymentMethod ? (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="flex items-center space-x-2">
+                          <div className="text-green-600">💳</div>
+                          <div>
+                            <p className="text-sm font-medium text-green-900">
+                              {user.paymentMethod.type === 'credit_card' ? 'Credit Card' : user.paymentMethod.type}
+                            </p>
+                            <p className="text-xs text-green-700">
+                              {user.paymentMethod.last4 ? `****${user.paymentMethod.last4}` : 
+                               user.paymentMethod.cardNumber ? `****${user.paymentMethod.cardNumber.slice(-4)}` : 
+                               'Payment method on file'}
+                            </p>
+                            {user.paymentMethod.name && (
+                              <p className="text-xs text-green-600">
+                                {user.paymentMethod.name}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <div className="flex items-center space-x-2">
+                  <div className="text-yellow-600">⚠️</div>
+                  <div>
+                    <p className="text-sm font-medium text-yellow-900">No Payment Method</p>
+                    <p className="text-xs text-yellow-700">Add one to book rides</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
       
       {/* Profile Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

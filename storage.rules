@@ -18,6 +18,22 @@ service firebase.storage {
          resource.metadata.driverId == request.auth.uid);
     }
     
+    // Allow authenticated users to upload and access video recordings
+    match /videos/{rideId}/{allPaths=**} {
+      allow read, write: if request.auth != null && 
+        (resource.metadata.driverId == request.auth.uid || 
+         resource.metadata.riderId == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+    }
+    
+    // Allow authenticated users to upload medical documents
+    match /medical/{appointmentId}/{allPaths=**} {
+      allow read, write: if request.auth != null && 
+        (resource.metadata.patientId == request.auth.uid || 
+         resource.metadata.driverId == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+    }
+    
     // Default deny
     match /{allPaths=**} {
       allow read, write: if false;

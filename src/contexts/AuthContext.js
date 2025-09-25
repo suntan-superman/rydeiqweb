@@ -15,42 +15,47 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showEmailVerificationDialog, setShowEmailVerificationDialog] = useState(false);
   
   // Cache busting - force reload of latest code
-  console.log('AuthContext version:', Date.now());
+  // console.log('AuthContext version:', Date.now());
 
   useEffect(() => {
     const unsubscribe = onAuthStateChange(async (firebaseUser) => {
       try {
         if (firebaseUser) {
-          console.log('Auth state changed - Firebase user:', {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            emailVerified: firebaseUser.emailVerified
-          });
+          // console.log('Auth state changed - Firebase user:', {
+          //   uid: firebaseUser.uid,
+          //   email: firebaseUser.email,
+          //   emailVerified: firebaseUser.emailVerified
+          // });
 
           // Get additional user data from Firestore first
           const userData = await getUserData(firebaseUser.uid);
           
           if (userData.success) {
             const userDoc = userData.data;
-            console.log('User data from Firestore:', userDoc);
+            // console.log('User data from Firestore:', userDoc);
             
-            // Note: Email verification is handled in loginUser function
-            // AuthContext only manages the user state after successful authentication
-            console.log('Setting user in AuthContext - emailVerified:', firebaseUser.emailVerified);
+            // Check if email is verified - if not, show verification dialog
+            if (!firebaseUser.emailVerified) {
+              // console.log('Email not verified - showing verification dialog');
+              setShowEmailVerificationDialog(true);
+            }
+            
+            // console.log('Setting user in AuthContext - emailVerified:', firebaseUser.emailVerified);
 
             // Set the user with combined data
-            setUser({
+            const finalUserData = {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               displayName: firebaseUser.displayName,
               emailVerified: firebaseUser.emailVerified,
               photoURL: firebaseUser.photoURL,
               ...userDoc,
-            });
+            };
+            setUser(finalUserData);
           } else {
-            console.log('Failed to get user data from Firestore:', userData.error);
             // If we can't get user data, still allow login but with basic info
             setUser({
               uid: firebaseUser.uid,
@@ -83,6 +88,8 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     setUser,
     setError,
+    showEmailVerificationDialog,
+    setShowEmailVerificationDialog,
   };
 
   return (

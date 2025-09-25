@@ -3,6 +3,8 @@ import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
+import PhoneInput from '../components/common/PhoneInput';
+import { phoneValidationRules } from '../utils/phoneValidation';
 
 const CareersPage = () => {
   const [selectedJob, setSelectedJob] = useState(null);
@@ -483,11 +485,10 @@ const CareersPage = () => {
                   placeholder="john@example.com"
                 />
 
-                <Input
+                <PhoneInput
                   label="Phone Number"
-                  type="tel"
-                  {...register('phone')}
-                  placeholder="+1 (555) 123-4567"
+                  {...register('phone', phoneValidationRules)}
+                  placeholder="(555) 123-4567"
                 />
 
                 <Input
