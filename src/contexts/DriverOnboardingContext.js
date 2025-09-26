@@ -27,10 +27,22 @@ export const DriverOnboardingProvider = ({ children }) => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Load driver application on mount
+  // Load driver application on mount - only for users with driver userType
   useEffect(() => {
     const loadDriverApplication = async () => {
       if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      // Only load driver application for users who are drivers
+      if (user.userType !== 'driver' && user.activeUserType !== 'driver' && !user.userTypes?.includes('driver')) {
+        setLoading(false);
+        return;
+      }
+
+      // Only proceed if email is verified
+      if (!user.emailVerified) {
         setLoading(false);
         return;
       }
@@ -41,14 +53,16 @@ export const DriverOnboardingProvider = ({ children }) => {
           setDriverApplication(result.data);
           setCurrentStep(result.data.currentStep || ONBOARDING_STEPS.WELCOME);
         } else {
-          // Create new application if none exists
-          const createResult = await createDriverApplication(user.uid, {
-            email: user.email,
-            currentStep: ONBOARDING_STEPS.WELCOME
-          });
-          if (createResult.success) {
-            setDriverApplication(createResult.data);
-            setCurrentStep(ONBOARDING_STEPS.WELCOME);
+          // Only create new application if user is actually a driver AND email is verified
+          if (user.userType === 'driver' || user.activeUserType === 'driver' || user.userTypes?.includes('driver')) {
+            const createResult = await createDriverApplication(user.uid, {
+              email: user.email,
+              currentStep: ONBOARDING_STEPS.WELCOME
+            });
+            if (createResult.success) {
+              setDriverApplication(createResult.data);
+              setCurrentStep(ONBOARDING_STEPS.WELCOME);
+            }
           }
         }
       } catch (error) {
@@ -109,17 +123,34 @@ export const DriverOnboardingProvider = ({ children }) => {
       const result = await updateDriverStep(user.uid, stepName, stepData);
       
       if (result.success) {
+        // The updateDriverStep function already handles setting the correct next step
+        // So we should get the updated currentStep from the result or calculate it
+        const stepOrder = [
+          ONBOARDING_STEPS.WELCOME,
+          ONBOARDING_STEPS.PERSONAL_INFO,
+          ONBOARDING_STEPS.DOCUMENT_UPLOAD,
+          ONBOARDING_STEPS.VEHICLE_INFO,
+          ONBOARDING_STEPS.BACKGROUND_CHECK,
+          ONBOARDING_STEPS.PAYOUT_SETUP,
+          ONBOARDING_STEPS.AVAILABILITY,
+          ONBOARDING_STEPS.REVIEW,
+          ONBOARDING_STEPS.SUBMITTED
+        ];
+        
+        const currentIndex = stepOrder.indexOf(stepName);
+        const nextStep = currentIndex < stepOrder.length - 1 ? stepOrder[currentIndex + 1] : stepName;
+        
         setDriverApplication(prev => {
           const updated = {
             ...prev,
             [stepName]: stepData,  // Store step data under the step name
-            currentStep: stepName,
+            currentStep: nextStep, // Set to next step, not current step
             updatedAt: new Date().toISOString()
           };
-          console.log('Updated driver application:', { stepName, savedData: updated[stepName] });
+          console.log('Updated driver application:', { stepName, savedData: updated[stepName], nextStep });
           return updated;
         });
-        setCurrentStep(stepName);
+        setCurrentStep(nextStep);
         return { success: true };
       } else {
         toast.error('Failed to save step data');
@@ -169,7 +200,7 @@ export const DriverOnboardingProvider = ({ children }) => {
           // Update the currentStep field directly in the database
           const { doc, updateDoc } = await import('firebase/firestore');
           const { db } = await import('../services/firebase');
-          const driverAppRef = doc(db, 'driver_applications', user.uid);
+          const driverAppRef = doc(db, 'driverApplications', user.uid);
           await updateDoc(driverAppRef, {
             currentStep: nextStep,
             updatedAt: new Date().toISOString()
@@ -257,6 +288,11 @@ export const DriverOnboardingProvider = ({ children }) => {
   const startApplication = useCallback(async () => {
     if (!user) {
       return { success: false, error: 'User not authenticated' };
+    }
+
+    // Check if email is verified before creating driver application
+    if (!user.emailVerified) {
+      return { success: false, error: 'Email must be verified before starting driver application' };
     }
 
     try {
@@ -380,7 +416,7 @@ export const DriverOnboardingProvider = ({ children }) => {
           // Update the currentStep field directly in the database
           const { doc, updateDoc } = await import('firebase/firestore');
           const { db } = await import('../services/firebase');
-          const driverAppRef = doc(db, 'driver_applications', user.uid);
+          const driverAppRef = doc(db, 'driverApplications', user.uid);
           await updateDoc(driverAppRef, {
             currentStep: stepKey,
             updatedAt: new Date().toISOString()
@@ -391,6 +427,21 @@ export const DriverOnboardingProvider = ({ children }) => {
       }
     }
   }, [isStepAccessible, driverApplication, user]);
+
+  // Function to refresh driver application data from database
+  const refreshDriverApplication = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const result = await getDriverApplication(user.uid);
+      if (result.success) {
+        setDriverApplication(result.data);
+        console.log('Driver application data refreshed:', result.data);
+      }
+    } catch (error) {
+      console.error('Error refreshing driver application:', error);
+    }
+  }, [user]);
 
   const value = {
     driverApplication,
@@ -407,6 +458,7 @@ export const DriverOnboardingProvider = ({ children }) => {
     getStepStatus,
     isStepAccessible,
     goToStep,
+    refreshDriverApplication,
     ONBOARDING_STEPS,
     progress,
     applicationStatus

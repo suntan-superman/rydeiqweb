@@ -43,6 +43,27 @@ const BackgroundCheckForm = () => {
   const [showSSN, setShowSSN] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);
 
+  // Check if all required fields are filled
+  const isFormValid = () => {
+    const { ssn, currentAddress, consentBackgroundCheck, consentCriminalHistory, consentDrivingRecord, understandTimeline } = formData;
+    
+    // Check SSN (must be 9 digits)
+    const ssnDigits = ssn.replace(/\D/g, '');
+    if (ssnDigits.length !== 9) return false;
+    
+    // Check current address
+    const addressValid = currentAddress.street && currentAddress.city && currentAddress.state && 
+                        currentAddress.zipCode && currentAddress.yearsAtAddress;
+    if (!addressValid) return false;
+    
+    // Check all consent checkboxes
+    if (!consentBackgroundCheck || !consentCriminalHistory || !consentDrivingRecord || !understandTimeline) {
+      return false;
+    }
+    
+    return true;
+  };
+
   // Initialize form with saved data from database
   useEffect(() => {
     if (!formInitialized && driverApplication) {
@@ -591,7 +612,7 @@ const BackgroundCheckForm = () => {
             <Button 
               type="submit"
               variant="primary"
-              disabled={saving}
+              disabled={!isFormValid() || saving}
               className="min-w-[140px]"
             >
               {saving ? 'Saving...' : 'Continue'}

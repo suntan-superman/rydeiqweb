@@ -15,6 +15,20 @@ const Header = () => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    // Check if user is in driver onboarding and show confirmation
+    const currentPath = window.location.pathname;
+    const isInDriverOnboarding = currentPath.includes('/driver-onboarding') || currentPath.includes('/driver');
+    
+    if (isInDriverOnboarding) {
+      const confirmLogout = window.confirm(
+        'Are you sure you want to log out?\n\nYou will lose any unsaved progress in your driver application. Your progress is automatically saved when you complete each step.'
+      );
+      
+      if (!confirmLogout) {
+        return; // Cancel logout
+      }
+    }
+
     setIsLoggingOut(true);
     try {
       const result = await logoutUser();

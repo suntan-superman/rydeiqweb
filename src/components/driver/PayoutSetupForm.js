@@ -55,6 +55,52 @@ const PayoutSetupForm = () => {
   const [showAccountNumber, setShowAccountNumber] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);
 
+  // Check if all required fields are filled
+  const isFormValid = () => {
+    const { 
+      accountHolderName, bankName, routingNumber, accountNumber, confirmAccountNumber,
+      taxId, businessName, taxAddress, useSameAddressAsPersonal,
+      agreeToPayoutTerms, agreeTo1099Reporting, understandFees, consentToTaxReporting
+    } = formData;
+    
+    // Check bank account information
+    if (!accountHolderName || !bankName || !routingNumber || !accountNumber || !confirmAccountNumber) {
+      return false;
+    }
+    
+    // Check account numbers match
+    if (accountNumber !== confirmAccountNumber) {
+      return false;
+    }
+    
+    // Check routing number (9 digits)
+    const routingDigits = routingNumber.replace(/\D/g, '');
+    if (routingDigits.length !== 9) return false;
+    
+    // Check account number (at least 4 digits)
+    const accountDigits = accountNumber.replace(/\D/g, '');
+    if (accountDigits.length < 4) return false;
+    
+    // Check tax information
+    if (!taxId) return false;
+    
+    // Check business name if using EIN
+    if (formData.taxIdType === 'ein' && !businessName) return false;
+    
+    // Check tax address if not using same as personal
+    if (!useSameAddressAsPersonal) {
+      const addressValid = taxAddress.street && taxAddress.city && taxAddress.state && taxAddress.zipCode;
+      if (!addressValid) return false;
+    }
+    
+    // Check all consent checkboxes
+    if (!agreeToPayoutTerms || !agreeTo1099Reporting || !understandFees || !consentToTaxReporting) {
+      return false;
+    }
+    
+    return true;
+  };
+
   // Initialize form with saved data from database
   useEffect(() => {
     if (!formInitialized && driverApplication) {
@@ -729,7 +775,7 @@ const PayoutSetupForm = () => {
             <Button 
               type="submit"
               variant="primary"
-              disabled={saving}
+              disabled={!isFormValid() || saving}
               className="min-w-[140px]"
             >
               {saving ? 'Saving...' : 'Continue'}

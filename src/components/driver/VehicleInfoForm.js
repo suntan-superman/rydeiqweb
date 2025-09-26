@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useDriverOnboarding } from '../../contexts/DriverOnboardingContext';
 // eslint-disable-next-line
 import { validateStepCompletion, ONBOARDING_STEPS } from '../../services/driverService';
@@ -20,15 +20,37 @@ const VehicleInfoForm = () => {
 
   const [validationErrors, setValidationErrors] = useState([]);
   const [selectedFeatures, setSelectedFeatures] = useState([]);
+  const [selectedSpecialtyType, setSelectedSpecialtyType] = useState('');
+  const [selectedServiceCapabilities, setSelectedServiceCapabilities] = useState([]);
+  const [certificationFiles, setCertificationFiles] = useState({});
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    setValue
+    setValue,
+    control
   } = useForm({
     mode: 'onChange'
   });
+
+  // Watch all form values for validation
+  const watchedValues = useWatch({ control });
+  
+  // Check if all required fields are filled
+  const isFormValid = () => {
+    const requiredFields = [
+      'make', 'model', 'year', 'color', 'licensePlate', 'vin',
+      'vehicleType', 'numberOfSeats', 'condition',
+      'insuranceCompany', 'insurancePolicyNumber', 'insuranceExpiration',
+      'registrationState', 'registrationExpiration'
+    ];
+    
+    return requiredFields.every(field => {
+      const value = watchedValues[field];
+      return value && value.toString().trim() !== '';
+    });
+  };
 
   // Initialize form with saved data from database
   useEffect(() => {
@@ -42,6 +64,18 @@ const VehicleInfoForm = () => {
         // Set selected features
         if (savedData.features) {
           setSelectedFeatures(savedData.features);
+        }
+        // Set specialty vehicle type
+        if (savedData.specialtyVehicleType) {
+          setSelectedSpecialtyType(savedData.specialtyVehicleType);
+        }
+        // Set service capabilities
+        if (savedData.serviceCapabilities) {
+          setSelectedServiceCapabilities(savedData.serviceCapabilities);
+        }
+        // Set certification files
+        if (savedData.certificationFiles) {
+          setCertificationFiles(savedData.certificationFiles);
         }
       }
     }
@@ -69,6 +103,15 @@ const VehicleInfoForm = () => {
     { value: 'convertible', label: 'Convertible' }
   ];
 
+  // Specialty Vehicle Types for AnyRyde
+  const specialtyVehicleTypes = [
+    { value: 'standard', label: '🚘 Standard Car (1–4 passengers)', description: 'Regular passenger vehicle' },
+    { value: 'large', label: '🚐 Large Vehicle (5+ passengers / Van / SUV)', description: 'For group transportation' },
+    { value: 'tow_truck', label: '🚛 Tow Truck', description: 'For vehicle transport and towing' },
+    { value: 'wheelchair_accessible', label: '♿ Wheelchair-Accessible Vehicle', description: 'ADA compliant vehicle' },
+    { value: 'taxi_metered', label: '🚖 Taxi-Style Metered Vehicle', description: 'For licensed taxi providers' }
+  ];
+
   const seatOptions = [
     { value: '4', label: '4 seats' },
     { value: '5', label: '5 seats' },
@@ -88,6 +131,52 @@ const VehicleInfoForm = () => {
     { value: 'premium_sound', label: 'Premium Sound System' },
     { value: 'leather_seats', label: 'Leather Seats' },
     { value: 'sunroof', label: 'Sunroof' }
+  ];
+
+  // Service Capabilities for AnyRyde
+  const serviceCapabilities = [
+    { 
+      value: 'video_enabled', 
+      label: '🎥 Video-Enabled Ride', 
+      description: 'Dashcam installed for ride recording',
+      requiresApproval: false
+    },
+    { 
+      value: 'paired_driver', 
+      label: '👥 Paired Driver Available', 
+      description: 'Ride-along driver option',
+      requiresApproval: false
+    },
+    { 
+      value: 'medical_transport', 
+      label: '🏥 Medical Transport Certified', 
+      description: 'Certified for medical transportation',
+      requiresApproval: true
+    },
+    { 
+      value: 'pet_friendly', 
+      label: '🐶 Pet-Friendly Vehicle', 
+      description: 'Suitable for pets and service animals',
+      requiresApproval: false
+    },
+    { 
+      value: 'car_seat_infant', 
+      label: '👶 Infant Car Seat Available', 
+      description: 'Rear-facing infant car seat',
+      requiresApproval: false
+    },
+    { 
+      value: 'car_seat_toddler', 
+      label: '👶 Toddler Car Seat Available', 
+      description: 'Forward-facing toddler car seat',
+      requiresApproval: false
+    },
+    { 
+      value: 'car_seat_booster', 
+      label: '👶 Booster Seat Available', 
+      description: 'Booster seat for older children',
+      requiresApproval: false
+    }
   ];
 
   const vehicleConditions = [
@@ -116,10 +205,13 @@ const VehicleInfoForm = () => {
   const onSubmit = async (data) => {
     setValidationErrors([]);
 
-    // Add selected features to the data
+    // Add selected features and specialty vehicle data to the form data
     const formData = {
       ...data,
-      features: selectedFeatures
+      features: selectedFeatures,
+      specialtyVehicleType: selectedSpecialtyType,
+      serviceCapabilities: selectedServiceCapabilities,
+      certificationFiles: certificationFiles
     };
 
     // Validate required fields
@@ -133,6 +225,21 @@ const VehicleInfoForm = () => {
     // Additional custom validations
     const customErrors = [];
     
+    // Validate specialty vehicle type selection
+    if (!selectedSpecialtyType) {
+      customErrors.push('Please select a specialty vehicle type');
+    }
+    
+    // Validate service capabilities for specialty vehicles
+    if (selectedSpecialtyType === 'wheelchair_accessible' && !selectedServiceCapabilities.includes('wheelchair_accessible')) {
+      customErrors.push('Wheelchair-accessible vehicles must have wheelchair accessibility capability');
+    }
+    
+    // Validate medical transport certification
+    if (selectedServiceCapabilities.includes('medical_transport') && !certificationFiles.medical_transport) {
+      customErrors.push('Medical transport certification document is required');
+    }
+    
     // Validate vehicle year
     const vehicleYear = parseInt(formData.year);
     if (vehicleYear < minYear || vehicleYear > currentYear) {
@@ -143,6 +250,12 @@ const VehicleInfoForm = () => {
     const licensePlateRegex = /^[A-Z0-9\s-]{2,8}$/i;
     if (!licensePlateRegex.test(formData.licensePlate)) {
       customErrors.push('Please enter a valid license plate number');
+    }
+
+    // Validate VIN format (17 characters, no I, O, Q)
+    const vinRegex = /^[A-HJ-NPR-Z0-9]{17}$/i;
+    if (!vinRegex.test(formData.vin)) {
+      customErrors.push('Please enter a valid 17-character VIN');
     }
 
     // Validate insurance expiration date
@@ -164,11 +277,19 @@ const VehicleInfoForm = () => {
     }
 
     // Save the data
+    console.log('VehicleInfoForm: Submitting vehicle data:', formData);
+    console.log('VehicleInfoForm: Step name:', ONBOARDING_STEPS.VEHICLE_INFO);
+    
     const result = await updateStep(ONBOARDING_STEPS.VEHICLE_INFO, formData);
+    
+    console.log('VehicleInfoForm: Update result:', result);
     
     if (result.success) {
       toast.success('Vehicle information saved successfully!');
       goToNextStep();
+    } else {
+      console.error('VehicleInfoForm: Failed to save vehicle data:', result.error);
+      toast.error('Failed to save vehicle information');
     }
   };
 
@@ -179,6 +300,26 @@ const VehicleInfoForm = () => {
       : [...currentFeatures, featureValue];
     
     setSelectedFeatures(newFeatures);
+  };
+
+  const handleSpecialtyTypeChange = (typeValue) => {
+    setSelectedSpecialtyType(typeValue);
+  };
+
+  const handleServiceCapabilityChange = (capabilityValue) => {
+    const currentCapabilities = selectedServiceCapabilities;
+    const newCapabilities = currentCapabilities.includes(capabilityValue)
+      ? currentCapabilities.filter(c => c !== capabilityValue)
+      : [...currentCapabilities, capabilityValue];
+    
+    setSelectedServiceCapabilities(newCapabilities);
+  };
+
+  const handleCertificationFileChange = (capabilityType, file) => {
+    setCertificationFiles(prev => ({
+      ...prev,
+      [capabilityType]: file
+    }));
   };
 
   return (
@@ -307,6 +448,23 @@ const VehicleInfoForm = () => {
                 error={errors.licensePlate?.message}
               />
             </div>
+            
+            <div className="space-y-1">
+              <Input
+                label="VIN (Vehicle Identification Number)"
+                type="text"
+                required
+                placeholder="1HGBH41JXMN109186"
+                {...register('vin', {
+                  required: 'VIN is required',
+                  pattern: {
+                    value: /^[A-HJ-NPR-Z0-9]{17}$/i,
+                    message: 'Please enter a valid 17-character VIN'
+                  }
+                })}
+                error={errors.vin?.message}
+              />
+            </div>
           </div>
 
           {/* Vehicle Type and Capacity */}
@@ -367,6 +525,83 @@ const VehicleInfoForm = () => {
               {errors.condition && (
                 <p className="text-sm text-red-600">{errors.condition.message}</p>
               )}
+            </div>
+          </div>
+
+          {/* Specialty Vehicle Type Selection */}
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-gray-900">Specialty Vehicle Type</h3>
+            <p className="text-sm text-gray-600">
+              Select the type of specialty vehicle you operate. This determines what types of ride requests you'll receive.
+            </p>
+            
+            <div className="space-y-4">
+              {specialtyVehicleTypes.map(type => (
+                <label key={type.value} className="flex items-start space-x-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="specialtyVehicleType"
+                    value={type.value}
+                    checked={selectedSpecialtyType === type.value}
+                    onChange={() => handleSpecialtyTypeChange(type.value)}
+                    className="h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500 mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-gray-900">{type.label}</div>
+                    <div className="text-sm text-gray-600">{type.description}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Service Capabilities */}
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-gray-900">Service Capabilities</h3>
+            <p className="text-sm text-gray-600">
+              Select all service capabilities you can provide. Some capabilities require certification and approval.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {serviceCapabilities.map(capability => (
+                <div key={capability.value} className="border border-gray-200 rounded-lg p-4">
+                  <label className="flex items-start space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedServiceCapabilities.includes(capability.value)}
+                      onChange={() => handleServiceCapabilityChange(capability.value)}
+                      className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-gray-900">{capability.label}</div>
+                      <div className="text-sm text-gray-600">{capability.description}</div>
+                      {capability.requiresApproval && (
+                        <div className="text-xs text-amber-600 mt-1">
+                          ⚠️ Requires certification and approval
+                        </div>
+                      )}
+                    </div>
+                  </label>
+                  
+                  {/* Certification upload for medical transport */}
+                  {capability.value === 'medical_transport' && selectedServiceCapabilities.includes(capability.value) && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Medical Transport Certification
+                      </label>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleCertificationFileChange('medical_transport', e.target.files[0])}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Upload your medical transport certification document
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -473,6 +708,9 @@ const VehicleInfoForm = () => {
               <li>• Insurance must be valid for at least 30 days</li>
               <li>• Vehicle registration must be current</li>
               <li>• Vehicle will be subject to periodic inspections</li>
+              <li>• Specialty vehicle capabilities will be verified during inspection</li>
+              <li>• Medical transport certification requires manual approval</li>
+              <li>• Wheelchair-accessible vehicles must meet ADA compliance standards</li>
             </ul>
           </div>
 
@@ -491,7 +729,7 @@ const VehicleInfoForm = () => {
               type="submit"
               variant="primary"
               loading={saving}
-              disabled={saving}
+              disabled={!isFormValid() || saving}
             >
               Save and Continue
             </Button>

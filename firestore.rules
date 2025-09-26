@@ -5,6 +5,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, update: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null; // Allow any authenticated user to create their own user document
+      allow list: if request.auth != null; // Allow authenticated users to query users collection (for duplicate email checks)
     }
 
     // Drivers collection rules
@@ -15,8 +16,10 @@ service cloud.firestore {
 
     // Driver Applications collection rules
     match /driverApplications/{applicationId} {
-      allow read, update: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read, update: if request.auth != null && request.auth.uid == applicationId;
+      allow create: if request.auth != null && request.auth.uid == applicationId;
+      allow list: if request.auth != null; // Allow authenticated users to query driver applications (for duplicate email checks)
+      allow read: if request.auth != null; // Allow riders to read driver data for matching
     }
 
     // Notifications collection rules
@@ -35,7 +38,9 @@ service cloud.firestore {
     match /rideRequests/{requestId} {
       allow read, write: if request.auth != null && 
         (resource.data.driverId == request.auth.uid || 
-         resource.data.riderId == request.auth.uid);
+         resource.data.riderId == request.auth.uid ||
+         request.auth.uid in resource.data.availableDrivers);
+      allow create: if request.auth != null; // Allow authenticated users to create ride requests
     }
 
     // Earnings collection rules

@@ -168,8 +168,7 @@ registerLicense(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RideProvider>
-          <DriverOnboardingProvider>
-            <Router>
+          <Router>
               <div className="App">
                 <Routes>
                   {/* Public routes */}
@@ -424,7 +423,6 @@ registerLicense(
               {/* Global Email Verification Dialog */}
               <GlobalEmailVerificationDialog />
             </Router>
-          </DriverOnboardingProvider>
         </RideProvider>
       </AuthProvider>
     </QueryClientProvider>

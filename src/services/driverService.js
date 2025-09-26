@@ -54,17 +54,52 @@ export const DOCUMENT_TYPES = {
   PROFILE_PHOTO: 'profile_photo'
 };
 
+// Check if email already exists in driver applications
+export const checkDriverEmailExists = async (email) => {
+  try {
+    const driversRef = collection(db, 'driverApplications');
+    const q = query(driversRef, where('email', '==', email));
+    const querySnapshot = await getDocs(q);
+    
+    return {
+      success: true,
+      exists: !querySnapshot.empty,
+      count: querySnapshot.size
+    };
+  } catch (error) {
+    console.error('Error checking driver email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Create new driver application with onboarding status
 export const createDriverApplication = async (userId, initialData) => {
   try {
+    // Check for duplicate email if email is provided
+    if (initialData.email) {
+      const emailCheck = await checkDriverEmailExists(initialData.email);
+      if (emailCheck.success && emailCheck.exists) {
+        return { 
+          success: false, 
+          error: 'A driver application with this email address already exists' 
+        };
+      }
+    }
+
     const driverData = {
       userId,
+      email: initialData.email || '',
       status: DRIVER_STATUS.PENDING,
       currentStep: ONBOARDING_STEPS.PERSONAL_INFO,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       personalInfo: {},
       vehicleInfo: {},
+      specialtyVehicleInfo: {
+        specialtyVehicleType: '',
+        serviceCapabilities: [],
+        certificationFiles: {}
+      },
       documents: {},
       backgroundCheck: {},
       payoutInfo: {},
@@ -102,7 +137,7 @@ export const createDriverApplication = async (userId, initialData) => {
       ...initialData
     };
 
-    await setDoc(doc(db, 'drivers', userId), driverData);
+    await setDoc(doc(db, 'driverApplications', userId), driverData);
     return { success: true, data: driverData };
   } catch (error) {
     console.error('Error creating driver application:', error);
@@ -113,7 +148,7 @@ export const createDriverApplication = async (userId, initialData) => {
 // Get driver application by user ID
 export const getDriverApplication = async (userId) => {
   try {
-    const driverDoc = await getDoc(doc(db, 'drivers', userId));
+    const driverDoc = await getDoc(doc(db, 'driverApplications', userId));
     
     if (driverDoc.exists()) {
       return { success: true, data: driverDoc.data() };
@@ -129,11 +164,20 @@ export const getDriverApplication = async (userId) => {
 // Update driver application step data
 export const updateDriverStep = async (userId, stepName, stepData) => {
   try {
+    console.log('updateDriverStep called with:', { userId, stepName, stepData });
+    const docRef = doc(db, 'driverApplications', userId);
+    
+    // Check if document exists
+    const docSnap = await getDoc(docRef);
+    console.log('Document exists:', docSnap.exists());
+    
     const updateData = {
       [stepName]: stepData,
       [`stepProgress.${stepName}`]: true,
       updatedAt: serverTimestamp()
     };
+    
+    console.log('Update data:', updateData);
 
     // Update current step if moving forward
     const stepOrder = Object.values(ONBOARDING_STEPS);
@@ -144,7 +188,67 @@ export const updateDriverStep = async (userId, stepName, stepData) => {
       updateData.currentStep = nextStep;
     }
 
-    await updateDoc(doc(db, 'drivers', userId), updateData);
+    if (docSnap.exists()) {
+      // Document exists, update it
+      console.log('Updating existing document with data:', updateData);
+      
+      // If this is vehicle_info step, also update specialtyVehicleInfo
+      if (stepName === ONBOARDING_STEPS.VEHICLE_INFO && stepData.specialtyVehicleType) {
+        updateData.specialtyVehicleInfo = {
+          specialtyVehicleType: stepData.specialtyVehicleType,
+          serviceCapabilities: stepData.serviceCapabilities || [],
+          certificationFiles: stepData.certificationFiles || {}
+        };
+      }
+      
+      await updateDoc(docRef, updateData);
+      console.log('Document updated successfully');
+    } else {
+      // Document doesn't exist, create it with the step data
+      const createData = {
+        userId: userId, // Ensure userId matches the document ID
+        email: '', // Will be filled from user data
+        status: DRIVER_STATUS.PENDING,
+        currentStep: nextStep || stepName,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        personalInfo: {},
+        vehicleInfo: {},
+        specialtyVehicleInfo: {
+          specialtyVehicleType: '',
+          serviceCapabilities: [],
+          certificationFiles: {}
+        },
+        documents: {},
+        backgroundCheck: {},
+        payoutInfo: {},
+        stepProgress: {},
+        onboardingStatus: {
+          completed: false,
+          completedAt: null,
+          completedBy: null,
+          lastUpdated: serverTimestamp(),
+        },
+        approvalStatus: {
+          status: 'pending',
+          approvedAt: null,
+          approvedBy: null,
+          notes: '',
+        },
+        mobileAppStatus: {
+          accountCreated: false,
+          accountCreatedAt: null,
+          lastMobileLogin: null,
+        },
+        ...updateData
+      };
+      
+      console.log('Creating new document with data:', createData);
+      await setDoc(docRef, createData);
+      console.log('Document created successfully');
+    }
+    
+    console.log('updateDriverStep completed successfully');
     return { success: true };
   } catch (error) {
     console.error('Error updating driver step:', error);
@@ -200,7 +304,7 @@ export const uploadDriverDocument = async (userId, documentType, file) => {
     };
     
     console.log('Updating Firestore with document data...');
-    await updateDoc(doc(db, 'drivers', userId), documentData);
+    await updateDoc(doc(db, 'driverApplications', userId), documentData);
     console.log('Firestore update completed');
     
     return { success: true, url: downloadURL };
@@ -219,7 +323,7 @@ export const uploadDriverDocument = async (userId, documentType, file) => {
 export const deleteDriverDocument = async (userId, documentType) => {
   try {
     // Get current document info
-    const driverDoc = await getDoc(doc(db, 'drivers', userId));
+    const driverDoc = await getDoc(doc(db, 'driverApplications', userId));
     const driverData = driverDoc.data();
     
     if (driverData?.documents?.[documentType]) {
@@ -238,7 +342,7 @@ export const deleteDriverDocument = async (userId, documentType) => {
       const updatedDocuments = { ...driverData.documents };
       delete updatedDocuments[documentType];
       
-      await updateDoc(doc(db, 'drivers', userId), {
+      await updateDoc(doc(db, 'driverApplications', userId), {
         documents: updatedDocuments,
         updatedAt: serverTimestamp()
       });
@@ -254,7 +358,7 @@ export const deleteDriverDocument = async (userId, documentType) => {
 // Submit driver application for review
 export const submitDriverApplication = async (userId) => {
   try {
-    await updateDoc(doc(db, 'drivers', userId), {
+    await updateDoc(doc(db, 'driverApplications', userId), {
       status: DRIVER_STATUS.REVIEW_PENDING,
       currentStep: ONBOARDING_STEPS.SUBMITTED,
       submittedAt: serverTimestamp(),
@@ -272,7 +376,7 @@ export const submitDriverApplication = async (userId) => {
 export const getDriverApplications = async (filters = {}) => {
   try {
     console.log('getDriverApplications called with filters:', filters);
-    let q = collection(db, 'drivers');
+    let q = collection(db, 'driverApplications');
     
     // Apply filters
     if (filters.status && filters.status !== 'all') {
@@ -315,7 +419,7 @@ export const updateDriverStatus = async (userId, status, adminNote = '') => {
       });
     }
     
-    await updateDoc(doc(db, 'drivers', userId), updateData);
+    await updateDoc(doc(db, 'driverApplications', userId), updateData);
     return { success: true };
   } catch (error) {
     console.error('Error updating driver status:', error);
@@ -326,7 +430,7 @@ export const updateDriverStatus = async (userId, status, adminNote = '') => {
 // Complete onboarding (when driver finishes all steps)
 export const completeOnboarding = async (userId) => {
   try {
-    await updateDoc(doc(db, 'drivers', userId), {
+    await updateDoc(doc(db, 'driverApplications', userId), {
       'onboardingStatus.completed': true,
       'onboardingStatus.completedAt': serverTimestamp(),
       'onboardingStatus.completedBy': 'web',
@@ -364,7 +468,7 @@ export const setOnboardingStatus = async (userId, completed, adminUid) => {
       updateData.status = DRIVER_STATUS.PENDING;
     }
 
-    await updateDoc(doc(db, 'drivers', userId), updateData);
+    await updateDoc(doc(db, 'driverApplications', userId), updateData);
     return { success: true };
   } catch (error) {
     console.error('Error setting onboarding status:', error);
@@ -375,7 +479,7 @@ export const setOnboardingStatus = async (userId, completed, adminUid) => {
 // Check onboarding status (for mobile app)
 export const checkOnboardingStatus = async (userId) => {
   try {
-    const driverDoc = await getDoc(doc(db, 'drivers', userId));
+    const driverDoc = await getDoc(doc(db, 'driverApplications', userId));
     
     if (driverDoc.exists()) {
       const data = driverDoc.data();
@@ -413,7 +517,7 @@ export const updateMobileAppStatus = async (userId, accountCreated = true) => {
       updateData['mobileAppStatus.accountCreatedAt'] = serverTimestamp();
     }
 
-    await updateDoc(doc(db, 'drivers', userId), updateData);
+    await updateDoc(doc(db, 'driverApplications', userId), updateData);
     return { success: true };
   } catch (error) {
     console.error('Error updating mobile app status:', error);
@@ -434,7 +538,7 @@ export const verifyDriverDocument = async (userId, documentType, isVerified, not
       updateData[`documents.${documentType}.verificationNote`] = note;
     }
     
-    await updateDoc(doc(db, 'drivers', userId), updateData);
+    await updateDoc(doc(db, 'driverApplications', userId), updateData);
     return { success: true };
   } catch (error) {
     console.error('Error verifying document:', error);
@@ -445,7 +549,7 @@ export const verifyDriverDocument = async (userId, documentType, isVerified, not
 // Check if driver application exists
 export const checkDriverExists = async (userId) => {
   try {
-    const driverDoc = await getDoc(doc(db, 'drivers', userId));
+    const driverDoc = await getDoc(doc(db, 'driverApplications', userId));
     return { success: true, exists: driverDoc.exists(), data: driverDoc.data() };
   } catch (error) {
     console.error('Error checking driver existence:', error);
@@ -494,6 +598,15 @@ export const validateStepCompletion = (stepName, data) => {
       if (!data.insuranceExpiration) errors.push('Insurance expiration date is required');
       if (!data.registrationState) errors.push('Registration state is required');
       if (!data.registrationExpiration) errors.push('Registration expiration date is required');
+      
+      // Specialty vehicle validation
+      if (!data.specialtyVehicleType) errors.push('Specialty vehicle type is required');
+      if (data.specialtyVehicleType === 'wheelchair_accessible' && !data.serviceCapabilities?.includes('wheelchair_accessible')) {
+        errors.push('Wheelchair-accessible vehicles must have wheelchair accessibility capability');
+      }
+      if (data.serviceCapabilities?.includes('medical_transport') && !data.certificationFiles?.medical_transport) {
+        errors.push('Medical transport certification document is required');
+      }
       break;
       
     case ONBOARDING_STEPS.BACKGROUND_CHECK:

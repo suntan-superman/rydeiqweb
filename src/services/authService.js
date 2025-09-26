@@ -429,9 +429,128 @@ export const switchUserType = async (user, newUserType) => {
 };
 
 // Register new user with user type
+// Check if user exists and is unverified
+export const checkUnverifiedUser = async (email) => {
+  try {
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('email', '==', email));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
+      
+      return {
+        success: true,
+        exists: true,
+        isVerified: userData.emailVerified || false,
+        userData: userData,
+        uid: userDoc.id
+      };
+    }
+    
+    return { success: true, exists: false };
+  } catch (error) {
+    console.error('Error checking unverified user:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Clean up unverified users older than 7 days
+export const cleanupUnverifiedUsers = async () => {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const usersRef = collection(db, 'users');
+    const q = query(
+      usersRef, 
+      where('emailVerified', '==', false),
+      where('createdAt', '<', sevenDaysAgo.toISOString())
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const cleanupPromises = [];
+    
+    querySnapshot.forEach((doc) => {
+      console.log(`🗑️ Cleaning up unverified user: ${doc.data().email}`);
+      cleanupPromises.push(deleteDoc(doc.ref));
+    });
+    
+    await Promise.all(cleanupPromises);
+    
+    return {
+      success: true,
+      cleanedUp: querySnapshot.size,
+      message: `Cleaned up ${querySnapshot.size} unverified users`
+    };
+  } catch (error) {
+    console.error('Error cleaning up unverified users:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Resend verification email for unverified users
+export const resendVerificationEmail = async (email) => {
+  try {
+    const existingUserCheck = await checkUnverifiedUser(email);
+    if (!existingUserCheck.success || !existingUserCheck.exists) {
+      return {
+        success: false,
+        error: 'No account found with this email address'
+      };
+    }
+    
+    if (existingUserCheck.isVerified) {
+      return {
+        success: false,
+        error: 'This email address is already verified'
+      };
+    }
+    
+    // Get the user from Firebase Auth
+    const user = auth.currentUser;
+    if (!user || user.email !== email) {
+      return {
+        success: false,
+        error: 'Please sign in with this email address first'
+      };
+    }
+    
+    await sendEmailVerification(user, {
+      url: `${window.location.origin}/email-verified`,
+      handleCodeInApp: true
+    });
+    
+    return {
+      success: true,
+      message: 'Verification email sent successfully'
+    };
+  } catch (error) {
+    console.error('Error resending verification email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 export const registerUser = async ({ email, password, firstName, lastName, phone, userType = USER_TYPES.PASSENGER, city, emergencyContactName, emergencyContactPhone, emergencyContactRelationship, emergencyContactEmail }) => {
   try {
     console.log('Starting user registration with data:', { email, firstName, lastName, userType, city });
+    
+    // Check if user already exists and is unverified
+    const existingUserCheck = await checkUnverifiedUser(email);
+    if (existingUserCheck.success && existingUserCheck.exists) {
+      if (!existingUserCheck.isVerified) {
+        return {
+          success: false,
+          error: 'An account with this email already exists but is not verified. Please check your email for the verification link, or contact support if you need the verification email resent.'
+        };
+      } else {
+        return {
+          success: false,
+          error: 'An account with this email already exists and is verified. Please sign in instead.'
+        };
+      }
+    }
     
     // Try to create the user directly - Firebase will tell us if email already exists
     let user, userCredential;

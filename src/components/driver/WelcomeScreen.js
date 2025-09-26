@@ -12,12 +12,11 @@ const WelcomeScreen = () => {
   const { isAuthenticated, user, setUser } = useAuth();
   const { startApplication, saving, isApplicationStarted, goToNextStep } = useDriverOnboarding();
   const [checkingEmail, setCheckingEmail] = useState(false);
-  const [emailChecked, setEmailChecked] = useState(false);
 
-  // Automatically check email verification status when component mounts
+  // Automatically check email verification status periodically
   useEffect(() => {
     const autoCheckEmailVerification = async () => {
-      if (isAuthenticated && user && !user.emailVerified && !emailChecked) {
+      if (isAuthenticated && user && !user.emailVerified) {
         setCheckingEmail(true);
         try {
           const result = await checkEmailVerification();
@@ -28,18 +27,28 @@ const WelcomeScreen = () => {
               emailVerified: true
             }));
             console.log('Email verification status automatically updated');
+            toast.success('Email verified! You can now continue with your application.');
           }
         } catch (error) {
           console.error('Error auto-checking email verification:', error);
         } finally {
           setCheckingEmail(false);
-          setEmailChecked(true);
         }
       }
     };
 
+    // Check immediately when component mounts
     autoCheckEmailVerification();
-  }, [isAuthenticated, user, setUser, emailChecked]);
+
+    // Set up periodic checking every 3 seconds if email is not verified
+    const interval = setInterval(() => {
+      if (isAuthenticated && user && !user.emailVerified) {
+        autoCheckEmailVerification();
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, user, setUser]);
 
   const handleRefreshEmailVerification = async () => {
     setCheckingEmail(true);

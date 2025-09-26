@@ -17,17 +17,25 @@ const DocumentUploadForm = () => {
     updateStep, 
     goToNextStep, 
     goToPreviousStep,
-    saving 
+    saving,
+    refreshDriverApplication
   } = useDriverOnboarding();
   
   const [uploadProgress, setUploadProgress] = useState({});
   const [uploading, setUploading] = useState(false);
   const [documents, setDocuments] = useState({});
 
-  // Initialize documents from driver application
+  // Initialize documents from driver application and refresh data
+  useEffect(() => {
+    // Refresh driver application data when component mounts
+    refreshDriverApplication();
+  }, [refreshDriverApplication]);
+
+  // Update local documents state when driverApplication changes
   useEffect(() => {
     if (driverApplication?.documents) {
       setDocuments(driverApplication.documents);
+      console.log('Documents loaded from driverApplication:', driverApplication.documents);
     }
   }, [driverApplication]);
 
@@ -101,20 +109,40 @@ const DocumentUploadForm = () => {
       
       if (result.success) {
         // Update local state
-        setDocuments(prev => ({
-          ...prev,
+        const updatedDocuments = {
+          ...documents,
           [documentType]: {
             url: result.url,
             fileName: file.name,
             uploadedAt: new Date(),
             verified: false
           }
-        }));
+        };
+        
+        setDocuments(updatedDocuments);
         
         // Update progress
         setUploadProgress(prev => ({ ...prev, [documentType]: 100 }));
         
         toast.success(`${getDocumentTitle(documentType)} uploaded successfully!`);
+        
+        // Save documents to database immediately without changing step
+        try {
+          // Update the driver application directly without changing current step
+          const { updateDoc, doc, serverTimestamp } = await import('firebase/firestore');
+          const { db } = await import('../../services/firebase');
+          
+          await updateDoc(doc(db, 'driverApplications', driverApplication.userId), {
+            documents: updatedDocuments,
+            updatedAt: serverTimestamp()
+          });
+          
+          // Refresh driver application data to ensure consistency
+          await refreshDriverApplication();
+        } catch (error) {
+          console.error('Error saving documents to database:', error);
+          toast.error('Document uploaded but failed to save. Please try again.');
+        }
         
         // Clear progress after a delay
         setTimeout(() => {
@@ -150,11 +178,27 @@ const DocumentUploadForm = () => {
       
       if (result.success) {
         // Update local state
-        setDocuments(prev => {
-          const newDocuments = { ...prev };
-          delete newDocuments[documentType];
-          return newDocuments;
-        });
+        const updatedDocuments = { ...documents };
+        delete updatedDocuments[documentType];
+        setDocuments(updatedDocuments);
+        
+        // Save updated documents to database immediately without changing step
+        try {
+          // Update the driver application directly without changing current step
+          const { updateDoc, doc, serverTimestamp } = await import('firebase/firestore');
+          const { db } = await import('../../services/firebase');
+          
+          await updateDoc(doc(db, 'driverApplications', driverApplication.userId), {
+            documents: updatedDocuments,
+            updatedAt: serverTimestamp()
+          });
+          
+          // Refresh driver application data to ensure consistency
+          await refreshDriverApplication();
+        } catch (error) {
+          console.error('Error saving document deletion to database:', error);
+          toast.error('Document deleted but failed to save. Please try again.');
+        }
         
         toast.success(`${getDocumentTitle(documentType)} deleted successfully!`);
       } else {
@@ -203,12 +247,8 @@ const DocumentUploadForm = () => {
       return;
     }
 
-    // Update step progress
-    const result = await updateStep(ONBOARDING_STEPS.DOCUMENT_UPLOAD, documents);
-    
-    if (result.success) {
-      goToNextStep();
-    }
+    // Documents are already saved immediately on upload, just go to next step
+    goToNextStep();
   };
 
   const getCompletionStats = () => {

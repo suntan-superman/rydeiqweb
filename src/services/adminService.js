@@ -29,7 +29,7 @@ export const getDriverApplications = async (currentUser, filters = {}, paginatio
 
     const { status, search, page = 1, pageSize = 20 } = { ...filters, ...pagination };
     
-    let q = collection(db, 'drivers');
+    let q = collection(db, 'driverApplications');
     
     // Add status filter
     if (status && status !== 'all') {
@@ -81,7 +81,7 @@ export const getDriverApplicationDetails = async (currentUser, applicationId) =>
   try {
     checkAdminPermissions(currentUser);
 
-    const docRef = doc(db, 'drivers', applicationId);
+    const docRef = doc(db, 'driverApplications', applicationId);
     const docSnap = await getDoc(docRef);
     
     if (!docSnap.exists()) {
@@ -119,7 +119,7 @@ export const approveDriverApplication = async (currentUser, applicationId, notes
       updatedAt: new Date().toISOString()
     };
 
-    await updateDoc(doc(db, 'drivers', applicationId), updateData);
+    await updateDoc(doc(db, 'driverApplications', applicationId), updateData);
 
     return {
       success: true,
@@ -149,7 +149,7 @@ export const rejectDriverApplication = async (currentUser, applicationId, reason
       updatedAt: new Date().toISOString()
     };
 
-    await updateDoc(doc(db, 'drivers', applicationId), updateData);
+    await updateDoc(doc(db, 'driverApplications', applicationId), updateData);
 
     return {
       success: true,

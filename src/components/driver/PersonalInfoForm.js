@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useDriverOnboarding } from '../../contexts/DriverOnboardingContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { validateStepCompletion, ONBOARDING_STEPS } from '../../services/driverService';
 import Button from '../common/Button';
 import Input from '../common/Input';
@@ -16,6 +17,8 @@ const PersonalInfoForm = () => {
     ONBOARDING_STEPS: STEPS 
   } = useDriverOnboarding();
   
+  const { user } = useAuth();
+  
   const [validationErrors, setValidationErrors] = useState([]);
   const [formInitialized, setFormInitialized] = useState(false);
 
@@ -23,53 +26,82 @@ const PersonalInfoForm = () => {
     register,
     handleSubmit,
     formState: { errors },
-    setValue
+    setValue,
+    control
   } = useForm({
     mode: 'onChange'
   });
 
-  // Initialize form with saved data from database
-  useEffect(() => {
-    console.log('PersonalInfoForm useEffect - formInitialized:', formInitialized, 'driverApplication:', !!driverApplication);
+  // Watch form values
+  const phoneNumber = useWatch({ control, name: 'phoneNumber' });
+  const coverageArea = useWatch({ control, name: 'coverageArea' });
+  const emergencyContactPhone = useWatch({ control, name: 'emergencyContactPhone' });
+  
+  // Watch all form values for validation
+  const watchedValues = useWatch({ control });
+  
+  // Check if all required fields are filled
+  const isFormValid = () => {
+    const requiredFields = [
+      'firstName', 'lastName', 'dateOfBirth', 'phoneNumber', 'email',
+      'address', 'city', 'state', 'zipCode', 'coverageArea',
+      'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelationship'
+    ];
     
-          if (!formInitialized && driverApplication) {
-        // Load saved data from the driver application - check both snake_case and camelCase
-        const savedData = driverApplication[STEPS.PERSONAL_INFO] || driverApplication.personalInfo || {};
-        
-        console.log('PersonalInfoForm - driverApplication keys:', Object.keys(driverApplication));
-        console.log('PersonalInfoForm - STEPS.PERSONAL_INFO:', STEPS.PERSONAL_INFO);
-        console.log('PersonalInfoForm - savedData:', savedData);
-        console.log('PersonalInfoForm - personalInfo (camelCase):', driverApplication.personalInfo);
-        
-        if (savedData && Object.keys(savedData).length > 0) {
-        console.log('Loading saved personal info data:', savedData);
-        // Pre-fill all saved data
-        setValue('firstName', savedData.firstName || '');
-        setValue('lastName', savedData.lastName || '');
-        setValue('dateOfBirth', savedData.dateOfBirth || '');
-        setValue('phoneNumber', savedData.phoneNumber || '');
-        setValue('email', savedData.email || driverApplication.email || '');
-        setValue('address', savedData.address || '');
-        setValue('city', savedData.city || '');
-        setValue('state', savedData.state || '');
-        setValue('zipCode', savedData.zipCode || '');
-        setValue('coverageArea', savedData.coverageArea || '');
-        setValue('referralCode', savedData.referralCode || '');
-        setValue('emergencyContactName', savedData.emergencyContactName || '');
-        setValue('emergencyContactPhone', savedData.emergencyContactPhone || '');
-        setValue('emergencyContactRelationship', savedData.emergencyContactRelationship || '');
-        setValue('emergencyContactEmail', savedData.emergencyContactEmail || '');
-      } else {
-        console.log('No saved personal info data found');
-        // Only pre-fill email from current user's account if no saved data
-        if (driverApplication.email) {
-          setValue('email', driverApplication.email);
-        }
-      }
+    return requiredFields.every(field => {
+      const value = watchedValues[field];
+      return value && value.toString().trim() !== '';
+    });
+  };
+
+  // Initialize form with saved data from database and user signup data
+  useEffect(() => {
+    console.log('PersonalInfoForm useEffect - formInitialized:', formInitialized, 'driverApplication:', !!driverApplication, 'user:', !!user);
+    
+    if (!formInitialized && driverApplication && user) {
+      // Load saved data from the driver application - check both snake_case and camelCase
+      const savedData = driverApplication[STEPS.PERSONAL_INFO] || driverApplication.personalInfo || {};
+      
+      console.log('PersonalInfoForm - driverApplication keys:', Object.keys(driverApplication));
+      console.log('PersonalInfoForm - user data:', user);
+      console.log('PersonalInfoForm - user.phone:', user.phone);
+      console.log('PersonalInfoForm - user.city:', user.city);
+      console.log('PersonalInfoForm - user.emergencyContact:', user.emergencyContact);
+      console.log('PersonalInfoForm - user keys:', Object.keys(user));
+      console.log('PersonalInfoForm - savedData:', savedData);
+      
+      // Debug phone number specifically
+      console.log('🔍 Phone Debug - user.phone:', user.phone);
+      console.log('🔍 Phone Debug - typeof user.phone:', typeof user.phone);
+      console.log('🔍 Phone Debug - user.phone length:', user.phone?.length);
+      
+      // Debug setValue calls
+      console.log('🔍 Setting phoneNumber to:', savedData.phoneNumber || user.phone || '');
+      console.log('🔍 Setting coverageArea to:', savedData.coverageArea || (user.city ? 'Within city limits' : ''));
+      
+      // Pre-fill from user signup data first, then saved data, then fallback to empty
+      setValue('firstName', savedData.firstName || user.firstName || '');
+      setValue('lastName', savedData.lastName || user.lastName || '');
+      setValue('dateOfBirth', savedData.dateOfBirth || '');
+      setValue('phoneNumber', savedData.phoneNumber || user.phone || '');
+      setValue('email', savedData.email || user.email || '');
+      setValue('address', savedData.address || '');
+      setValue('city', savedData.city || user.city || '');
+      setValue('state', savedData.state || '');
+      setValue('zipCode', savedData.zipCode || '');
+      // Set default coverage area to "Within city limits" if no saved coverage area
+      setValue('coverageArea', savedData.coverageArea || 'Within city limits');
+      setValue('referralCode', savedData.referralCode || '');
+      
+      // Emergency contact from user signup data
+      setValue('emergencyContactName', savedData.emergencyContactName || user.emergencyContact?.name || '');
+      setValue('emergencyContactPhone', savedData.emergencyContactPhone || user.emergencyContact?.phone || '');
+      setValue('emergencyContactRelationship', savedData.emergencyContactRelationship || user.emergencyContact?.relationship || '');
+      setValue('emergencyContactEmail', savedData.emergencyContactEmail || user.emergencyContact?.email || '');
       
       setFormInitialized(true);
     }
-  }, [driverApplication, setValue, formInitialized, STEPS.PERSONAL_INFO]);
+  }, [driverApplication, user, setValue, formInitialized, STEPS.PERSONAL_INFO]);
 
   // Keep form data when component unmounts (data is saved to database)
   // No cleanup needed since we want to retain the data
@@ -175,58 +207,79 @@ const PersonalInfoForm = () => {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Name Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Input
-              label="First Name"
-              type="text"
-              required
-              {...register('firstName', {
-                required: 'First name is required',
-                minLength: {
-                  value: 2,
-                  message: 'First name must be at least 2 characters'
-                }
-              })}
-              error={errors.firstName?.message}
-            />
+            <div>
+              <Input
+                label="First Name"
+                type="text"
+                required
+                readOnly
+                className="bg-gray-50 cursor-not-allowed"
+                {...register('firstName', {
+                  required: 'First name is required',
+                  minLength: {
+                    value: 2,
+                    message: 'First name must be at least 2 characters'
+                  }
+                })}
+                error={errors.firstName?.message}
+              />
+              <p className="text-xs text-gray-500 mt-1">Pre-filled from your account registration</p>
+            </div>
             
-            <Input
-              label="Last Name"
-              type="text"
-              required
-              {...register('lastName', {
-                required: 'Last name is required',
-                minLength: {
-                  value: 2,
-                  message: 'Last name must be at least 2 characters'
-                }
-              })}
-              error={errors.lastName?.message}
-            />
+            <div>
+              <Input
+                label="Last Name"
+                type="text"
+                required
+                readOnly
+                className="bg-gray-50 cursor-not-allowed"
+                {...register('lastName', {
+                  required: 'Last name is required',
+                  minLength: {
+                    value: 2,
+                    message: 'Last name must be at least 2 characters'
+                  }
+                })}
+                error={errors.lastName?.message}
+              />
+              <p className="text-xs text-gray-500 mt-1">Pre-filled from your account registration</p>
+            </div>
           </div>
 
           {/* Contact Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Input
-              label="Email Address"
-              type="email"
-              required
-              {...register('email', {
-                required: 'Email is required',
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: 'Please enter a valid email address'
-                }
-              })}
-              error={errors.email?.message}
-            />
+            <div>
+              <Input
+                label="Email Address"
+                type="email"
+                required
+                readOnly
+                className="bg-gray-50 cursor-not-allowed"
+                {...register('email', {
+                  required: 'Email is required',
+                  pattern: {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    message: 'Please enter a valid email address'
+                  }
+                })}
+                error={errors.email?.message}
+              />
+              <p className="text-xs text-gray-500 mt-1">Pre-filled from your account registration</p>
+            </div>
             
-            <PhoneInput
-              label="Phone Number"
-              required
-              placeholder="(555) 123-4567"
-              {...register('phoneNumber', phoneValidationRules)}
-              error={errors.phoneNumber?.message}
-            />
+            <div>
+              <PhoneInput
+                label="Phone Number"
+                required
+                placeholder="(555) 123-4567"
+                readOnly
+                className="bg-gray-50 cursor-not-allowed"
+                {...register('phoneNumber', phoneValidationRules)}
+                error={errors.phoneNumber?.message}
+                value={phoneNumber}
+              />
+              <p className="text-xs text-gray-500 mt-1">Pre-filled from your account registration</p>
+            </div>
           </div>
 
           {/* Date of Birth */}
@@ -245,6 +298,9 @@ const PersonalInfoForm = () => {
           {/* Address Information */}
           <div className="space-y-6">
             <h3 className="text-lg font-semibold text-gray-900">Address Information</h3>
+            <p className="text-sm text-gray-600">
+              Please provide your current address information.
+            </p>
             
             <Input
               label="Street Address"
@@ -312,53 +368,82 @@ const PersonalInfoForm = () => {
             
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input
-                  label="Emergency Contact Name"
-                  type="text"
-                  required
-                  {...register('emergencyContactName', {
-                    required: 'Emergency contact name is required',
-                    minLength: {
-                      value: 2,
-                      message: 'Name must be at least 2 characters'
-                    }
-                  })}
-                  error={errors.emergencyContactName?.message}
-                />
+                <div>
+                  <Input
+                    label="Emergency Contact Name"
+                    type="text"
+                    required
+                    readOnly={!!user?.emergencyContact?.name}
+                    className={user?.emergencyContact?.name ? "bg-gray-50 cursor-not-allowed" : ""}
+                    {...register('emergencyContactName', {
+                      required: 'Emergency contact name is required',
+                      minLength: {
+                        value: 2,
+                        message: 'Name must be at least 2 characters'
+                      }
+                    })}
+                    error={errors.emergencyContactName?.message}
+                  />
+                  {user?.emergencyContact?.name && (
+                    <p className="text-xs text-gray-500 mt-1">Pre-filled from your account registration</p>
+                  )}
+                </div>
                 
-                <PhoneInput
-                  label="Emergency Contact Phone"
-                  required
-                  placeholder="(555) 123-4567"
-                  {...register('emergencyContactPhone', emergencyPhoneValidationRules)}
-                  error={errors.emergencyContactPhone?.message}
-                />
+                <div>
+                  <PhoneInput
+                    label="Emergency Contact Phone"
+                    required
+                    placeholder="(555) 123-4567"
+                    readOnly={!!user?.emergencyContact?.phone}
+                    className={user?.emergencyContact?.phone ? "bg-gray-50 cursor-not-allowed" : ""}
+                    {...register('emergencyContactPhone', emergencyPhoneValidationRules)}
+                    error={errors.emergencyContactPhone?.message}
+                    value={emergencyContactPhone}
+                  />
+                  {user?.emergencyContact?.phone && (
+                    <p className="text-xs text-gray-500 mt-1">Pre-filled from your account registration</p>
+                  )}
+                </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                <Input
-                  label="Relationship"
-                  type="text"
-                  required
-                  placeholder="e.g., Spouse, Parent, Sibling"
-                  {...register('emergencyContactRelationship', {
-                    required: 'Relationship is required'
-                  })}
-                  error={errors.emergencyContactRelationship?.message}
-                />
+                <div>
+                  <Input
+                    label="Relationship"
+                    type="text"
+                    required
+                    placeholder="e.g., Spouse, Parent, Sibling"
+                    readOnly={!!user?.emergencyContact?.relationship}
+                    className={user?.emergencyContact?.relationship ? "bg-gray-50 cursor-not-allowed" : ""}
+                    {...register('emergencyContactRelationship', {
+                      required: 'Relationship is required'
+                    })}
+                    error={errors.emergencyContactRelationship?.message}
+                  />
+                  {user?.emergencyContact?.relationship && (
+                    <p className="text-xs text-gray-500 mt-1">Pre-filled from your account registration</p>
+                  )}
+                </div>
                 
-                <Input
-                  label="Emergency Contact Email (Optional)"
-                  type="email"
-                  placeholder="contact@example.com"
-                  {...register('emergencyContactEmail', {
-                    pattern: {
-                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: 'Please enter a valid email address'
-                    }
-                  })}
-                  error={errors.emergencyContactEmail?.message}
-                />
+                <div>
+                  <Input
+                    label="Emergency Contact Email (Optional)"
+                    type="email"
+                    placeholder="contact@example.com"
+                    readOnly={!!user?.emergencyContact?.email}
+                    className={user?.emergencyContact?.email ? "bg-gray-50 cursor-not-allowed" : ""}
+                    {...register('emergencyContactEmail', {
+                      pattern: {
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: 'Please enter a valid email address'
+                      }
+                    })}
+                    error={errors.emergencyContactEmail?.message}
+                  />
+                  {user?.emergencyContact?.email && (
+                    <p className="text-xs text-gray-500 mt-1">Pre-filled from your account registration</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -376,6 +461,7 @@ const PersonalInfoForm = () => {
                   required: 'Please select your preferred coverage area'
                 })}
                 className="input-field"
+                value={coverageArea}
               >
                 <option value="">Select Coverage Area</option>
                 {coverageAreas.map(area => (
@@ -405,6 +491,7 @@ const PersonalInfoForm = () => {
               type="submit"
               variant="primary"
               loading={saving}
+              disabled={!isFormValid() || saving}
               className="px-8"
             >
               Save and Continue
