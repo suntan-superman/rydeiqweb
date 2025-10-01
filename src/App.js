@@ -162,6 +162,7 @@ const ComparePageOld = () => {
 };
 
 const App = () => {
+  
   registerLicense(
       "Ngo9BigBOggjHTQxAR8/V1JEaF1cWmhIfEx1RHxQdld5ZFRHallYTnNWUj0eQnxTdEBjUHxecXJXR2BUVUV/X0leYw=="
     );
