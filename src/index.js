@@ -1,8 +1,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { registerLicense } from '@syncfusion/ej2-base';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+
+// Register Syncfusion license FIRST before any components load
+registerLicense(
+  "Ngo9BigBOggjHTQxAR8/V1JEaF1cWmhIfEx1RHxQdld5ZFRHallYTnNWUj0eQnxTdEBjUHxecXJXR2BUVUV/X0leYw=="
+);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

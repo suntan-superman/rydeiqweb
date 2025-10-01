@@ -16,7 +16,9 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.10.0",
+    "dotenv": "^17.2.3",
     "firebase": "^10.14.1",
+    "firebase-admin": "^13.5.0",
     "framer-motion": "^10.18.0",
     "prop-types": "^15.8.1",
     "react": "^19.1.0",
@@ -34,7 +36,9 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "upload-profiles": "node upload-profile-pictures.js",
+    "create-profile-config": "node create-profile-picture-config.js"
   },
   "eslintConfig": {
     "extends": [

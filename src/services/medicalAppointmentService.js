@@ -288,15 +288,19 @@ class MedicalAppointmentService {
       const now = new Date();
       const futureTime = new Date(now.getTime() + hours * 60 * 60 * 1000);
       
+      // Temporary workaround: Use simpler query until index is built
       const q = query(
         collection(db, this.collection),
         where('scheduledDate', '>=', now),
         where('scheduledDate', '<=', futureTime),
-        where('status', 'in', ['scheduled', 'assigned']),
         orderBy('scheduledDate', 'asc')
       );
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Filter by status in memory until index is ready
+      return snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(appointment => ['scheduled', 'assigned'].includes(appointment.status));
     } catch (error) {
       console.error('Error fetching upcoming appointments:', error);
       return [];

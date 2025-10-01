@@ -60,6 +60,9 @@ const AvailabilityForm = () => {
     
     // Special Services
     wheelchairAccessible: false,
+    oxygenEquipped: false,
+    stretcherEquipped: false,
+    assistanceAvailable: false,
     petFriendly: false,
     childSeatAvailable: false,
     luxuryVehicle: false,
@@ -121,6 +124,9 @@ const AvailabilityForm = () => {
           
           // Special Services
           wheelchairAccessible: savedData.wheelchairAccessible || false,
+          oxygenEquipped: savedData.oxygenEquipped || false,
+          stretcherEquipped: savedData.stretcherEquipped || false,
+          assistanceAvailable: savedData.assistanceAvailable || false,
           petFriendly: savedData.petFriendly || false,
           childSeatAvailable: savedData.childSeatAvailable || false,
           luxuryVehicle: savedData.luxuryVehicle || false,
@@ -653,7 +659,40 @@ const AvailabilityForm = () => {
                   onChange={handleInputChange}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-sm text-gray-700">Wheelchair accessible vehicle</span>
+                <span className="text-sm text-gray-700">♿ Wheelchair accessible vehicle</span>
+              </label>
+              
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  name="oxygenEquipped"
+                  checked={formData.oxygenEquipped}
+                  onChange={handleInputChange}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">🫁 Oxygen support equipment</span>
+              </label>
+              
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  name="stretcherEquipped"
+                  checked={formData.stretcherEquipped}
+                  onChange={handleInputChange}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">🏥 Stretcher transport capability</span>
+              </label>
+              
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  name="assistanceAvailable"
+                  checked={formData.assistanceAvailable}
+                  onChange={handleInputChange}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">🤝 Physical assistance available</span>
               </label>
               
               <label className="flex items-center space-x-3">
@@ -664,7 +703,7 @@ const AvailabilityForm = () => {
                   onChange={handleInputChange}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-sm text-gray-700">Pet-friendly rides</span>
+                <span className="text-sm text-gray-700">🐶 Pet-friendly rides</span>
               </label>
               
               <label className="flex items-center space-x-3">

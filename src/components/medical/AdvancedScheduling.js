@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   CalendarDaysIcon,
   ArrowPathIcon,
@@ -12,11 +12,21 @@ import {
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, where, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import StablePlacesInput from './StablePlacesInput';
+import medicalDriverIntegrationService from '../../services/medicalDriverIntegrationService';
+import toast from 'react-hot-toast';
+import DriverAvailabilityChecker from './DriverAvailabilityChecker';
 
 const AdvancedScheduling = ({ user }) => {
   const [activeTab, setActiveTab] = useState('schedule');
   const [drafts, setDrafts] = useState([]);
   const [loadingDrafts, setLoadingDrafts] = useState(false);
+  
+  // Driver availability checking state
+  const [showDriverAvailability, setShowDriverAvailability] = useState(false);
+  const [scheduledRideData, setScheduledRideData] = useState(null);
+  
+  // Ref for scrolling to driver selection section
+  const driverSelectionRef = useRef(null);
   // Helper function to get next rounded hour
   const getNextRoundedHour = React.useCallback(() => {
     const now = new Date();
@@ -342,6 +352,7 @@ const AdvancedScheduling = ({ user }) => {
 
   // Handle pickup location selection
   const handlePickupLocationSelect = React.useCallback((placeData) => {
+    console.log('Pickup place data received:', placeData);
     setScheduleForm(prev => ({
       ...prev,
       pickupLocation: placeData.address
@@ -354,6 +365,13 @@ const AdvancedScheduling = ({ user }) => {
         ...(placeData.name && { facilityName: placeData.name })
       }
     }));
+    console.log('Location coordinates updated:', {
+      pickup: {
+        coordinates: placeData.coordinates,
+        address: placeData.address,
+        ...(placeData.name && { facilityName: placeData.name })
+      }
+    });
   }, []);
 
   // Handle dropoff location selection
@@ -420,7 +438,7 @@ const AdvancedScheduling = ({ user }) => {
     }
   }, [scheduleForm, locationCoordinates, user, getTodaysDate, getNextRoundedHour]);
 
-  // Schedule ride handler
+  // Schedule ride handler with driver availability checking
   const handleScheduleRide = React.useCallback(async () => {
     // Validation
     if (!scheduleForm.patientId || !scheduleForm.pickupLocation || !scheduleForm.dropoffLocation || 
@@ -448,7 +466,6 @@ const AdvancedScheduling = ({ user }) => {
           coordinates: locationCoordinates.dropoff?.coordinates || locationCoordinates.dropoff
         },
         appointmentDateTime: appointmentDateTime.toISOString(),
-        estimatedDuration: 60, // Default 1 hour in minutes
         bufferTime: parseInt(scheduleForm.bufferTime),
         recurrencePattern: scheduleForm.recurrencePattern,
         recurrenceDetails: scheduleForm.recurrenceDetails,
@@ -498,48 +515,131 @@ const AdvancedScheduling = ({ user }) => {
         }]
       };
 
-      await addDoc(collection(db, 'medicalRideSchedule'), rideData);
-      
-      // Reset form
-      setScheduleForm({
-        patientId: '',
-        appointmentType: 'Dialysis',
-        pickupLocation: '',
-        dropoffLocation: '',
-        appointmentDate: getTodaysDate(),
-        appointmentTime: getNextRoundedHour(),
-        bufferTime: '15',
-        recurrencePattern: 'none',
-        recurrenceDetails: {
-          frequency: 'weekly',
-          daysOfWeek: [],
-          endDate: ''
-        }
+      // Use the new integration service to create ride with driver availability checking
+      const result = await medicalDriverIntegrationService.createMedicalRideWithDriverMatching({
+        ...rideData,
+        organizationId: user.uid,
+        dispatcherId: user.uid
       });
-      setLocationCoordinates({ pickup: null, dropoff: null });
-      setMedicalRequirements({
-        priorityLevel: 'routine',
-        wheelchairAccessible: false,
-        stretcherRequired: false,
-        oxygenSupport: false,
-        assistanceLevel: 'none',
-        medicalEquipment: [],
-        specialInstructions: '',
-        appointmentTypeDetails: '',
-        returnTrip: {
-          required: false,
-          estimatedTime: ''
-        }
-      });
-      
-      alert('Medical ride scheduled successfully!');
+
+      if (result.success) {
+        // Set the scheduled ride data and show driver availability
+        setScheduledRideData(result.data);
+        setShowDriverAvailability(true);
+        
+        // Show beautiful toast notification
+        toast.success(
+          `Medical ride scheduled successfully! Found ${result.data.availableDriverCount} available drivers.`,
+          {
+            duration: 4000,
+            position: 'top-right',
+            style: {
+              background: '#10B981',
+              color: '#fff',
+              fontSize: '14px',
+              fontWeight: '500',
+            },
+            icon: '✅',
+          }
+        );
+        
+        // Auto-scroll to driver selection section after a brief delay
+        setTimeout(() => {
+          if (driverSelectionRef.current) {
+            driverSelectionRef.current.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start',
+            });
+          }
+        }, 500);
+        
+        // Reset form
+        setScheduleForm({
+          patientId: '',
+          appointmentType: 'Dialysis',
+          pickupLocation: '',
+          dropoffLocation: '',
+          appointmentDate: getTodaysDate(),
+          appointmentTime: getNextRoundedHour(),
+          bufferTime: '15',
+          recurrencePattern: 'none',
+          recurrenceDetails: {
+            frequency: 'weekly',
+            daysOfWeek: [],
+            endDate: ''
+          }
+        });
+        setLocationCoordinates({ pickup: null, dropoff: null });
+        setMedicalRequirements({
+          priorityLevel: 'routine',
+          wheelchairAccessible: false,
+          stretcherRequired: false,
+          oxygenSupport: false,
+          assistanceLevel: 'none',
+          medicalEquipment: [],
+          specialInstructions: '',
+          appointmentTypeDetails: '',
+          returnTrip: {
+            required: false,
+            estimatedTime: ''
+          }
+        });
+      } else {
+        throw new Error(result.error || 'Failed to schedule ride with driver matching');
+      }
     } catch (error) {
       console.error('Error scheduling ride:', error);
-      alert('Error scheduling ride. Please try again.');
+      toast.error('Error scheduling ride. Please try again.', {
+        duration: 4000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: '#fff',
+          fontSize: '14px',
+          fontWeight: '500',
+        },
+        icon: '❌',
+      });
     } finally {
       setIsSubmitting(false);
     }
   }, [scheduleForm, locationCoordinates, user, getTodaysDate, getNextRoundedHour, medicalRequirements]);
+
+  // Handle driver selection
+  const handleDriverSelection = async (driver) => {
+    if (!scheduledRideData) return;
+    
+    try {
+      const result = await medicalDriverIntegrationService.assignDriverToMedicalRide(
+        scheduledRideData.rideId,
+        driver.id,
+        user.uid
+      );
+      
+      if (result.success) {
+        alert(`Driver ${driver.personalInfo?.firstName} ${driver.personalInfo?.lastName} assigned successfully!`);
+        setShowDriverAvailability(false);
+        setScheduledRideData(null);
+      } else {
+        alert('Failed to assign driver. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error assigning driver:', error);
+      alert('Error assigning driver. Please try again.');
+    }
+  };
+
+  // Handle driver availability updates
+  const handleDriversFound = (drivers) => {
+    // Drivers are handled by the DriverAvailabilityChecker component
+    console.log('Available drivers found:', drivers.length);
+  };
+
+  // Close driver availability view
+  const handleCloseDriverAvailability = () => {
+    setShowDriverAvailability(false);
+    setScheduledRideData(null);
+  };
 
   // Duplicate ride functionality
   const handleDuplicateRide = React.useCallback((ride) => {
@@ -1260,6 +1360,74 @@ const AdvancedScheduling = ({ user }) => {
       {activeTab === 'templates' && TemplatesTab()}
       {activeTab === 'scheduled' && ScheduledRidesTab()}
       {activeTab === 'drafts' && DraftsTab()}
+
+      {/* Driver Availability Section */}
+      {showDriverAvailability && scheduledRideData && (
+        <div 
+          ref={driverSelectionRef} 
+          className="bg-white rounded-lg shadow-lg border-2 border-blue-200 p-6"
+          style={{
+            borderColor: '#3B82F6',
+            boxShadow: '0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 10px 10px -5px rgba(59, 130, 246, 0.04)',
+            animation: 'pulse 2s ease-in-out 1'
+          }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <span className="inline-block w-3 h-3 bg-green-500 rounded-full mr-2 animate-ping"></span>
+              Select Driver for Medical Transport
+            </h3>
+            <button
+              onClick={handleCloseDriverAvailability}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+          
+          {/* Success message */}
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-green-800">
+                  Ride scheduled successfully! Please select a driver from the available options below.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-gray-900 mb-2">Ride Details</h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium">Patient:</span> {scheduledRideData.patientId}
+              </div>
+              <div>
+                <span className="font-medium">Appointment:</span> {scheduledRideData.appointmentType}
+              </div>
+              <div>
+                <span className="font-medium">Pickup Time:</span> {new Date(scheduledRideData.pickupDateTime).toLocaleString()}
+              </div>
+              <div>
+                <span className="font-medium">From:</span> {scheduledRideData.pickupLocation.address}
+              </div>
+            </div>
+          </div>
+
+          <DriverAvailabilityChecker
+            medicalRideData={scheduledRideData}
+            onDriversFound={handleDriversFound}
+            onDriverSelected={handleDriverSelection}
+            showSelection={true}
+            autoRefresh={true}
+          />
+        </div>
+      )}
 
       {/* Modals */}
       {/* Edit Ride Modal */}

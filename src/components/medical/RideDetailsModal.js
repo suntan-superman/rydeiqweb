@@ -107,7 +107,20 @@ const RideDetailsModal = ({ open, onClose, ride, user, onShowDriverTracking, onA
 
   if (!open || !ride) return null;
 
-  const currentStatus = editedRide?.status || ride.Status;
+  // Handle different ride data structures (medical rides vs regular rides)
+  const rideData = {
+    id: ride.id || ride.Id || ride.rideId,
+    status: editedRide?.status || ride?.status || ride?.Status || 'scheduled',
+    patientId: ride.patientId || ride.PatientId,
+    appointmentType: ride.appointmentType || ride.AppointmentType,
+    pickupLocation: ride.pickupLocation || ride.PickupLocation,
+    dropoffLocation: ride.dropoffLocation || ride.DropoffLocation,
+    appointmentDateTime: ride.appointmentDateTime || ride.AppointmentDateTime || ride.pickupDateTime,
+    assignedDriverId: ride.assignedDriverId || ride.AssignedDriverId || ride.driverId,
+    medicalRequirements: ride.medicalRequirements || ride.MedicalRequirements
+  };
+
+  const currentStatus = rideData.status;
   const statusStyle = statusColors[currentStatus] || statusColors.assigned;
 
   return (
@@ -172,7 +185,7 @@ const RideDetailsModal = ({ open, onClose, ride, user, onShowDriverTracking, onA
                 >
                   {currentStatus === 'completed' && <CheckCircleIcon className="h-4 w-4 mr-1" />}
                   {currentStatus === 'cancelled' && <ExclamationTriangleIcon className="h-4 w-4 mr-1" />}
-                  {currentStatus.replace('_', ' ').toUpperCase()}
+                  {(currentStatus || 'scheduled').replace('_', ' ').toUpperCase()}
                 </span>
               )}
             </div>
@@ -187,8 +200,8 @@ const RideDetailsModal = ({ open, onClose, ride, user, onShowDriverTracking, onA
                     Patient Information
                   </h4>
                   <div className="bg-gray-50 rounded-md p-3">
-                    <p className="text-sm"><strong>Patient ID:</strong> {ride.PatientId}</p>
-                    <p className="text-sm"><strong>Appointment Type:</strong> {ride.AppointmentType}</p>
+                    <p className="text-sm"><strong>Patient ID:</strong> {rideData.patientId}</p>
+                    <p className="text-sm"><strong>Appointment Type:</strong> {rideData.appointmentType}</p>
                     <p className="text-sm"><strong>Organization:</strong> {ride.OrganizationName}</p>
                   </div>
                 </div>

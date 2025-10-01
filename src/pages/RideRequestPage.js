@@ -24,6 +24,8 @@ const RideRequestPage = () => {
     setSpecialRequests,
     paymentMethod,
     setPaymentMethod,
+    specialtyData,
+    setSpecialtyData,
     rideStatus,
     driverBids,
     loading,
@@ -39,10 +41,7 @@ const RideRequestPage = () => {
 
   const [currentStep, setCurrentStep] = useState('location'); // location, preferences, specialty, confirm, bidding
   const [showSpecialRequests, setShowSpecialRequests] = useState(false);
-  const [setSpecialtyRideData] = useState(null);
-  const [setShowSpecialtyForm] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [setProfileValidation] = useState(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -54,7 +53,6 @@ const RideRequestPage = () => {
   const validateUserProfile = useCallback(async () => {
     try {
       const result = await validateProfileCompletion(user.uid);
-      setProfileValidation(result);
       
       if (!result.success || !result.isComplete) {
         setShowProfileModal(true);
@@ -66,7 +64,7 @@ const RideRequestPage = () => {
       toast.error('Failed to validate profile');
       return false;
     }
-  }, [user.uid, setProfileValidation]);
+  }, [user.uid]);
 
   // Validate profile completion when component mounts
   useEffect(() => {
@@ -114,7 +112,8 @@ const RideRequestPage = () => {
 
     const result = await requestRide({
       specialRequests,
-      paymentMethod
+      paymentMethod,
+      specialtyData
     });
 
     if (result.success) {
@@ -141,8 +140,7 @@ const RideRequestPage = () => {
 
   const handleSpecialtyFormSubmit = async (formData) => {
     try {
-      setSpecialtyRideData(formData);
-      setShowSpecialtyForm(false);
+      setSpecialtyData(formData);
       setCurrentStep('preferences');
       toast.success('Specialty ride details saved');
     } catch (error) {
@@ -152,7 +150,6 @@ const RideRequestPage = () => {
   };
 
   const handleSpecialtyFormCancel = () => {
-    setShowSpecialtyForm(false);
     setCurrentStep('preferences');
   };
 
@@ -399,6 +396,46 @@ const RideRequestPage = () => {
                     <p className="text-gray-900">{specialRequests.length} request{specialRequests.length !== 1 ? 's' : ''} selected</p>
                   </div>
                 )}
+                
+                {specialtyData && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Specialty Details</label>
+                    <div className="mt-2 p-3 bg-blue-50 rounded-lg">
+                      {rideType === 'tow_truck' && (
+                        <div className="space-y-1 text-sm">
+                          <div><strong>Vehicle:</strong> {specialtyData.vehicleYear} {specialtyData.vehicleMake} {specialtyData.vehicleModel}</div>
+                          <div><strong>License Plate:</strong> {specialtyData.licensePlate}</div>
+                          <div><strong>Color:</strong> {specialtyData.vehicleColor}</div>
+                          <div><strong>Condition:</strong> {specialtyData.vehicleCondition}</div>
+                          <div><strong>Towing Destination:</strong> {specialtyData.towingDestination}</div>
+                          {specialtyData.specialInstructions && (
+                            <div><strong>Special Instructions:</strong> {specialtyData.specialInstructions}</div>
+                          )}
+                        </div>
+                      )}
+                      {rideType === 'companion_driver' && (
+                        <div className="space-y-1 text-sm">
+                          <div><strong>Reason:</strong> {specialtyData.reasonForCompanion}</div>
+                          <div><strong>Security Level:</strong> {specialtyData.securityLevel}</div>
+                          <div><strong>Duration:</strong> {specialtyData.estimatedDuration}</div>
+                          {specialtyData.specialRequirements && (
+                            <div><strong>Requirements:</strong> {specialtyData.specialRequirements}</div>
+                          )}
+                        </div>
+                      )}
+                      {rideType === 'medical' && (
+                        <div className="space-y-1 text-sm">
+                          <div><strong>Medical Condition:</strong> {specialtyData.medicalCondition}</div>
+                          <div><strong>Appointment Type:</strong> {specialtyData.appointmentType}</div>
+                          <div><strong>Emergency Contact:</strong> {specialtyData.emergencyContact}</div>
+                          {specialtyData.medicalNotes && (
+                            <div><strong>Notes:</strong> {specialtyData.medicalNotes}</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="mt-6 flex space-x-4">
@@ -471,10 +508,163 @@ const RideRequestPage = () => {
                 </div>
               </div>
 
+              {/* Specialty Ride Details Display */}
+              {specialtyData && (
+                <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+                  <h4 className="text-lg font-medium text-gray-900 mb-4">Your Specialty Ride Details</h4>
+                  <div className="space-y-3">
+                    {rideType === 'tow_truck' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Vehicle Information</label>
+                          <div className="mt-1 text-sm text-gray-900">
+                            {specialtyData.vehicleYear} {specialtyData.vehicleMake} {specialtyData.vehicleModel}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">License Plate</label>
+                          <div className="mt-1 text-sm text-gray-900">{specialtyData.licensePlate}</div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Color</label>
+                          <div className="mt-1 text-sm text-gray-900">{specialtyData.vehicleColor}</div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Condition</label>
+                          <div className="mt-1 text-sm text-gray-900">{specialtyData.vehicleCondition}</div>
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700">Towing Destination</label>
+                          <div className="mt-1 text-sm text-gray-900">{specialtyData.towingDestination}</div>
+                        </div>
+                        {specialtyData.specialInstructions && (
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700">Special Instructions</label>
+                            <div className="mt-1 text-sm text-gray-900">{specialtyData.specialInstructions}</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {rideType === 'companion_driver' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Service Type</label>
+                          <div className="mt-1 text-sm text-gray-900">{specialtyData.serviceType}</div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Duration</label>
+                          <div className="mt-1 text-sm text-gray-900">{specialtyData.duration}</div>
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700">Special Requirements</label>
+                          <div className="mt-1 text-sm text-gray-900">{specialtyData.specialRequirements}</div>
+                        </div>
+                        {specialtyData.additionalNotes && (
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700">Additional Notes</label>
+                            <div className="mt-1 text-sm text-gray-900">{specialtyData.additionalNotes}</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {rideType === 'medical' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Medical Equipment</label>
+                          <div className="mt-1 text-sm text-gray-900">{specialtyData.medicalEquipment}</div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Mobility Assistance</label>
+                          <div className="mt-1 text-sm text-gray-900">{specialtyData.mobilityAssistance}</div>
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700">Medical Notes</label>
+                          <div className="mt-1 text-sm text-gray-900">{specialtyData.medicalNotes}</div>
+                        </div>
+                        {specialtyData.emergencyContact && (
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700">Emergency Contact</label>
+                            <div className="mt-1 text-sm text-gray-900">{specialtyData.emergencyContact}</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Show specialty details when no bids yet */}
+              {!hasBids && specialtyData && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <div className="text-yellow-600 text-2xl mr-3">⚠️</div>
+                    <div>
+                      <h4 className="text-lg font-medium text-yellow-900">Waiting for Specialized Drivers</h4>
+                      <p className="text-yellow-700">We're searching for drivers who can handle your specialty request...</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white rounded-lg p-4 border border-yellow-300">
+                    <h5 className="font-medium text-gray-900 mb-3">Your Specialty Requirements:</h5>
+                    <div className="space-y-2 text-sm">
+                      {rideType === 'tow_truck' && (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Vehicle:</span>
+                            <span className="font-medium">{specialtyData.vehicleYear} {specialtyData.vehicleMake} {specialtyData.vehicleModel}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">License Plate:</span>
+                            <span className="font-medium">{specialtyData.licensePlate}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Towing Destination:</span>
+                            <span className="font-medium">{specialtyData.towingDestination}</span>
+                          </div>
+                        </>
+                      )}
+                      {rideType === 'companion_driver' && (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Service Type:</span>
+                            <span className="font-medium">{specialtyData.serviceType}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Duration:</span>
+                            <span className="font-medium">{specialtyData.duration}</span>
+                          </div>
+                        </>
+                      )}
+                      {rideType === 'medical' && (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Medical Equipment:</span>
+                            <span className="font-medium">{specialtyData.medicalEquipment}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Mobility Assistance:</span>
+                            <span className="font-medium">{specialtyData.mobilityAssistance}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Driver Bids List */}
               {hasBids && (
                 <DriverBidsList
-                  bids={driverBids}
+                  bids={driverBids.filter(bid => {
+                    // Filter out test/mock bids from test driver profiles
+                    const isTestDriver = bid.driverInfo?.email?.includes('@test.com') || 
+                                       (bid.driverInfo?.firstName === 'Mike' && bid.driverInfo?.lastName === 'Towson') ||
+                                       (bid.driverInfo?.firstName === 'Sarah' && bid.driverInfo?.lastName === 'Johnson') ||
+                                       (bid.driverInfo?.firstName === 'John' && bid.driverInfo?.lastName === 'Doe');
+                    return !isTestDriver;
+                  })}
                   onSelectDriver={handleDriverSelection}
                   loading={loading}
                 />

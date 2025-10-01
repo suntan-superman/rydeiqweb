@@ -543,7 +543,8 @@ class AIPricingService {
       // Vehicle type score
       const vehicleTypeScore = this.calculateVehicleTypeScore(
         rideRequest.rideType,
-        driver.vehicleType
+        driver.vehicleType,
+        driver.specialtyVehicleTypes || []
       );
       totalScore += vehicleTypeScore * criteria.vehicleType;
       
@@ -755,8 +756,13 @@ class AIPricingService {
   }
 
   // Helper methods for matching
-  calculateVehicleTypeScore(rideType, vehicleType) {
-    // Calculate vehicle type compatibility score
+  calculateVehicleTypeScore(rideType, vehicleType, specialtyVehicleTypes = []) {
+    // For specialty ride types, check if driver has the required specialty vehicle type
+    if (['tow_truck', 'companion_driver', 'medical', 'wheelchair'].includes(rideType)) {
+      return specialtyVehicleTypes.includes(rideType) ? 1.0 : 0.0;
+    }
+    
+    // For standard ride types, use the existing compatibility matrix
     const compatibility = {
       standard: { sedan: 1.0, suv: 0.8, luxury: 0.9 },
       luxury: { sedan: 0.7, suv: 0.8, luxury: 1.0 },

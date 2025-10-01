@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { registerLicense } from '@syncfusion/ej2-base';
 import {
   ScheduleComponent,
   Day,
@@ -27,6 +28,11 @@ import CreateRideModal from './CreateRideModal';
 import DriverTrackingPanel from './DriverTrackingPanel';
 import driverAssignmentService from '../../services/driverAssignmentService';
 import '../../styles/syncfusion.css';
+
+// Register Syncfusion license for this component
+registerLicense(
+  "Ngo9BigBOggjHTQxAR8/V1JEaF1cWmhIfEx1RHxQdld5ZFRHallYTnNWUj0eQnxTdEBjUHxecXJXR2BUVUV/X0leYw=="
+);
 
 // Status color mapping (moved outside component to avoid dependency issues)
 const statusColors = {
@@ -477,7 +483,6 @@ const MedicalRideCalendar = ({ user }) => {
           eventRendered={onEventRendered}
           currentView="Month"
           showTimeIndicator={true}
-          showToolbar={true}
           cssClass="medical-calendar"
           readonly={false}
         >

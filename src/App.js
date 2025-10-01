@@ -1,8 +1,11 @@
 /* eslint-disable */
+// Import and register Syncfusion license FIRST
+// import './syncfusion-license';
+import { registerLicense } from '@syncfusion/ej2-base';
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { registerLicense } from '@syncfusion/ej2-base';
 import { Toaster } from 'react-hot-toast';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -159,10 +162,9 @@ const ComparePageOld = () => {
 };
 
 const App = () => {
-  // Register Syncfusion license
-registerLicense(
-  "Ngo9BigBOggjHTQxAR8/V1JEaF1cWmhIfEx1RHxQdld5ZFRHallYTnNWUj0eQnxTdEBjUX1YcXZUTmRVUUd/V0leYw=="
-);
+  registerLicense(
+      "Ngo9BigBOggjHTQxAR8/V1JEaF1cWmhIfEx1RHxQdld5ZFRHallYTnNWUj0eQnxTdEBjUHxecXJXR2BUVUV/X0leYw=="
+    );
   
   return (
     <QueryClientProvider client={queryClient}>

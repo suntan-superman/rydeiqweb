@@ -7,7 +7,8 @@ import {
   doc, 
   serverTimestamp,
   onSnapshot,
-  addDoc
+  addDoc,
+  orderBy
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -78,6 +79,15 @@ class DriverAssignmentService {
         if (distance <= radiusMiles) {
           // Check ride requirements
           let meetsRequirements = true;
+          
+          // Check specialty vehicle type requirements
+          if (rideRequirements.rideType && ['tow_truck', 'companion_driver', 'medical', 'wheelchair'].includes(rideRequirements.rideType)) {
+            const driverSpecialtyTypes = driver.vehicleInfo?.specialtyVehicleTypes || driver.specialtyVehicleTypes || [];
+            if (!driverSpecialtyTypes.includes(rideRequirements.rideType)) {
+              console.log(`🚫 Driver ${driver.id} cannot fulfill request: vehicle type mismatch (${rideRequirements.rideType} vs ${driverSpecialtyTypes.join(', ') || 'none'})`);
+              meetsRequirements = false;
+            }
+          }
           
           // Legacy requirements check
           if (rideRequirements.requiresWheelchair && !driver.vehicleInfo?.vehicle_info?.features?.includes('wheelchair_accessible')) {
@@ -462,6 +472,46 @@ class DriverAssignmentService {
       unsubscribe();
       this.activeListeners.delete(rideId);
     }
+  }
+
+  /**
+   * Subscribe to ride requests filtered by driver capabilities
+   * @param {string} driverId 
+   * @param {Array} driverSpecialtyTypes 
+   * @param {Function} callback 
+   * @returns {Function} Unsubscribe function
+   */
+  subscribeToDriverRideRequests(driverId, driverSpecialtyTypes = [], callback) {
+    const q = query(
+      collection(db, 'rideRequests'),
+      where('status', '==', 'pending'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const requests = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(request => {
+          // Filter out specialty requests that this driver can't fulfill
+          if (['tow_truck', 'companion_driver', 'medical', 'wheelchair'].includes(request.rideType)) {
+            const canFulfill = driverSpecialtyTypes.includes(request.rideType);
+            if (!canFulfill) {
+              console.log(`🚫 Driver ${driverId} cannot fulfill request: vehicle type mismatch (${request.rideType} vs ${driverSpecialtyTypes.join(', ') || 'none'})`);
+            }
+            return canFulfill;
+          }
+          // Allow standard requests for all drivers
+          return true;
+        });
+      
+      callback(requests);
+    }, (error) => {
+      console.error('Error in driver ride requests subscription:', error);
+      callback([], error);
+    });
+
+    this.activeListeners.set(`driver-requests-${driverId}`, unsubscribe);
+    return unsubscribe;
   }
 
   /**

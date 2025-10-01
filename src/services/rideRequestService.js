@@ -197,57 +197,31 @@ class RideRequestService {
   // Get available drivers for ride request
   async getAvailableDrivers(rideData) {
     try {
-      // This would typically query drivers based on location, availability, etc.
-      // For now, return mock data - in production, this would integrate with driver location service
-      const mockDrivers = [
-        {
-          id: 'driver1',
-          name: 'John Doe',
-          rating: 4.8,
-          vehicle: 'Toyota Camry 2020',
-          estimatedArrival: '5 min',
-          distance: '2.1 miles',
-          baseFare: 8.50,
-          perMileRate: 1.25,
-          perMinuteRate: 0.35,
-          profilePicture: null,
-          isVideoEnabled: true,
-          isPairedDriver: false,
-          certifications: ['standard', 'medical']
-        },
-        {
-          id: 'driver2',
-          name: 'Jane Smith',
-          rating: 4.9,
-          vehicle: 'Honda Accord 2021',
-          estimatedArrival: '7 min',
-          distance: '3.2 miles',
-          baseFare: 9.00,
-          perMileRate: 1.30,
-          perMinuteRate: 0.40,
-          profilePicture: null,
-          isVideoEnabled: false,
-          isPairedDriver: true,
-          certifications: ['standard', 'medical', 'special_needs']
-        },
-        {
-          id: 'driver3',
-          name: 'Mike Johnson',
-          rating: 4.7,
-          vehicle: 'Nissan Altima 2019',
-          estimatedArrival: '10 min',
-          distance: '4.5 miles',
-          baseFare: 7.50,
-          perMileRate: 1.20,
-          perMinuteRate: 0.30,
-          profilePicture: null,
-          isVideoEnabled: true,
-          isPairedDriver: false,
-          certifications: ['standard']
-        }
-      ];
-
-      return { success: true, data: mockDrivers };
+      // Import driver assignment service
+      const { driverAssignmentService } = await import('./driverAssignmentService');
+      
+      // Get pickup coordinates
+      const pickupCoords = {
+        lat: rideData.pickup.latitude,
+        lng: rideData.pickup.longitude
+      };
+      
+      // Prepare ride requirements
+      const rideRequirements = {
+        rideType: rideData.rideType,
+        requiresWheelchair: rideData.rideType === 'wheelchair',
+        requiresAssistance: rideData.rideType === 'companion_driver',
+        specialtyData: rideData.specialtyData
+      };
+      
+      // Find nearby drivers with proper filtering
+      const nearbyDrivers = await driverAssignmentService.findNearbyDrivers(
+        pickupCoords,
+        15, // 15 mile radius
+        rideRequirements
+      );
+      
+      return { success: true, data: nearbyDrivers };
     } catch (error) {
       console.error('Error fetching available drivers:', error);
       return { success: false, error: error.message };
@@ -375,6 +349,30 @@ class RideRequestService {
 
     return onSnapshot(q, (snapshot) => {
       const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      callback(requests);
+    });
+  }
+
+  // Real-time listener for driver-specific ride requests (filtered by driver capabilities)
+  subscribeToDriverRideRequests(driverId, driverSpecialtyTypes = [], callback) {
+    const q = query(
+      collection(db, this.collection),
+      where('status', '==', 'pending'),
+      orderBy('createdAt', 'desc')
+    );
+
+    return onSnapshot(q, (snapshot) => {
+      const requests = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(request => {
+          // Filter out specialty requests that this driver can't fulfill
+          if (['tow_truck', 'companion_driver', 'medical', 'wheelchair'].includes(request.rideType)) {
+            return driverSpecialtyTypes.includes(request.rideType);
+          }
+          // Allow standard requests for all drivers
+          return true;
+        });
+      
       callback(requests);
     });
   }

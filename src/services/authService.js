@@ -11,6 +11,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, query, collection, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { cleanupService } from './cleanupService';
 
 // User roles constants
 export const USER_ROLES = {
@@ -989,9 +990,18 @@ export const checkEmailVerification = async () => {
 // Logout user
 export const logoutUser = async () => {
   try {
+    // Clean up any active Firebase listeners before signing out
+    // This helps prevent permission errors during logout
+    console.log('Logging out user and cleaning up listeners...');
+    
+    // Clean up all registered listeners
+    cleanupService.cleanupAllListeners();
+    
     await signOut(auth);
+    console.log('User logged out successfully');
     return { success: true };
   } catch (error) {
+    console.error('Error during logout:', error);
     return {
       success: false,
       error: {

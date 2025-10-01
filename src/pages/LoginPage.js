@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import LoginForm from '../components/forms/LoginForm';
-import DomainVerificationTest from '../components/debug/DomainVerificationTest';
+// import DomainVerificationTest from '../components/debug/DomainVerificationTest';
 
 const LoginPage = () => {
   return (
@@ -56,11 +56,11 @@ const LoginPage = () => {
       </div>
       
       {/* Domain Verification Test - Only in development */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* {process.env.NODE_ENV === 'development' && (
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <DomainVerificationTest />
         </div>
-      )}
+      )} */}
     </div>
   );
 };

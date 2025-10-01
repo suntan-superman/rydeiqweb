@@ -4,8 +4,7 @@ import { useDriverOnboarding } from '../../contexts/DriverOnboardingContext';
 import { 
   uploadDriverDocument, 
   deleteDriverDocument, 
-  DOCUMENT_TYPES,
-  ONBOARDING_STEPS 
+  DOCUMENT_TYPES
 } from '../../services/driverService';
 import Button from '../common/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -14,7 +13,6 @@ import toast from 'react-hot-toast';
 const DocumentUploadForm = () => {
   const { 
     driverApplication, 
-    updateStep, 
     goToNextStep, 
     goToPreviousStep,
     saving,

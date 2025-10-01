@@ -8,12 +8,78 @@ import Input from '../common/Input';
 import EmailVerificationDialog from '../auth/EmailVerificationDialog';
 import toast from 'react-hot-toast';
 
+// Helper functions for secure storage
+const STORAGE_KEYS = {
+  REMEMBERED_EMAIL: 'anyryde_remembered_email',
+  REMEMBERED_PASSWORD: 'anyryde_remembered_password',
+  REMEMBER_ME: 'anyryde_remember_me',
+  PASSWORD_EXPIRY: 'anyryde_password_expiry'
+};
+
+const PASSWORD_EXPIRY_HOURS = 24; // Password expires after 24 hours
+
+const saveRememberedCredentials = (email, password, rememberMe) => {
+  if (rememberMe) {
+    // Save email (not sensitive)
+    localStorage.setItem(STORAGE_KEYS.REMEMBERED_EMAIL, email);
+    localStorage.setItem(STORAGE_KEYS.REMEMBER_ME, 'true');
+    
+    // Encrypt and save password with expiry
+    const expiryTime = new Date().getTime() + (PASSWORD_EXPIRY_HOURS * 60 * 60 * 1000);
+    const encryptedPassword = btoa(password); // Simple base64 encoding (not for production)
+    localStorage.setItem(STORAGE_KEYS.REMEMBERED_PASSWORD, encryptedPassword);
+    localStorage.setItem(STORAGE_KEYS.PASSWORD_EXPIRY, expiryTime.toString());
+  } else {
+    // Clear stored credentials
+    localStorage.removeItem(STORAGE_KEYS.REMEMBERED_EMAIL);
+    localStorage.removeItem(STORAGE_KEYS.REMEMBERED_PASSWORD);
+    localStorage.removeItem(STORAGE_KEYS.REMEMBER_ME);
+    localStorage.removeItem(STORAGE_KEYS.PASSWORD_EXPIRY);
+  }
+};
+
+const getRememberedCredentials = () => {
+  const rememberMe = localStorage.getItem(STORAGE_KEYS.REMEMBER_ME) === 'true';
+  const email = localStorage.getItem(STORAGE_KEYS.REMEMBERED_EMAIL) || '';
+  
+  let password = '';
+  if (rememberMe) {
+    const encryptedPassword = localStorage.getItem(STORAGE_KEYS.REMEMBERED_PASSWORD);
+    const expiryTime = localStorage.getItem(STORAGE_KEYS.PASSWORD_EXPIRY);
+    
+    // Check if password hasn't expired
+    if (encryptedPassword && expiryTime && new Date().getTime() < parseInt(expiryTime)) {
+      try {
+        password = atob(encryptedPassword); // Decode from base64
+      } catch (error) {
+        console.warn('Failed to decode remembered password:', error);
+        // Clear invalid stored data
+        localStorage.removeItem(STORAGE_KEYS.REMEMBERED_PASSWORD);
+        localStorage.removeItem(STORAGE_KEYS.PASSWORD_EXPIRY);
+      }
+    } else {
+      // Password expired, clear it
+      localStorage.removeItem(STORAGE_KEYS.REMEMBERED_PASSWORD);
+      localStorage.removeItem(STORAGE_KEYS.PASSWORD_EXPIRY);
+    }
+  }
+  
+  return { email, password, rememberMe };
+};
+
 const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [unverifiedUser, setUnverifiedUser] = useState(null);
+  const [rememberMe, setRememberMe] = useState(false);
   const { setUser, setShowEmailVerificationDialog } = useAuth();
   const navigate = useNavigate();
+
+  // Get remembered credentials on component mount
+  useEffect(() => {
+    const remembered = getRememberedCredentials();
+    setRememberMe(remembered.rememberMe);
+  }, []);
 
   const {
     register,
@@ -30,6 +96,26 @@ const LoginForm = () => {
     },
     mode: 'onChange',
   });
+
+  // Load remembered credentials into form
+  useEffect(() => {
+    const remembered = getRememberedCredentials();
+    if (remembered.email) {
+      setValue('email', remembered.email);
+    }
+    if (remembered.password) {
+      setValue('password', remembered.password);
+      // Show a subtle notification that credentials were loaded
+      toast.success('Previous credentials loaded', {
+        duration: 2000,
+        style: {
+          background: '#f0f9ff',
+          color: '#0369a1',
+          border: '1px solid #bae6fd',
+        }
+      });
+    }
+  }, [setValue]);
 
   const watchedEmail = watch('email');
   const watchedPassword = watch('password');
@@ -95,6 +181,9 @@ const LoginForm = () => {
       console.log('LoginForm: Login result:', result);
       
       if (result.success) {
+        // Handle Remember Me functionality
+        saveRememberedCredentials(data.email, data.password, rememberMe);
+        
         // Set the user state manually to ensure immediate redirection
         console.log('LoginForm: Login successful, user data:', result.user);
         console.log('LoginForm: User role:', result.user.role);
@@ -246,10 +335,12 @@ const LoginForm = () => {
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
                   className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                  Remember me
+                  Remember me {rememberMe && <span className="text-xs text-blue-600">(24h expiry)</span>}
                 </label>
               </div>
 

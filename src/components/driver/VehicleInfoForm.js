@@ -154,6 +154,30 @@ const VehicleInfoForm = () => {
       requiresApproval: true
     },
     { 
+      value: 'wheelchair_accessible', 
+      label: '♿ Wheelchair Accessible', 
+      description: 'Vehicle equipped with wheelchair ramp/lift',
+      requiresApproval: true
+    },
+    { 
+      value: 'oxygen_equipped', 
+      label: '🫁 Oxygen Support Equipment', 
+      description: 'Vehicle equipped with oxygen support systems',
+      requiresApproval: true
+    },
+    { 
+      value: 'stretcher_equipped', 
+      label: '🏥 Stretcher Transport', 
+      description: 'Vehicle equipped for stretcher transport',
+      requiresApproval: true
+    },
+    { 
+      value: 'assistance_available', 
+      label: '🤝 Physical Assistance Available', 
+      description: 'Driver provides physical assistance to passengers',
+      requiresApproval: false
+    },
+    { 
       value: 'pet_friendly', 
       label: '🐶 Pet-Friendly Vehicle', 
       description: 'Suitable for pets and service animals',

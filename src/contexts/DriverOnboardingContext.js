@@ -6,6 +6,7 @@ import {
   completeOnboarding,
   createDriverApplication,
   submitDriverApplication,
+  updateMobileAppStatus as updateMobileAppStatusService,
   ONBOARDING_STEPS
 } from '../services/driverService';
 import toast from 'react-hot-toast';
@@ -268,7 +269,7 @@ export const DriverOnboardingProvider = ({ children }) => {
     if (!user) return;
 
     try {
-      const result = await updateMobileAppStatus(user.uid, accountCreated);
+      const result = await updateMobileAppStatusService(user.uid, accountCreated);
       if (result.success) {
         setDriverApplication(prev => ({
           ...prev,

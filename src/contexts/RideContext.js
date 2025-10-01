@@ -11,6 +11,7 @@ import {
   getNearbyDrivers
 } from '../services/riderService';
 import { validateProfileCompletion } from '../services/profileValidationService';
+import { cleanupService } from '../services/cleanupService';
 import toast from 'react-hot-toast';
 
 const RideContext = createContext();
@@ -64,6 +65,7 @@ export const RideProvider = ({ children }) => {
   const [rideType, setRideType] = useState(RIDE_TYPES.STANDARD);
   const [specialRequests, setSpecialRequests] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState('card');
+  const [specialtyData, setSpecialtyData] = useState(null);
   
   // Real-time data
   const [driverBids, setDriverBids] = useState([]);
@@ -160,6 +162,7 @@ export const RideProvider = ({ children }) => {
         rideType,
         specialRequests,
         paymentMethod,
+        specialtyData,
         ...additionalData
       };
 
@@ -222,6 +225,8 @@ export const RideProvider = ({ children }) => {
       }
     });
 
+    // Register the subscription with cleanup service
+    cleanupService.registerListener(`ride-subscription-${rideId}`, unsubscribe);
     setRideSubscription(() => unsubscribe);
   };
 
@@ -398,6 +403,7 @@ export const RideProvider = ({ children }) => {
     setDriverBids([]);
     setSelectedDriver(null);
     setError(null);
+    setSpecialtyData(null);
     
     // Clean up subscription
     if (rideSubscription) {
@@ -460,6 +466,7 @@ export const RideProvider = ({ children }) => {
     rideType,
     specialRequests,
     paymentMethod,
+    specialtyData,
     
     // Real-time data
     driverBids,
@@ -477,6 +484,7 @@ export const RideProvider = ({ children }) => {
     setRideType,
     setSpecialRequests,
     setPaymentMethod,
+    setSpecialtyData,
     
     // Actions - Ride management
     requestRide,
@@ -501,6 +509,31 @@ export const RideProvider = ({ children }) => {
     RIDE_STATUS,
     RIDE_TYPES
   };
+
+  // Cleanup Firebase listeners on unmount
+  useEffect(() => {
+    return () => {
+      // Clean up ride subscription
+      if (rideSubscription) {
+        rideSubscription();
+        cleanupService.unregisterListener(`ride-subscription-${currentRide?.id}`);
+      }
+    };
+  }, [rideSubscription, currentRide?.id]);
+
+  // Clean up listeners when user logs out
+  useEffect(() => {
+    if (!isAuthenticated) {
+      // Clean up ride subscription when user logs out
+      if (rideSubscription) {
+        rideSubscription();
+        cleanupService.unregisterListener(`ride-subscription-${currentRide?.id}`);
+        setRideSubscription(null);
+      }
+      // Reset ride state
+      resetRideState();
+    }
+  }, [isAuthenticated, rideSubscription, currentRide?.id, resetRideState]);
 
   return (
     <RideContext.Provider value={value}>
