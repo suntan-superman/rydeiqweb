@@ -24,6 +24,7 @@ yarn-debug.log*
 yarn-error.log*
 
 test-firebase-connection.js
+serviceAccountKey.json
 
 # Ignore all markdown files
 *.md
