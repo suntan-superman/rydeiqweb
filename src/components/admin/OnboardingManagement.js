@@ -69,10 +69,6 @@ const OnboardingManagement = () => {
     }
   }, [user]);
 
-  // Test function to manually trigger driver loading
-  const testLoadDrivers = async () => {
-    await loadDrivers();
-  };
 
   const applyFilters = useCallback(() => {
     let filtered = [...drivers];

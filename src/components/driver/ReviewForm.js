@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDriverOnboarding } from '../../contexts/DriverOnboardingContext';
 import { 
-  submitDriverApplication, 
   validateCompleteApplication,
   DOCUMENT_TYPES 
 } from '../../services/driverService';
