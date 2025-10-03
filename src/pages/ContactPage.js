@@ -196,10 +196,10 @@ const ContactPage = () => {
                   <div>
                     <h4 className="font-semibold text-gray-900">Email</h4>
                     <div className="text-gray-600 mt-1 space-y-1">
-                      <p>General: <a href="mailto:info@rydealong.com" className="text-primary-600 hover:text-primary-700">info@rydealong.com</a></p>
-                      <p>Support: <a href="mailto:support@rydealong.com" className="text-primary-600 hover:text-primary-700">support@rydealong.com</a></p>
-                      <p>Partnership: <a href="mailto:partners@rydealong.com" className="text-primary-600 hover:text-primary-700">partners@rydealong.com</a></p>
-                      <p>Press: <a href="mailto:press@rydealong.com" className="text-primary-600 hover:text-primary-700">press@rydealong.com</a></p>
+                      <p>General: <a href="mailto:info@anyryde.com" className="text-primary-600 hover:text-primary-700">info@anyryde.com</a></p>
+                      <p>Support: <a href="mailto:support@anyryde.com" className="text-primary-600 hover:text-primary-700">support@anyryde.com</a></p>
+                      <p>Partnership: <a href="mailto:partners@anyryde.com" className="text-primary-600 hover:text-primary-700">partners@anyryde.com</a></p>
+                      <p>Press: <a href="mailto:press@anyryde.com" className="text-primary-600 hover:text-primary-700">press@anyryde.com</a></p>
                     </div>
                   </div>
                 </div>

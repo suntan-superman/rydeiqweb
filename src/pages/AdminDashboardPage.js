@@ -61,18 +61,55 @@ const AdminDashboardPage = () => {
   useEffect(() => {
     const loadMetrics = async () => {
       if (user && isAdmin(user)) {
+        console.log('📊 Loading platform metrics for admin user:', {
+          email: user.email,
+          role: user.role,
+          uid: user.uid
+        });
         try {
           const result = await getPlatformMetrics(user, '7days');
           if (result.success) {
+            console.log('✅ Platform metrics loaded successfully:', result.data);
             setPlatformMetrics(result.data);
           } else {
-            toast.error('Failed to load platform metrics');
+            console.error('❌ Failed to load platform metrics:', result.error);
+            // Set empty metrics so the dashboard can still render
+            setPlatformMetrics({
+              drivers: { total: 0, active: 0, pending: 0, approvalRate: 0 },
+              rides: { total: 0, completed: 0, cancelled: 0, completionRate: 0 },
+              revenue: { total: 0, commission: 0, averageRide: 0 },
+              totalUsers: 0,
+              activeDrivers: 0
+            });
+            toast.error('Failed to load platform metrics. Showing default values.');
           }
         } catch (error) {
-          console.error('Error loading metrics:', error);
+          console.error('❌ Error loading metrics:', error);
+          console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            stack: error.stack
+          });
+          // Set empty metrics on error as well
+          setPlatformMetrics({
+            drivers: { total: 0, active: 0, pending: 0, approvalRate: 0 },
+            rides: { total: 0, completed: 0, cancelled: 0, completionRate: 0 },
+            revenue: { total: 0, commission: 0, averageRide: 0 },
+            totalUsers: 0,
+            activeDrivers: 0
+          });
+          toast.error(`Error loading metrics: ${error.message}`);
         } finally {
           setLoading(false);
         }
+      } else if (user) {
+        console.log('⚠️ User is not recognized as admin:', {
+          email: user.email,
+          role: user.role,
+          isAdmin: isAdmin(user)
+        });
+        // User is not admin, stop loading
+        setLoading(false);
       }
     };
 

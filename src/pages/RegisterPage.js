@@ -3,8 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../contexts/AuthContext';
-import { registerUser, USER_TYPES, checkEmailVerification } from '../services/authService';
+import { registerUser, USER_TYPES, checkEmailVerification, loginUser } from '../services/authService';
 import { getTermsForUserType, getTermsTitleForUserType } from '../services/termsService';
+import { checkOnboardingStatus } from '../services/driverService';
+import { checkRiderOnboardingStatus } from '../services/riderOnboardingService';
 import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -562,15 +564,59 @@ const RegisterPage = () => {
     const checkEmailVerificationStatus = async () => {
       // If user is logged in and email is verified, redirect to appropriate dashboard
       if (user && user.emailVerified) {
-        console.log('✅ User email is verified, redirecting to dashboard');
-        if (user.userType === 'driver') {
-          navigate('/driver-dashboard');
-        } else if (user.userType === 'admin') {
-          navigate('/admin-dashboard');
-        } else if (user.userType === 'healthcare_provider') {
-          navigate('/medical-portal');
-        } else {
-          navigate('/dashboard');
+        console.log('✅ User email is verified, checking onboarding status');
+        
+        try {
+          // Check onboarding status before redirecting
+          if (user.userType === 'driver') {
+            const onboardingResult = await checkOnboardingStatus(user.uid);
+            if (onboardingResult.success) {
+              const { needsOnboarding } = onboardingResult.data;
+              if (needsOnboarding) {
+                console.log('🎯 Driver needs onboarding, redirecting to /driver-onboarding');
+                navigate('/driver-onboarding');
+              } else {
+                console.log('✅ Driver onboarding complete, redirecting to /driver-dashboard');
+                navigate('/driver-dashboard');
+              }
+            } else {
+              // If can't check status, assume needs onboarding (safer default for new drivers)
+              console.log('⚠️ Could not check driver onboarding status, redirecting to /driver-onboarding');
+              navigate('/driver-onboarding');
+            }
+          } else if (user.userType === 'admin') {
+            navigate('/admin-dashboard');
+          } else if (user.userType === 'healthcare_provider') {
+            navigate('/medical-portal');
+          } else {
+            // Check if rider has completed onboarding
+            const riderOnboardingResult = await checkRiderOnboardingStatus(user.uid);
+            if (riderOnboardingResult.success) {
+              const { needsOnboarding } = riderOnboardingResult.data;
+              if (needsOnboarding) {
+                console.log('🎯 Rider needs onboarding, redirecting to /onboarding');
+                navigate('/onboarding');
+              } else {
+                console.log('✅ Rider onboarding complete, redirecting to /dashboard');
+                navigate('/dashboard');
+              }
+            } else {
+              // Default to dashboard if can't check
+              navigate('/dashboard');
+            }
+          }
+        } catch (error) {
+          console.error('Error checking onboarding status:', error);
+          // Fallback to basic redirect with onboarding check
+          if (user.userType === 'driver') {
+            navigate('/driver-onboarding');
+          } else if (user.userType === 'admin') {
+            navigate('/admin-dashboard');
+          } else if (user.userType === 'healthcare_provider') {
+            navigate('/medical-portal');
+          } else {
+            navigate('/dashboard');
+          }
         }
         return;
       }
@@ -625,26 +671,48 @@ const RegisterPage = () => {
           toast.success(result.message);
           navigate('/login');
         } else {
-          // New account creation
+          // New account creation - show appropriate message
+          // DON'T navigate yet - let the email verification dialog show first
           if (userType === USER_TYPES.DRIVER) {
-            toast.success('Account created successfully! Please check your email to verify your account, then sign in to complete your driver onboarding.');
-            navigate('/login');
+            toast.success('Account created successfully! Please verify your email to continue with driver onboarding.', {
+              duration: 5000
+            });
           } else if (userType === USER_TYPES.ADMINISTRATOR) {
-            toast.success('Admin request submitted! Please check your email to verify your account, then sign in. Your request will be reviewed by a super administrator.');
-            navigate('/login');
+            toast.success('Admin request submitted! Please verify your email to continue.', {
+              duration: 5000
+            });
           } else if (userType === USER_TYPES.HEALTHCARE_PROVIDER) {
-            toast.success('Healthcare provider account created! Please check your email to verify your account, then sign in to access the medical portal.');
-            navigate('/login');
+            toast.success('Healthcare provider account created! Please verify your email to continue.', {
+              duration: 5000
+            });
           } else {
-            toast.success('Account created successfully! Please check your email to verify your account, then sign in to start booking rides.');
-            navigate('/login');
+            toast.success('Account created successfully! Please verify your email to continue.', {
+              duration: 5000
+            });
           }
+          // The GlobalEmailVerificationDialog will show automatically
+          // After verification, the user will be redirected appropriately
         }
       } else {
         console.error('Registration failed:', result.error);
         
         // Handle specific error cases
-        if (result.error.code === 'auth/email-already-in-use') {
+        if (typeof result.error === 'string' && result.error.includes('not verified')) {
+          // Account exists but is not verified - show helpful message
+          toast.error('This account is not verified yet. Please check your email for the verification link.', {
+            duration: 6000
+          });
+          // Try to log them in so the verification dialog can show
+          try {
+            const loginResult = await loginUser(data.email, data.password);
+            if (loginResult.success) {
+              setUser(loginResult.user);
+              // The verification dialog should show automatically
+            }
+          } catch (loginError) {
+            console.error('Could not auto-login for verification:', loginError);
+          }
+        } else if (result.error.code === 'auth/email-already-in-use') {
           toast.error(result.error.message, {
             duration: 6000,
             action: {

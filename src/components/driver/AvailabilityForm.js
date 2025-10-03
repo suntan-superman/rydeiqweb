@@ -388,7 +388,7 @@ const AvailabilityForm = () => {
                       name={`weeklySchedule.${day}.enabled`}
                       checked={schedule.enabled}
                       onChange={handleInputChange}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                     />
                     <span className="text-sm font-medium text-gray-700">{dayNames[day]}</span>
                   </label>
@@ -474,7 +474,7 @@ const AvailabilityForm = () => {
                         type="checkbox"
                         checked={formData.preferredZones.includes(zone)}
                         onChange={() => handleMultiSelect('preferredZones', zone)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                       />
                       <span className="text-sm text-gray-700">{zone}</span>
                     </label>
@@ -539,7 +539,7 @@ const AvailabilityForm = () => {
                     name="airportService"
                     checked={formData.airportService}
                     onChange={handleInputChange}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                   />
                   <span className="text-sm text-gray-700">Accept airport rides</span>
                 </label>
@@ -550,7 +550,7 @@ const AvailabilityForm = () => {
                     name="longDistanceService"
                     checked={formData.longDistanceService}
                     onChange={handleInputChange}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                   />
                   <span className="text-sm text-gray-700">Accept long-distance trips (45+ minutes)</span>
                 </label>
@@ -568,7 +568,7 @@ const AvailabilityForm = () => {
                       type="checkbox"
                       checked={formData.preferredRideTypes.includes(type.value)}
                       onChange={() => handleMultiSelect('preferredRideTypes', type.value)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                     />
                     <span className="text-sm text-gray-700">{type.label}</span>
                   </label>
@@ -622,7 +622,7 @@ const AvailabilityForm = () => {
                     name="autoAcceptRides"
                     checked={formData.autoAcceptRides}
                     onChange={handleInputChange}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                   />
                   <span className="text-sm text-gray-700">Auto-accept rides within specified radius</span>
                 </label>
@@ -657,7 +657,7 @@ const AvailabilityForm = () => {
                   name="wheelchairAccessible"
                   checked={formData.wheelchairAccessible}
                   onChange={handleInputChange}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <span className="text-sm text-gray-700">♿ Wheelchair accessible vehicle</span>
               </label>
@@ -668,7 +668,7 @@ const AvailabilityForm = () => {
                   name="oxygenEquipped"
                   checked={formData.oxygenEquipped}
                   onChange={handleInputChange}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <span className="text-sm text-gray-700">🫁 Oxygen support equipment</span>
               </label>
@@ -679,7 +679,7 @@ const AvailabilityForm = () => {
                   name="stretcherEquipped"
                   checked={formData.stretcherEquipped}
                   onChange={handleInputChange}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <span className="text-sm text-gray-700">🏥 Stretcher transport capability</span>
               </label>
@@ -690,7 +690,7 @@ const AvailabilityForm = () => {
                   name="assistanceAvailable"
                   checked={formData.assistanceAvailable}
                   onChange={handleInputChange}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <span className="text-sm text-gray-700">🤝 Physical assistance available</span>
               </label>
@@ -701,7 +701,7 @@ const AvailabilityForm = () => {
                   name="petFriendly"
                   checked={formData.petFriendly}
                   onChange={handleInputChange}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <span className="text-sm text-gray-700">🐶 Pet-friendly rides</span>
               </label>
@@ -712,7 +712,7 @@ const AvailabilityForm = () => {
                   name="childSeatAvailable"
                   checked={formData.childSeatAvailable}
                   onChange={handleInputChange}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <span className="text-sm text-gray-700">Child seat available</span>
               </label>
@@ -723,7 +723,7 @@ const AvailabilityForm = () => {
                   name="luxuryVehicle"
                   checked={formData.luxuryVehicle}
                   onChange={handleInputChange}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <span className="text-sm text-gray-700">Luxury vehicle</span>
               </label>
@@ -741,7 +741,7 @@ const AvailabilityForm = () => {
                   name="preferPeakHours"
                   checked={formData.preferPeakHours}
                   onChange={handleInputChange}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <span className="text-sm text-gray-700">Prefer peak hours (higher earnings)</span>
               </label>
@@ -752,7 +752,7 @@ const AvailabilityForm = () => {
                   name="weekendAvailability"
                   checked={formData.weekendAvailability}
                   onChange={handleInputChange}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <span className="text-sm text-gray-700">Available on weekends</span>
               </label>
@@ -763,7 +763,7 @@ const AvailabilityForm = () => {
                   name="holidayAvailability"
                   checked={formData.holidayAvailability}
                   onChange={handleInputChange}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <span className="text-sm text-gray-700">Available on holidays</span>
               </label>
@@ -774,7 +774,7 @@ const AvailabilityForm = () => {
                   name="eveningAvailability"
                   checked={formData.eveningAvailability}
                   onChange={handleInputChange}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <span className="text-sm text-gray-700">Available for evening rides (6 PM - 12 AM)</span>
               </label>
@@ -785,7 +785,7 @@ const AvailabilityForm = () => {
                   name="earlyMorningAvailability"
                   checked={formData.earlyMorningAvailability}
                   onChange={handleInputChange}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <span className="text-sm text-gray-700">Available for early morning rides (5 AM - 9 AM)</span>
               </label>

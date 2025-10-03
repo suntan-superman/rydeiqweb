@@ -4,7 +4,7 @@
 import { registerLicense } from '@syncfusion/ej2-base';
 
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 
@@ -109,8 +109,15 @@ const PublicRoute = ({ children }) => {
   }
   
   if (isAuthenticated && user) {
+    // Don't redirect if email is not verified - let them stay to see verification message
+    if (!user.emailVerified) {
+      console.log('PublicRoute: User not verified, allowing access to public pages');
+      return children;
+    }
+    
     // Redirect to appropriate dashboard based on user role
     const redirectPath = getRedirectPath(user);
+    console.log('PublicRoute: Redirecting authenticated user to:', redirectPath);
     return <Navigate to={redirectPath} replace />;
   }
   
@@ -434,11 +441,26 @@ const App = () => {
 
 // Global Email Verification Dialog Component
 const GlobalEmailVerificationDialog = () => {
-  const { showEmailVerificationDialog, setShowEmailVerificationDialog, user } = useAuth();
+  const { showEmailVerificationDialog, setShowEmailVerificationDialog, user, setUser } = useAuth();
+  const navigate = useNavigate();
 
-  const handleVerified = () => {
+  const handleVerified = async () => {
+    console.log('📧 GlobalEmailVerificationDialog: Email verified, updating user and redirecting');
     setShowEmailVerificationDialog(false);
-    // The AuthContext will handle updating the user state
+    
+    // Update user state with emailVerified = true
+    if (user) {
+      setUser(prev => ({
+        ...prev,
+        emailVerified: true
+      }));
+      
+      // Wait a moment for state to update, then redirect
+      setTimeout(() => {
+        // The RegisterPage useEffect will handle the redirect based on user type
+        console.log('📧 Email verified, RegisterPage should handle redirect');
+      }, 500);
+    }
   };
 
   const handleClose = () => {

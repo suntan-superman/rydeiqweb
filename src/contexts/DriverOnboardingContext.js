@@ -250,7 +250,7 @@ export const DriverOnboardingProvider = ({ children }) => {
           submittedAt: new Date().toISOString()
         }));
         setCurrentStep(ONBOARDING_STEPS.SUBMITTED);
-        toast.success('Application submitted successfully!');
+        // Toast is shown on the ApplicationSubmittedScreen
         return { success: true };
       } else {
         toast.error('Failed to submit application');

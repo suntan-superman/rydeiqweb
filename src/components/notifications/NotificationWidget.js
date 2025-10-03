@@ -99,7 +99,8 @@ const NotificationWidget = () => {
       if (result.success) {
         setIsInitialized(true);
         console.log('Notifications initialized successfully');
-        toast.success('Push notifications enabled! 🔔');
+        // Removed toast.success to prevent multiple notifications
+        // toast.success('Push notifications enabled! 🔔');
       } else {
         console.warn('Failed to initialize notifications:', result.error);
         // Show a more informative message instead of an error

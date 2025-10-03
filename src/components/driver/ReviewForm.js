@@ -14,6 +14,7 @@ const ReviewForm = () => {
     driverApplication, 
     goToStep,
     goToPreviousStep,
+    submitApplication,
     ONBOARDING_STEPS: STEPS
   } = useDriverOnboarding();
   
@@ -60,23 +61,28 @@ const ReviewForm = () => {
     const errors = validateApplication();
     if (errors.length > 0) {
       setValidationErrors(errors);
+      toast.error('Please complete all required fields before submitting');
       return;
     }
     
     setSubmitting(true);
     
     try {
-      const result = await submitDriverApplication(driverApplication.userId);
+      console.log('📝 Submitting driver application...');
+      // Use the context's submitApplication function
+      // This will change currentStep to SUBMITTED and show ApplicationSubmittedScreen
+      const result = await submitApplication();
       
       if (result.success) {
-        toast.success('Application submitted successfully!');
-        setSubmitted(true); // Mark application as submitted
-        // The context will automatically reload the application data
+        console.log('✅ Application submitted successfully');
+        setSubmitted(true);
+        // The context has changed currentStep to SUBMITTED
+        // ApplicationSubmittedScreen will now render
       } else {
         throw new Error(result.error);
       }
     } catch (error) {
-      console.error('Submission error:', error);
+      console.error('❌ Submission error:', error);
       toast.error(`Failed to submit application: ${error.message}`);
     } finally {
       setSubmitting(false);
@@ -555,8 +561,8 @@ const ReviewForm = () => {
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-500">
             Need help? Contact our support team at{' '}
-            <a href="mailto:support@rydealong.com" className="text-primary-600 hover:text-primary-700">
-              support@rydealong.com
+            <a href="mailto:support@anyryde.com" className="text-primary-600 hover:text-primary-700">
+              support@anyryde.com
             </a>
           </p>
         </div>

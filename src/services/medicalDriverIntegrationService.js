@@ -466,8 +466,8 @@ class MedicalDriverIntegrationService {
         // Create notification document in Firestore
         await addDoc(collection(db, 'notifications'), {
           userId: driver.id,
-          type: 'medical_ride_opportunity',
-          title: 'Medical Transport Opportunity',
+          type: 'medical_ride_request',
+          title: 'Medical Transport Request',
           message: `${rideData.appointmentType} transport for ${rideData.patientId} - ${new Date(rideData.pickupDateTime).toLocaleString()}`,
           data: {
             rideId,
@@ -477,6 +477,7 @@ class MedicalDriverIntegrationService {
             estimatedDuration: rideData.estimatedDuration,
             medicalRequirements: rideData.medicalRequirements
           },
+          status: 'pending',
           read: false,
           createdAt: serverTimestamp()
         });

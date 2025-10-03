@@ -29,7 +29,7 @@ const NotificationSettingsPage = () => {
     try {
       setLoading(true);
       
-      // Initialize notification service
+      // Initialize notification service (will skip if already initialized)
       await notificationService.initialize(user.uid);
       
       // Load preferences

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { logoutUser } from '../../services/authService';
+import { useConfirm } from '../../hooks/useConfirm';
 import Button from '../common/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
 import NotificationWidget from '../notifications/NotificationWidget';
@@ -13,6 +14,7 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const navigate = useNavigate();
+  const { showConfirm, ConfirmDialog } = useConfirm();
 
   const handleLogout = async () => {
     // Check if user is in driver onboarding and show confirmation
@@ -20,11 +22,24 @@ const Header = () => {
     const isInDriverOnboarding = currentPath.includes('/driver-onboarding') || currentPath.includes('/driver');
     
     if (isInDriverOnboarding) {
-      const confirmLogout = window.confirm(
-        'Are you sure you want to log out?\n\nYou will lose any unsaved progress in your driver application. Your progress is automatically saved when you complete each step.'
-      );
+      const confirmed = await showConfirm({
+        title: 'Confirm Logout',
+        message: (
+          <div className="text-left">
+            <p className="mb-2">Are you sure you want to log out?</p>
+            <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mt-3">
+              <p className="text-sm text-yellow-800">
+                <strong>Note:</strong> Your progress is automatically saved when you complete each step. Any incomplete step will not be saved.
+              </p>
+            </div>
+          </div>
+        ),
+        confirmText: 'Yes, Logout',
+        cancelText: 'Stay Logged In',
+        variant: 'warning'
+      });
       
-      if (!confirmLogout) {
+      if (!confirmed) {
         return; // Cancel logout
       }
     }
@@ -51,6 +66,7 @@ const Header = () => {
   };
 
   return (
+    <>
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
@@ -225,6 +241,8 @@ const Header = () => {
         )}
       </div>
     </header>
+    <ConfirmDialog />
+  </>
   );
 };
 

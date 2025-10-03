@@ -224,7 +224,7 @@ const VideoRecordingInterface = ({ driverId }) => {
                 type="checkbox"
                 checked={recordingSettings.autoStart}
                 onChange={(e) => setRecordingSettings(prev => ({ ...prev, autoStart: e.target.checked }))}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
               />
               <span>Auto-start with rides</span>
             </label>

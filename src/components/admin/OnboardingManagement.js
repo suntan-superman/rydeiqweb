@@ -7,13 +7,36 @@ import {
   setOnboardingStatus,
   checkOnboardingStatus
 } from '../../services/driverService';
+import { useConfirm } from '../../hooks/useConfirm';
 import Button from '../common/Button';
 import Input from '../common/Input';
 import LoadingSpinner from '../common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
+// Helper function to format Firestore timestamp
+const formatDate = (timestamp) => {
+  if (!timestamp) return 'Not available';
+  
+  try {
+    // Handle Firestore Timestamp object
+    if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+      return timestamp.toDate().toLocaleDateString();
+    }
+    // Handle timestamp with seconds property
+    if (timestamp.seconds) {
+      return new Date(timestamp.seconds * 1000).toLocaleDateString();
+    }
+    // Handle ISO string or regular date
+    return new Date(timestamp).toLocaleDateString();
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Invalid Date';
+  }
+};
+
 const OnboardingManagement = () => {
   const { user } = useAuth();
+  const { showConfirm, ConfirmDialog } = useConfirm();
   const [drivers, setDrivers] = useState([]);
   const [filteredDrivers, setFilteredDrivers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -105,15 +128,45 @@ const OnboardingManagement = () => {
     applyFilters();
   }, [applyFilters]);
 
-  const handleToggleOnboarding = async (driverId, currentStatus) => {
+  const handleToggleOnboarding = async (driverId, currentStatus, driverName = '') => {
     if (!isAuthorizedAdmin) {
       toast.error('Only authorized administrators can modify onboarding status');
       return;
     }
 
+    const newStatus = !currentStatus;
+    
+    // Show confirmation only when setting to pending (reverting onboarding)
+    if (!newStatus) {
+      const confirmed = await showConfirm({
+        title: 'Revert Onboarding Status',
+        message: (
+          <div className="text-left">
+            <p className="mb-3">Are you sure you want to set this driver's onboarding status to <strong className="text-red-600">PENDING</strong>?</p>
+            {driverName && (
+              <div className="bg-gray-50 rounded p-3 mb-3">
+                <p className="text-sm font-medium text-gray-900">{driverName}</p>
+              </div>
+            )}
+            <div className="bg-red-50 border border-red-200 rounded p-3">
+              <p className="text-sm text-red-800">
+                <strong>Warning:</strong> This will mark the driver's onboarding as incomplete and may affect their ability to accept rides.
+              </p>
+            </div>
+          </div>
+        ),
+        confirmText: 'Yes, Set to Pending',
+        cancelText: 'Cancel',
+        variant: 'danger'
+      });
+      
+      if (!confirmed) {
+        return;
+      }
+    }
+
     try {
       setActionLoading(true);
-      const newStatus = !currentStatus;
       const result = await setOnboardingStatus(driverId, newStatus, user.uid);
       
       if (result.success) {
@@ -247,12 +300,12 @@ const OnboardingManagement = () => {
           </div>
 
           {/* Test button for debugging */}
-          <button
+          {/* <button
             onClick={testLoadDrivers}
             className="w-full px-3 py-2 bg-green-500 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             Test Load Drivers
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -286,7 +339,7 @@ const OnboardingManagement = () => {
                         </h4>
                         <p className="text-gray-600">{personalInfo.email || driver.email}</p>
                         <p className="text-sm text-gray-500">
-                          Created: {new Date(driver.createdAt).toLocaleDateString()}
+                          Created: {formatDate(driver.createdAt)}
                         </p>
                       </div>
                     </div>
@@ -304,11 +357,12 @@ const OnboardingManagement = () => {
                         </Button>
                         
                         <Button
-                          variant={driver.onboardingStatus?.completed ? "warning" : "success"}
+                          variant={driver.onboardingStatus?.completed ? "danger" : "success"}
                           size="small"
                           onClick={() => handleToggleOnboarding(
                             driver.userId, 
-                            driver.onboardingStatus?.completed || false
+                            driver.onboardingStatus?.completed || false,
+                            `${personalInfo.firstName || ''} ${personalInfo.lastName || ''}`.trim()
                           )}
                           loading={actionLoading}
                         >
@@ -356,6 +410,9 @@ const OnboardingManagement = () => {
           isAuthorizedAdmin={isAuthorizedAdmin}
         />
       )}
+      
+      {/* Confirmation Dialog */}
+      <ConfirmDialog />
     </div>
   );
 };
@@ -446,21 +503,19 @@ const DriverDetailsModal = ({ driver, onClose, onToggleOnboarding, actionLoading
                 <span className="text-gray-500">Date of Birth:</span>
                 <span className="ml-2 text-gray-900">{personalInfo.dateOfBirth || 'Not provided'}</span>
               </div>
-              <div>
+              <div className="col-span-2">
                 <span className="text-gray-500">Address:</span>
-                <span className="ml-2 text-gray-900">{personalInfo.address || 'Not provided'}</span>
-              </div>
-              <div>
-                <span className="text-gray-500">City:</span>
-                <span className="ml-2 text-gray-900">{personalInfo.city || 'Not provided'}</span>
-              </div>
-              <div>
-                <span className="text-gray-500">State:</span>
-                <span className="ml-2 text-gray-900">{personalInfo.state || 'Not provided'}</span>
-              </div>
-              <div>
-                <span className="text-gray-500">ZIP Code:</span>
-                <span className="ml-2 text-gray-900">{personalInfo.zipCode || 'Not provided'}</span>
+                <span className="ml-2 text-gray-900">
+                  {personalInfo.address ? (
+                    typeof personalInfo.address === 'string' ? (
+                      personalInfo.address
+                    ) : (
+                      `${personalInfo.address.street || ''}, ${personalInfo.address.city || ''}, ${personalInfo.address.state || ''} ${personalInfo.address.zipCode || ''}`
+                    )
+                  ) : (
+                    'Not provided'
+                  )}
+                </span>
               </div>
             </div>
           </div>
@@ -587,23 +642,34 @@ const DriverDetailsModal = ({ driver, onClose, onToggleOnboarding, actionLoading
           </div>
 
           {/* Action Buttons */}
-          {isAuthorizedAdmin && (
-            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+          <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 font-medium transition-colors"
+            >
+              Close
+            </button>
+            
+            {isAuthorizedAdmin && (
               <button
-                onClick={() => onToggleOnboarding(driver.userId, isCompleted)}
+                onClick={() => onToggleOnboarding(
+                  driver.userId, 
+                  isCompleted,
+                  `${personalInfo.firstName || ''} ${personalInfo.lastName || ''}`.trim()
+                )}
                 disabled={actionLoading}
-                className={`px-4 py-2 rounded-md text-white font-medium ${
+                className={`px-4 py-2 rounded-md text-white font-medium transition-colors ${
                   actionLoading 
                     ? 'bg-gray-400 cursor-not-allowed' 
                     : isCompleted 
-                      ? 'bg-yellow-500 hover:bg-yellow-600' 
-                      : 'bg-green-500 hover:bg-green-600'
+                      ? 'bg-red-600 hover:bg-red-700' 
+                      : 'bg-green-600 hover:bg-green-700'
                 }`}
               >
                 {actionLoading ? 'Updating...' : isCompleted ? 'Set to Pending' : 'Mark Complete'}
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>

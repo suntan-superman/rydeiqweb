@@ -207,15 +207,35 @@ class ScheduledRidesService {
    */
   async notifyDriverOfScheduledRide(driverId, rideId, rideData) {
     try {
+      // Create notification document in Firestore for driver response system
+      await addDoc(collection(db, 'notifications'), {
+        userId: driverId,
+        type: 'scheduled_ride_request',
+        title: 'Scheduled Ride Request',
+        message: `${rideData.rideType} ride scheduled for ${new Date(rideData.scheduledDateTime).toLocaleString()}`,
+        data: {
+          rideId,
+          scheduledDateTime: rideData.scheduledDateTime,
+          estimatedFare: rideData.estimatedFare,
+          pickup: rideData.pickup?.address || rideData.pickup,
+          dropoff: rideData.dropoff?.address || rideData.dropoff,
+          rideType: rideData.rideType
+        },
+        status: 'pending',
+        read: false,
+        createdAt: serverTimestamp()
+      });
+
+      // Also send push notification
       await notificationService.sendNotification(driverId, {
-        type: 'scheduled_ride_opportunity',
-        title: 'Scheduled Ride Available',
+        type: 'scheduled_ride_request',
+        title: 'Scheduled Ride Request',
         message: `${rideData.rideType} ride scheduled for ${new Date(rideData.scheduledDateTime).toLocaleString()}`,
         data: { 
           rideId, 
           scheduledDateTime: rideData.scheduledDateTime,
           estimatedFare: rideData.estimatedFare,
-          pickup: rideData.pickup.address
+          pickup: rideData.pickup?.address || rideData.pickup
         }
       });
     } catch (error) {

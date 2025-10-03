@@ -11,6 +11,27 @@ import Input from '../common/Input';
 import LoadingSpinner from '../common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
+// Helper function to format Firestore timestamp
+const formatDate = (timestamp) => {
+  if (!timestamp) return 'Not available';
+  
+  try {
+    // Handle Firestore Timestamp object
+    if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+      return timestamp.toDate().toLocaleDateString();
+    }
+    // Handle timestamp with seconds property
+    if (timestamp.seconds) {
+      return new Date(timestamp.seconds * 1000).toLocaleDateString();
+    }
+    // Handle ISO string or regular date
+    return new Date(timestamp).toLocaleDateString();
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Invalid Date';
+  }
+};
+
 const DriverManagement = () => {
   const { user } = useAuth();
   const [applications, setApplications] = useState([]);
@@ -281,7 +302,7 @@ const DriverManagement = () => {
                       </h4>
                       <p className="text-gray-600">{application.personalInfo?.email}</p>
                       <p className="text-sm text-gray-500">
-                        Applied: {new Date(application.createdAt).toLocaleDateString()}
+                        Applied: {formatDate(application.createdAt)}
                       </p>
                     </div>
                   </div>

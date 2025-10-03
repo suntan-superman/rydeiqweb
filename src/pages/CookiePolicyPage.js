@@ -314,7 +314,7 @@ const CookiePolicyPage = () => {
                 <p>AnyRyde, Inc.</p>
                 <p>123 Innovation Drive</p>
                 <p>San Francisco, CA 94105</p>
-                <p>Email: <a href="mailto:privacy@rydealong.com" className="text-primary-600 hover:text-primary-700">privacy@rydealong.com</a></p>
+                <p>Email: <a href="mailto:privacy@anyryde.com" className="text-primary-600 hover:text-primary-700">privacy@anyryde.com</a></p>
                 <p>Phone: +1 (555) 123-PRIVACY</p>
               </div>
             </div>

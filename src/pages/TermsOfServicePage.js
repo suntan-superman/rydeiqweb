@@ -313,7 +313,7 @@ const TermsOfServicePage = () => {
                 <p>AnyRyde, Inc.</p>
                 <p>123 Innovation Drive</p>
                 <p>San Francisco, CA 94105</p>
-                <p>Email: <a href="mailto:legal@rydealong.com" className="text-primary-600 hover:text-primary-700">legal@rydealong.com</a></p>
+                <p>Email: <a href="mailto:legal@anyryde.com" className="text-primary-600 hover:text-primary-700">legal@anyryde.com</a></p>
                 <p>Phone: +1 (555) 123-LEGAL</p>
               </div>
             </div>

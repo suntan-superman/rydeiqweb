@@ -426,7 +426,7 @@ const BackgroundCheckForm = () => {
                   name="hasPreviousAddress"
                   checked={formData.hasPreviousAddress}
                   onChange={handleInputChange}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <span className="text-sm text-gray-700">I have lived at a previous address within the last 5 years</span>
               </label>
@@ -507,7 +507,7 @@ const BackgroundCheckForm = () => {
           </div>
 
           {/* Consent Section */}
-          <div className="bg-blue-50 rounded-lg p-6">
+          <div className="bg-green-50 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Background Check Consent</h3>
             <p className="text-gray-600 mb-6">
               By checking the boxes below, you give AnyRyde permission to conduct a background check including criminal history and driving record verification.
@@ -520,7 +520,7 @@ const BackgroundCheckForm = () => {
                   name="consentBackgroundCheck"
                   checked={formData.consentBackgroundCheck}
                   onChange={handleInputChange}
-                  className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="mt-1 h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <div>
                   <span className="text-sm text-gray-900">
@@ -538,7 +538,7 @@ const BackgroundCheckForm = () => {
                   name="consentCriminalHistory"
                   checked={formData.consentCriminalHistory}
                   onChange={handleInputChange}
-                  className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="mt-1 h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <div>
                   <span className="text-sm text-gray-900">
@@ -556,7 +556,7 @@ const BackgroundCheckForm = () => {
                   name="consentDrivingRecord"
                   checked={formData.consentDrivingRecord}
                   onChange={handleInputChange}
-                  className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="mt-1 h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <div>
                   <span className="text-sm text-gray-900">
@@ -574,7 +574,7 @@ const BackgroundCheckForm = () => {
                   name="understandTimeline"
                   checked={formData.understandTimeline}
                   onChange={handleInputChange}
-                  className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="mt-1 h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <div>
                   <span className="text-sm text-gray-900">

@@ -325,15 +325,126 @@ async function createMedicalTestDrivers() {
         
         console.log(`✅ Created auth user: ${driver.email} (${userRecord.uid})`);
         
-        // Create driver application document
+        // Create driver application document with proper structure
         const driverData = {
-          ...driver,
-          uid: userRecord.uid,
+          userId: userRecord.uid,
+          email: driver.email,
+          status: driver.status,
+          currentStep: 'submitted',
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          onboardingStep: 'completed',
-          applicationStatus: 'approved',
-          approvalDate: admin.firestore.FieldValue.serverTimestamp(),
+          
+          // Personal Information (nested structure)
+          personalInfo: {
+            firstName: driver.firstName,
+            lastName: driver.lastName,
+            email: driver.email,
+            phone: driver.phone,
+            dateOfBirth: '1990-01-01',
+            address: {
+              street: '123 Medical Drive',
+              city: 'San Francisco',
+              state: 'CA',
+              zipCode: '94102'
+            }
+          },
+          
+          // Vehicle Information
+          vehicleInfo: driver.vehicleInfo,
+          
+          // Specialty Vehicle Info for medical capabilities
+          specialtyVehicleInfo: {
+            specialtyVehicleType: driver.vehicleInfo.vehicleType,
+            serviceCapabilities: driver.vehicleInfo.serviceCapabilities || [],
+            certificationFiles: {}
+          },
+          
+          // Documents (placeholder - all approved)
+          documents: {
+            driversLicense: { url: 'test://license.pdf', status: 'approved' },
+            vehicleRegistration: { url: 'test://registration.pdf', status: 'approved' },
+            vehicleInsurance: { url: 'test://insurance.pdf', status: 'approved' },
+            profilePhoto: { url: 'test://photo.jpg', status: 'approved' }
+          },
+          
+          // Background Check (approved)
+          backgroundCheck: {
+            ssn: '***-**-****',
+            currentAddress: {
+              street: '123 Medical Drive',
+              city: 'San Francisco',
+              state: 'CA',
+              zipCode: '94102',
+              yearsAtAddress: '3'
+            },
+            consentBackgroundCheck: true,
+            consentCriminalHistory: true,
+            consentDrivingRecord: true,
+            understandTimeline: true
+          },
+          
+          // Payout Setup (placeholder)
+          payoutInfo: {
+            accountHolderName: `${driver.firstName} ${driver.lastName}`,
+            bankName: 'Test Bank',
+            routingNumber: '123456789',
+            accountNumber: '****1234',
+            accountType: 'checking'
+          },
+          
+          // Availability
+          availability: driver.availability,
+          
+          // Admin notes
+          adminNotes: [`Test medical driver - ${driver.testDriverType}`],
+          
+          // Step Progress (all completed)
+          stepProgress: {
+            personal_info: true,
+            document_upload: true,
+            vehicle_info: true,
+            background_check: true,
+            payout_setup: true,
+            availability: true,
+            review: true
+          },
+          
+          // Onboarding Status (completed)
+          onboardingStatus: {
+            completed: true,
+            completedAt: admin.firestore.FieldValue.serverTimestamp(),
+            completedBy: 'system',
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+          },
+          
+          // Approval Status (approved)
+          approvalStatus: {
+            status: 'approved',
+            approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+            approvedBy: 'system',
+            notes: 'Auto-approved test driver with medical capabilities'
+          },
+          
+          // Mobile App Status
+          mobileAppStatus: {
+            accountCreated: true,
+            accountCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastMobileLogin: null
+          },
+          
+          // Medical Certifications
+          medicalCertifications: driver.medicalCertifications,
+          
+          // Ratings and Stats
+          rating: driver.rating,
+          completedRides: driver.completedRides,
+          medicalTransportRides: driver.medicalTransportRides,
+          
+          // Test metadata
+          isTestDriver: driver.isTestDriver,
+          testDriverType: driver.testDriverType,
+          
+          // Last active
           lastActiveAt: admin.firestore.FieldValue.serverTimestamp()
         };
         

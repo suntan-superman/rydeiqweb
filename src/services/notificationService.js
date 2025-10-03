@@ -17,6 +17,12 @@ class NotificationService {
   // Initialize notification service
   async initialize(userId) {
     try {
+      // Prevent multiple initializations
+      if (this.isInitialized && this.currentUserId === userId) {
+        console.log('Notification service already initialized for user:', userId);
+        return { success: true };
+      }
+
       // Store the user ID for later use
       this.currentUserId = userId;
       

@@ -17,19 +17,29 @@ const EmailVerificationDialog = ({ isOpen, onClose, onVerified }) => {
   useEffect(() => {
     if (!isOpen || !user) return;
 
+    console.log('📧 Email verification dialog: Starting periodic check for', user.email);
+
     const checkInterval = setInterval(async () => {
       try {
+        console.log('🔄 Checking email verification status...');
         const result = await checkEmailVerification();
         if (result.success && result.emailVerified) {
+          console.log('✅ Email verified! Closing dialog and redirecting...');
           toast.success('Email verified successfully!');
+          clearInterval(checkInterval);
           onVerified();
+        } else {
+          console.log('⏳ Email not verified yet, will check again in 3 seconds');
         }
       } catch (error) {
         console.error('Error checking email verification:', error);
       }
-    }, 5000); // Check every 5 seconds
+    }, 3000); // Check every 3 seconds (faster detection)
 
-    return () => clearInterval(checkInterval);
+    return () => {
+      console.log('📧 Cleaning up email verification check interval');
+      clearInterval(checkInterval);
+    };
   }, [isOpen, user, onVerified]);
 
   // Handle resend cooldown

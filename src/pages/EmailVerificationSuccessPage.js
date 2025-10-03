@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { checkEmailVerification } from '../services/authService';
+import { checkOnboardingStatus } from '../services/driverService';
+import { checkRiderOnboardingStatus } from '../services/riderOnboardingService';
 import Button from '../components/common/Button';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -12,6 +14,67 @@ const EmailVerificationSuccessPage = () => {
   const [isVerifying, setIsVerifying] = useState(true);
   const [verificationStatus, setVerificationStatus] = useState('checking'); // 'checking', 'success', 'error'
   const [countdown, setCountdown] = useState(5);
+
+  const handleRedirect = useCallback(async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      // Check user type and onboarding status
+      if (user.userType === 'driver') {
+        // Check if driver has completed onboarding
+        const onboardingResult = await checkOnboardingStatus(user.uid);
+        if (onboardingResult.success) {
+          const { needsOnboarding } = onboardingResult.data;
+          if (needsOnboarding) {
+            console.log('🎯 Driver needs onboarding, redirecting to /driver-onboarding');
+            navigate('/driver-onboarding');
+          } else {
+            console.log('✅ Driver onboarding complete, redirecting to /driver-dashboard');
+            navigate('/driver-dashboard');
+          }
+        } else {
+          // If can't check status, assume needs onboarding (safer default for new drivers)
+          console.log('⚠️ Could not check driver onboarding status, redirecting to /driver-onboarding');
+          navigate('/driver-onboarding');
+        }
+      } else if (user.userType === 'admin') {
+        navigate('/admin-dashboard');
+      } else if (user.userType === 'healthcare_provider') {
+        navigate('/medical-portal');
+      } else {
+        // Check if rider has completed onboarding
+        const riderOnboardingResult = await checkRiderOnboardingStatus(user.uid);
+        if (riderOnboardingResult.success) {
+          const { needsOnboarding } = riderOnboardingResult.data;
+          if (needsOnboarding) {
+            console.log('🎯 Rider needs onboarding, redirecting to /onboarding');
+            navigate('/onboarding');
+          } else {
+            console.log('✅ Rider onboarding complete, redirecting to /dashboard');
+            navigate('/dashboard');
+          }
+        } else {
+          // Default to dashboard if can't check
+          navigate('/dashboard');
+        }
+      }
+    } catch (error) {
+      console.error('Error checking onboarding status:', error);
+      // Fallback to basic redirect
+      if (user.userType === 'driver') {
+        navigate('/driver-onboarding');
+      } else if (user.userType === 'admin') {
+        navigate('/admin-dashboard');
+      } else if (user.userType === 'healthcare_provider') {
+        navigate('/medical-portal');
+      } else {
+        navigate('/dashboard');
+      }
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     const verifyEmail = async () => {
@@ -45,16 +108,8 @@ const EmailVerificationSuccessPage = () => {
             setCountdown(prev => {
               if (prev <= 1) {
                 clearInterval(timer);
-                // Redirect based on user type
-                if (user.userType === 'driver') {
-                  navigate('/driver-dashboard');
-                } else if (user.userType === 'admin') {
-                  navigate('/admin-dashboard');
-                } else if (user.userType === 'healthcare_provider') {
-                  navigate('/medical-portal');
-                } else {
-                  navigate('/dashboard');
-                }
+                // Redirect based on user type and onboarding status
+                handleRedirect();
                 return 0;
               }
               return prev - 1;
@@ -74,18 +129,10 @@ const EmailVerificationSuccessPage = () => {
     };
 
     verifyEmail();
-  }, [user, setUser, navigate]);
+  }, [user, setUser, handleRedirect]);
 
   const handleManualRedirect = () => {
-    if (user?.userType === 'driver') {
-      navigate('/driver-dashboard');
-    } else if (user?.userType === 'admin') {
-      navigate('/admin-dashboard');
-    } else if (user?.userType === 'healthcare_provider') {
-      navigate('/medical-portal');
-    } else {
-      navigate('/dashboard');
-    }
+    handleRedirect();
   };
 
   const handleResendVerification = () => {

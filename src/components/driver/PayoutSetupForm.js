@@ -459,6 +459,8 @@ const PayoutSetupForm = () => {
                     placeholder="Account number"
                     error={getErrorMessage('accountNumber')}
                     className="pr-20"
+                    autocomplete="off"
+                    data-form-type="other"
                   />
                   <button
                     type="button"
@@ -479,6 +481,8 @@ const PayoutSetupForm = () => {
                   onChange={handleInputChange}
                   placeholder="Re-enter account number"
                   error={getErrorMessage('confirmAccountNumber')}
+                  autocomplete="off"
+                  data-form-type="other"
                 />
               </div>
             </div>
@@ -536,7 +540,7 @@ const PayoutSetupForm = () => {
                     name="useSameAddressAsPersonal"
                     checked={formData.useSameAddressAsPersonal}
                     onChange={handleInputChange}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                   />
                   <span className="text-sm text-gray-700">Use same address as personal information</span>
                 </label>
@@ -653,7 +657,7 @@ const PayoutSetupForm = () => {
           </div>
 
           {/* Agreements */}
-          <div className="bg-blue-50 rounded-lg p-6">
+          <div className="bg-green-50 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Agreements & Consent</h3>
             
             <div className="space-y-4">
@@ -663,7 +667,7 @@ const PayoutSetupForm = () => {
                   name="agreeToPayoutTerms"
                   checked={formData.agreeToPayoutTerms}
                   onChange={handleInputChange}
-                  className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="mt-1 h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <div>
                   <span className="text-sm text-gray-900">
@@ -681,7 +685,7 @@ const PayoutSetupForm = () => {
                   name="agreeTo1099Reporting"
                   checked={formData.agreeTo1099Reporting}
                   onChange={handleInputChange}
-                  className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="mt-1 h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <div>
                   <span className="text-sm text-gray-900">
@@ -699,7 +703,7 @@ const PayoutSetupForm = () => {
                   name="understandFees"
                   checked={formData.understandFees}
                   onChange={handleInputChange}
-                  className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="mt-1 h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <div>
                   <span className="text-sm text-gray-900">
@@ -717,7 +721,7 @@ const PayoutSetupForm = () => {
                   name="consentToTaxReporting"
                   checked={formData.consentToTaxReporting}
                   onChange={handleInputChange}
-                  className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="mt-1 h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
                 />
                 <div>
                   <span className="text-sm text-gray-900">

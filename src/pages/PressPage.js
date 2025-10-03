@@ -372,7 +372,7 @@ AnyRyde is revolutionizing ride-sharing through competitive bidding and fair mar
                 <h3 className="text-xl font-bold mb-4">Press Contact</h3>
                 <p className="mb-2">Stan Roy</p>
                 <p className="mb-2">VP of Marketing</p>
-                <p className="mb-2">press@rydealong.com</p>
+                <p className="mb-2">press@anyryde.com</p>
                 <p>+1 (555) 123-PRESS</p>
               </div>
               
@@ -380,7 +380,7 @@ AnyRyde is revolutionizing ride-sharing through competitive bidding and fair mar
                 <h3 className="text-xl font-bold mb-4">Investor Relations</h3>
                 <p className="mb-2">Dr. Rick Pierucci </p>
                 <p className="mb-2">Chief Financial Officer</p>
-                <p className="mb-2">investors@rydealong.com</p>
+                <p className="mb-2">investors@anyryde.com</p>
                 <p>+1 (555) 123-INVEST</p>
               </div>
             </div>
