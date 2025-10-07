@@ -281,6 +281,72 @@ const NotificationSettingsPage = () => {
               </div>
             </div>
 
+            {/* SMS Notifications */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">SMS Notifications</h3>
+                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Coming Soon</span>
+              </div>
+              
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-yellow-900">
+                  📱 <strong>SMS notifications will be available soon!</strong> Once configured, you'll be able to receive important ride updates via text message.
+                </p>
+              </div>
+
+              <div className="space-y-4 opacity-60">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-gray-900">Enable SMS</p>
+                    <p className="text-sm text-gray-600">Receive updates via text message</p>
+                  </div>
+                  <button
+                    disabled
+                    className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-not-allowed rounded-full border-2 border-gray-300 bg-gray-200"
+                  >
+                    <span className="inline-block h-5 w-5 transform rounded-full bg-white shadow translate-x-0" />
+                  </button>
+                </div>
+                
+                <div className="ml-4 space-y-3">
+                  <label className="flex items-center opacity-50">
+                    <input
+                      type="checkbox"
+                      disabled
+                      className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
+                    />
+                    <span className="ml-2 text-sm">Ride status updates</span>
+                  </label>
+                  
+                  <label className="flex items-center opacity-50">
+                    <input
+                      type="checkbox"
+                      disabled
+                      className="h-5 w-5 rounded border-2 border-gray-900 text-green-600 focus:ring-green-500"
+                    />
+                    <span className="ml-2 text-sm">Driver arrival notifications</span>
+                  </label>
+                  
+                  <label className="flex items-center opacity-50">
+                    <input
+                      type="checkbox"
+                      checked
+                      disabled
+                      className="h-5 w-5 rounded border-2 border-gray-900 text-red-600 focus:ring-red-500"
+                    />
+                    <span className="ml-2 text-sm">Emergency alerts <span className="text-xs text-red-600">(Always On)</span></span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="mt-4 text-sm text-gray-600">
+                <p>Standard message and data rates may apply.</p>
+                <p className="mt-1">
+                  <a href="/sms-terms" className="text-green-600 hover:text-green-700 underline">SMS Terms & Conditions</a>
+                </p>
+              </div>
+            </div>
+
             {/* Information */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="text-sm font-medium text-blue-900 mb-2">About Notifications</h4>

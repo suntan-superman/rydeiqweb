@@ -35,6 +35,7 @@ import ComparePage from './pages/ComparePage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import CookiePolicyPage from './pages/CookiePolicyPage';
+import SMSTermsPage from './pages/SMSTermsPage';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import './App.css';
 
@@ -171,6 +172,7 @@ function App() {
                     <Route path="privacy" element={<PrivacyPolicyPage />} />
                     <Route path="terms" element={<TermsOfServicePage />} />
                     <Route path="cookies" element={<CookiePolicyPage />} />
+                    <Route path="sms-terms" element={<SMSTermsPage />} />
                     <Route 
                       path="login" 
                       element={

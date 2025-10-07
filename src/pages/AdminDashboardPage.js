@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { isAdmin } from '../services/authService';
 import { getPlatformMetrics } from '../services/adminService';
+import TestNotificationButton from '../components/admin/TestNotificationButton';
 import AdminOverview from '../components/admin/AdminOverview';
 import DriverManagement from '../components/admin/DriverManagement';
 import RideMonitoring from '../components/admin/RideMonitoring';
@@ -124,6 +125,7 @@ const AdminDashboardPage = () => {
               </p>
             </div>
             <div className="flex items-center space-x-4">
+              <TestNotificationButton />
               <div className="hidden md:flex items-center space-x-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span>System Online</span>

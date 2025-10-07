@@ -13,6 +13,7 @@ import {
 import { db } from './firebase';
 import { processPayment as processPaymentWithService } from './paymentService';
 import { notificationService } from './notificationService';
+import multiStopRideService from './multiStopRideService';
 
 // ===== RIDE REQUEST MANAGEMENT =====
 
@@ -583,7 +584,274 @@ const riderService = {
   processPayment,
   
   // Driver Discovery
-  getNearbyDrivers
+  getNearbyDrivers,
+  
+  // Multi-stop Rides
+  createMultiStopRideRequest,
+  calculateStopDelta,
+  addStopToRide
 };
+
+// ===== MULTI-STOP RIDE MANAGEMENT =====
+
+/**
+ * Create a multi-stop ride request
+ * Uses MultiStopRideService for route optimization and pricing
+ */
+export async function createMultiStopRideRequest(rideData) {
+  try {
+    const {
+      customerId,
+      pickup,
+      stops = [], // Array of stop locations
+      finalDestination = null, // Optional final destination separate from stops
+      rideType = 'standard',
+      specialRequests = [],
+      scheduledTime = null,
+      paymentMethod = 'card',
+      driverPreferences = {}
+    } = rideData;
+
+    // Validate stops
+    if (!stops || stops.length === 0) {
+      return {
+        success: false,
+        error: {
+          code: 'invalid-stops',
+          message: 'At least one stop is required for multi-stop rides'
+        }
+      };
+    }
+
+    if (stops.length > 5) {
+      return {
+        success: false,
+        error: {
+          code: 'too-many-stops',
+          message: 'Maximum 5 stops allowed per ride'
+        }
+      };
+    }
+
+    // Create multi-stop ride using the dedicated service
+    const result = await multiStopRideService.createMultiStopRequest({
+      customerId,
+      pickup,
+      stops,
+      finalDestination,
+      rideType,
+      specialRequests,
+      scheduledTime,
+      paymentMethod,
+      driverPreferences
+    });
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: {
+          code: 'multi-stop-creation-failed',
+          message: result.error
+        }
+      };
+    }
+
+    // Send notifications to nearby drivers
+    try {
+      const nearbyDrivers = await getNearbyDrivers(pickup.coordinates, 10);
+      if (nearbyDrivers.length > 0) {
+        await notificationService.sendRideRequestToDrivers(
+          result.rideRequest,
+          nearbyDrivers,
+          { isMultiStop: true }
+        );
+      }
+    } catch (error) {
+      console.error('Failed to send multi-stop ride request notifications:', error);
+      // Don't fail the whole request if notifications fail
+    }
+
+    return {
+      success: true,
+      data: result.rideRequest
+    };
+
+  } catch (error) {
+    console.error('❌ Create multi-stop ride request failed:', error);
+    return {
+      success: false,
+      error: {
+        code: error.code || 'unknown-error',
+        message: error.message
+      }
+    };
+  }
+}
+
+/**
+ * Calculate delta fare for adding a stop to existing ride
+ * Can be used pre-ride (planning) or in-ride (on-the-fly)
+ */
+export async function calculateStopDelta(rideId, newStop) {
+  try {
+    // Get current ride
+    const rideDoc = await getDoc(doc(db, 'rides', rideId));
+    
+    if (!rideDoc.exists()) {
+      const requestDoc = await getDoc(doc(db, 'rideRequests', rideId));
+      if (!requestDoc.exists()) {
+        return {
+          success: false,
+          error: {
+            code: 'ride-not-found',
+            message: 'Ride or ride request not found'
+          }
+        };
+      }
+      
+      // Use ride request data
+      const currentRoute = requestDoc.data();
+      const delta = await multiStopRideService.calculateStopDelta(
+        rideId,
+        newStop,
+        currentRoute
+      );
+      
+      return {
+        success: true,
+        data: delta
+      };
+    }
+
+    // Use active ride data
+    const currentRoute = rideDoc.data();
+    const delta = await multiStopRideService.calculateStopDelta(
+      rideId,
+      newStop,
+      currentRoute
+    );
+
+    return {
+      success: true,
+      data: delta
+    };
+
+  } catch (error) {
+    console.error('❌ Calculate stop delta failed:', error);
+    return {
+      success: false,
+      error: {
+        code: error.code || 'unknown-error',
+        message: error.message
+      }
+    };
+  }
+}
+
+/**
+ * Add a stop to an existing ride (pre-ride or in-ride)
+ * Implements the auto-adjust with guardrails compensation model
+ */
+export async function addStopToRide(rideId, newStop, options = {}) {
+  try {
+    // Calculate delta first
+    const deltaResult = await calculateStopDelta(rideId, newStop);
+    
+    if (!deltaResult.success) {
+      return deltaResult;
+    }
+
+    const delta = deltaResult.data;
+
+    // Check if requires approval or can be auto-applied
+    if (delta.suggestedAction === 'request_new_bid') {
+      return {
+        success: false,
+        requiresNewBid: true,
+        delta,
+        message: 'Change exceeds threshold - new bid required'
+      };
+    }
+
+    if (delta.requiresApproval && !options.forceApprove) {
+      return {
+        success: false,
+        requiresApproval: true,
+        delta,
+        message: 'Stop addition requires driver and/or rider approval'
+      };
+    }
+
+    // Auto-apply if within thresholds or approved
+    const rideRef = doc(db, 'rideRequests', rideId);
+    const rideDoc = await getDoc(rideRef);
+
+    if (!rideDoc.exists()) {
+      return {
+        success: false,
+        error: {
+          code: 'ride-not-found',
+          message: 'Ride request not found'
+        }
+      };
+    }
+
+    const currentRide = rideDoc.data();
+
+    // Update ride with new stop and pricing
+    const updatedStops = [...currentRide.stops, {
+      id: newStop.id || `stop_${currentRide.stops.length + 1}`,
+      address: newStop.address,
+      coordinates: newStop.coordinates,
+      placeId: newStop.placeId,
+      order: currentRide.stops.length + 1,
+      estimatedArrival: new Date(Date.now() + delta.deltaDuration * 60 * 1000).toISOString(),
+      specialInstructions: newStop.specialInstructions || null,
+      contactInfo: newStop.contactInfo || null,
+      completed: false,
+      addedAt: new Date().toISOString()
+    }];
+
+    const pricingAdjustment = {
+      kind: 'add_stop',
+      calc: {
+        dMiles: delta.deltaDistance,
+        dMins: delta.deltaDuration,
+        dWaitMins: 0
+      },
+      suggested: delta.deltaFare,
+      driverEdited: null,
+      riderApproved: delta.riderAutoAccept,
+      driverApproved: delta.driverAutoAccept,
+      timestamp: new Date().toISOString()
+    };
+
+    await updateDoc(rideRef, {
+      stops: updatedStops,
+      stopCount: updatedStops.length,
+      'pricing.estimatedFare': currentRide.pricing.estimatedFare + delta.deltaFare,
+      'pricing.adjustments': [...(currentRide.pricing?.adjustments || []), pricingAdjustment],
+      'routeOptimization': delta.newRoute.routeOptimization || currentRide.routeOptimization,
+      updatedAt: new Date().toISOString()
+    });
+
+    return {
+      success: true,
+      delta,
+      updatedFare: currentRide.pricing.estimatedFare + delta.deltaFare,
+      message: 'Stop added successfully'
+    };
+
+  } catch (error) {
+    console.error('❌ Add stop to ride failed:', error);
+    return {
+      success: false,
+      error: {
+        code: error.code || 'unknown-error',
+        message: error.message
+      }
+    };
+  }
+}
 
 export default riderService; 

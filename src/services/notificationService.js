@@ -280,13 +280,13 @@ class NotificationService {
       if (user) {
         const notificationData = {
           userId: user.uid,
-          type: data.type,
-          title: data.title,
-          body: data.body,
-          rideId: data.rideId,
+          type: data.type || 'general',
+          title: data.title || 'Notification',
+          body: data.body || '',
+          rideId: data.rideId || null,
           timestamp: serverTimestamp(),
           read: false,
-          data: data
+          data: data || {}
         };
         
         const notificationsRef = collection(db, 'notifications');
@@ -326,30 +326,56 @@ class NotificationService {
     }
   }
 
-  // Send notification to specific user
+  // Send notification to specific user (via Cloud Function - SERVER-SIDE)
   async sendNotificationToUser(userId, notificationData) {
     try {
-      const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+      const { httpsCallable } = await import('firebase/functions');
+      const { getFunctions } = await import('firebase/functions');
+      const { app } = await import('./firebase');
       
-      const notification = {
+      const functions = getFunctions(app);
+      const sendNotification = httpsCallable(functions, 'sendNotification');
+      
+      // Send via Cloud Function (handles push, SMS, email server-side)
+      const result = await sendNotification({
         userId,
-        ...notificationData,
-        timestamp: serverTimestamp(),
-        sent: true,
-        delivered: false,
-        read: false
-      };
+        title: notificationData.title,
+        body: notificationData.body,
+        type: notificationData.type || 'general',
+        priority: notificationData.priority || 'medium',
+        channels: notificationData.channels || ['push'],
+        data: notificationData.data || {}
+      });
       
-      const notificationsRef = collection(db, 'notifications');
-      const docRef = await addDoc(notificationsRef, notification);
-      
-      // Send via FCM if user has token
-      await this.sendFCMNotification(userId, notificationData);
-      
-      return { success: true, notificationId: docRef.id };
+      console.log('✅ Notification sent via Cloud Function:', result.data);
+      return { success: true, ...result.data };
     } catch (error) {
-      console.error('Failed to send notification:', error);
-      return { success: false, error: error.message };
+      console.error('Failed to send notification via Cloud Function:', error);
+      
+      // Fallback to client-side if Cloud Function fails
+      try {
+        const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+        
+        const notification = {
+          userId,
+          ...notificationData,
+          timestamp: serverTimestamp(),
+          sent: true,
+          delivered: false,
+          read: false
+        };
+        
+        const notificationsRef = collection(db, 'notifications');
+        const docRef = await addDoc(notificationsRef, notification);
+        
+        // Send via FCM if user has token
+        await this.sendFCMNotification(userId, notificationData);
+        
+        return { success: true, notificationId: docRef.id, fallback: true };
+      } catch (fallbackError) {
+        console.error('Fallback notification failed:', fallbackError);
+        return { success: false, error: fallbackError.message };
+      }
     }
   }
 
@@ -587,10 +613,11 @@ class NotificationService {
       );
       
       const querySnapshot = await getDocs(q);
-      return querySnapshot.size;
+      console.log('📊 Unread count:', querySnapshot.size);
+      return { success: true, count: querySnapshot.size };
     } catch (error) {
       console.error('Failed to get unread notification count:', error);
-      return 0;
+      return { success: false, count: 0 };
     }
   }
 

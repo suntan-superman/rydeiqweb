@@ -296,7 +296,7 @@ const HomePage = () => {
       </section>
       
       {/* Development Helper */}
-      <SuperUserHelper />
+      {/* <SuperUserHelper /> */}
     </div>
   );
 };

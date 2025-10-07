@@ -1,7 +1,60 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { getRecentDriverApplications } from '../../services/adminService';
 import Button from '../common/Button';
 
-const AdminOverview = ({ metrics, onRefresh }) => {
+const AdminOverview = ({ metrics, onRefresh, onTabChange }) => {
+  const { user } = useAuth();
+  const [recentApplications, setRecentApplications] = useState([]);
+
+  // Load recent applications
+  useEffect(() => {
+    const loadRecentApplications = async () => {
+      if (user) {
+        const result = await getRecentDriverApplications(user, 3);
+        if (result.success) {
+          setRecentApplications(result.data);
+        }
+      }
+    };
+    loadRecentApplications();
+  }, [user, metrics]); // Reload when metrics refresh
+
+  // Handle quick action clicks
+  const handleQuickAction = (action) => {
+    console.log('AdminOverview: handleQuickAction called with action:', action);
+    switch (action) {
+      case 'review-applications':
+        console.log('AdminOverview: Navigating to onboarding tab');
+        onTabChange('onboarding');
+        break;
+      case 'monitor-rides':
+        console.log('AdminOverview: Navigating to rides tab');
+        onTabChange('rides');
+        break;
+      case 'generate-reports':
+        console.log('AdminOverview: Navigating to analytics tab');
+        onTabChange('analytics');
+        break;
+      case 'system-settings':
+        console.log('AdminOverview: Navigating to settings tab');
+        onTabChange('settings');
+        break;
+      default:
+        console.log('AdminOverview: Unknown action:', action);
+        break;
+    }
+  };
+
+  // Extract metrics with defaults
+  const {
+    totalUsers = 0,
+    activeDrivers = 0,
+    revenue = { total: 0, commission: 0, averageRide: 0 },
+    drivers = { pending: 0, approved: 0, total: 0 },
+    rides = { total: 0, completed: 0, completionRate: 0 }
+  } = metrics || {};
+
   if (!metrics) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -10,23 +63,21 @@ const AdminOverview = ({ metrics, onRefresh }) => {
     );
   }
 
-  const { drivers, rides, revenue } = metrics;
-
   const statCards = [
     {
-      title: 'Total Drivers',
-      value: drivers.total,
-      subtitle: `${drivers.active} active`,
-      change: `${drivers.approvalRate}% approval rate`,
+      title: 'Total Users',
+      value: totalUsers.toLocaleString(),
+      subtitle: `${activeDrivers} active drivers`,
+      change: `${((activeDrivers / totalUsers) * 100).toFixed(1)}% driver rate`,
       icon: '👥',
       color: 'blue'
     },
     {
-      title: 'Pending Applications',
-      value: drivers.pending,
-      subtitle: 'Awaiting review',
-      change: 'Requires attention',
-      icon: '⏳',
+      title: 'Active Drivers',
+      value: activeDrivers,
+      subtitle: `${drivers.approved} approved`,
+      change: `${drivers.pending} pending applications`,
+      icon: '🚗',
       color: 'yellow'
     },
     {
@@ -49,24 +100,28 @@ const AdminOverview = ({ metrics, onRefresh }) => {
 
   const quickActions = [
     {
+      id: 'review-applications',
       title: 'Review Driver Applications',
       description: `${drivers.pending} applications pending`,
       action: 'Review Now',
       urgent: drivers.pending > 0
     },
     {
+      id: 'monitor-rides',
       title: 'Monitor Active Rides',
       description: 'View real-time ride activity',
       action: 'Monitor',
       urgent: false
     },
     {
+      id: 'generate-reports',
       title: 'Generate Reports',
       description: 'Create analytics reports',
       action: 'Generate',
       urgent: false
     },
     {
+      id: 'system-settings',
       title: 'System Settings',
       description: 'Configure platform settings',
       action: 'Configure',
@@ -150,6 +205,10 @@ const AdminOverview = ({ metrics, onRefresh }) => {
                   variant={action.urgent ? 'primary' : 'outline'}
                   size="small"
                   className="ml-4"
+                  onClick={() => {
+                    console.log('AdminOverview: Button clicked for action:', action.id);
+                    handleQuickAction(action.id);
+                  }}
                 >
                   {action.action}
                 </Button>
@@ -165,58 +224,97 @@ const AdminOverview = ({ metrics, onRefresh }) => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Driver Applications</h3>
           <div className="space-y-3">
-            {[...Array(3)].map((_, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                    <span className="text-xs font-medium">JD</span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">John Doe</p>
-                    <p className="text-sm text-gray-600">Applied 2 hours ago</p>
-                  </div>
-                </div>
-                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                  Pending
-                </span>
+            {recentApplications.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p className="text-sm">No recent applications</p>
               </div>
-            ))}
+            ) : (
+              recentApplications.map((app) => {
+                const initials = app.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??';
+                const statusColor = 
+                  app.status === 'approved' ? 'bg-green-100 text-green-800' :
+                  app.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                  'bg-yellow-100 text-yellow-800';
+                
+                const timeAgo = app.createdAt ? 
+                  Math.floor((Date.now() - (app.createdAt.seconds ? app.createdAt.seconds * 1000 : new Date(app.createdAt).getTime())) / (1000 * 60 * 60)) :
+                  0;
+                const timeText = timeAgo < 1 ? 'Just now' :
+                  timeAgo < 24 ? `${timeAgo} hours ago` :
+                  `${Math.floor(timeAgo / 24)} days ago`;
+
+                return (
+                  <div key={app.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-green-600 text-white rounded-full flex items-center justify-center font-semibold">
+                        <span className="text-sm">{initials}</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{app.name}</p>
+                        <p className="text-sm text-gray-600">{timeText}</p>
+                      </div>
+                    </div>
+                    <span className={`px-3 py-1 text-xs font-medium rounded-full ${statusColor}`}>
+                      {app.status === 'review_pending' ? 'Pending' : app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                    </span>
+                  </div>
+                );
+              })
+            )}
           </div>
-          <Button variant="ghost" className="w-full mt-4">
-            View All Applications
+          <Button 
+            variant="ghost" 
+            className="w-full mt-4"
+            onClick={() => onTabChange('onboarding')}
+          >
+            View All Applications →
           </Button>
         </div>
 
         {/* System Health */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">System Health</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">System Status</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">API Response Time</span>
+              <span className="text-gray-600">Cloud Functions</span>
               <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm font-medium">125ms</span>
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium text-green-700">6 Active</span>
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Database Status</span>
+              <span className="text-gray-600">Push Notifications</span>
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm font-medium">Healthy</span>
+                <span className="text-sm font-medium text-green-700">Operational</span>
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Payment System</span>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm font-medium">Operational</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Background Jobs</span>
+              <span className="text-gray-600">SMS Notifications</span>
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <span className="text-sm font-medium">3 queued</span>
+                <span className="text-sm font-medium text-yellow-700">Ready (Config Needed)</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">Database</span>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-sm font-medium text-green-700">Connected</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">Authentication</span>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-sm font-medium text-green-700">Active</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+              <span className="text-gray-700 font-medium">Overall Status</span>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-semibold text-green-700">All Systems Operational</span>
               </div>
             </div>
           </div>

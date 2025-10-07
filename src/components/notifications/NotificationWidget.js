@@ -20,9 +20,12 @@ const NotificationWidget = () => {
   // Load notifications
   const loadNotifications = useCallback(async () => {
     try {
+      console.log('📥 Loading notifications for user:', user.uid);
       const result = await notificationService.getNotificationHistory(user.uid, 10);
+      console.log('📥 Notification history result:', result);
       if (result.success) {
         setNotifications(result.notifications);
+        console.log('✅ Loaded notifications:', result.notifications.length);
       }
     } catch (error) {
       console.error('Failed to load notifications:', error);
@@ -32,9 +35,12 @@ const NotificationWidget = () => {
   // Load unread count
   const loadUnreadCount = useCallback(async () => {
     try {
-      const result = await notificationService.getUnreadNotificationCount(user.uid);
-      if (result.success) {
-        setUnreadCount(result.count);
+      const count = await notificationService.getUnreadNotificationCount(user.uid);
+      console.log('📊 Loading unread count result:', count);
+      if (typeof count === 'number') {
+        setUnreadCount(count);
+      } else if (count.success) {
+        setUnreadCount(count.count);
       }
     } catch (error) {
       console.error('Failed to load unread count:', error);

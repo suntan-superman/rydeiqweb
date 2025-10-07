@@ -1,70 +1,133 @@
-# Getting Started with Create React App
+# AnyRyde Platform
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A comprehensive ride-sharing platform built with React, Firebase, and modern web technologies.
 
-## Available Scripts
+## 🚀 Quick Start
 
-In the project directory, you can run:
+```bash
+# Install dependencies
+yarn install
 
-### `npm start`
+# Start development server
+yarn start
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+# Build for production
+yarn build
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## 📚 Documentation
 
-### `npm test`
+- [Architecture Overview](docs/architecture/README.md) - System design and patterns
+- [API Reference](docs/api/README.md) - Service layer and endpoints
+- [Database Schema](docs/database/README.md) - Firestore collections and rules
+- [Web Application](docs/web-app/README.md) - React frontend components
+- [Notification System](docs/notifications/README.md) - Multi-channel messaging
+- [Development Setup](docs/development/setup.md) - Local development guide
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## 🏗️ Tech Stack
 
-### `npm run build`
+- **Frontend**: React 19.1.0, TailwindCSS, React Query
+- **Backend**: Firebase Functions (Node.js 18), Firestore
+- **Authentication**: Firebase Auth with custom claims
+- **Notifications**: Firebase Cloud Messaging, Twilio SMS, SendGrid
+- **Payments**: Stripe integration
+- **Maps**: Google Maps API
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## 🎯 Features
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- **Ride Management**: Request, track, and complete rides
+- **Driver Onboarding**: Complete driver application process
+- **Multi-Stop Rides**: Support for complex routes
+- **Real-time Notifications**: Push, SMS, and email alerts
+- **Admin Dashboard**: Platform management tools
+- **Safety Features**: Emergency alerts and monitoring
+- **AI Pricing**: Dynamic pricing and matching
+- **Analytics**: Platform metrics and insights
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## 📁 Project Structure
 
-### `npm run eject`
+```
+rydeIQWeb/
+├── src/                    # React application
+│   ├── components/         # Reusable UI components
+│   ├── contexts/          # React Context providers
+│   ├── pages/             # Route components
+│   ├── services/          # API and business logic
+│   └── layouts/           # Layout components
+├── functions/             # Firebase Cloud Functions
+├── docs/                  # Documentation
+├── public/                # Static assets
+└── firebase.json          # Firebase configuration
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## 🔧 Development
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Prerequisites
+- Node.js 18+
+- Yarn package manager
+- Firebase CLI
+- Firebase project setup
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Environment Setup
+```bash
+# Copy environment template
+cp .env.example .env.local
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+# Configure Firebase
+firebase login
+firebase init
 
-## Learn More
+# Start emulators
+firebase emulators:start
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+See [Development Setup](docs/development/setup.md) for detailed instructions.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## 🚀 Deployment
 
-### Code Splitting
+```bash
+# Deploy to Firebase
+firebase deploy
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+# Deploy specific services
+firebase deploy --only hosting
+firebase deploy --only functions
+```
 
-### Analyzing the Bundle Size
+## 📊 Monitoring
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+- **Firebase Console**: Authentication, Firestore, Functions
+- **Stripe Dashboard**: Payment processing
+- **Twilio Console**: SMS delivery
+- **SendGrid Dashboard**: Email delivery
 
-### Making a Progressive Web App
+## 🔒 Security
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+- Firebase Auth with custom claims
+- Firestore security rules
+- Input validation and sanitization
+- Rate limiting and throttling
+- Secure API key management
 
-### Advanced Configuration
+## 🤝 Contributing
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and linting
+5. Submit a pull request
 
-### Deployment
+## 📄 License
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+This project is proprietary software. All rights reserved.
 
-### `npm run build` fails to minify
+## 🆘 Support
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+For questions or issues:
+- Check the [documentation](docs/README.md)
+- Review [troubleshooting guides](docs/development/setup.md#troubleshooting)
+- Contact the development team
+
+---
+
+**AnyRyde Platform** - Smart Transportation Solutions

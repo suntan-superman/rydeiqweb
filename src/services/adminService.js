@@ -270,6 +270,49 @@ export const getRideDetails = async (currentUser, rideId) => {
 
 // ===== ANALYTICS & METRICS =====
 
+// Get recent driver applications for overview
+export const getRecentDriverApplications = async (currentUser, limitCount = 5) => {
+  try {
+    checkAdminPermissions(currentUser);
+
+    const applicationsQuery = query(
+      collection(db, 'driverApplications'),
+      orderBy('createdAt', 'desc'),
+      limit(limitCount)
+    );
+
+    const snapshot = await getDocs(applicationsQuery);
+    const applications = [];
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      applications.push({
+        id: doc.id,
+        ...data,
+        name: `${data.personalInfo?.firstName || ''} ${data.personalInfo?.lastName || ''}`.trim() || 'Unknown',
+        email: data.personalInfo?.email || data.email || 'No email',
+        createdAt: data.createdAt,
+        status: data.approvalStatus?.status || data.status || 'pending'
+      });
+    });
+
+    return {
+      success: true,
+      data: applications
+    };
+  } catch (error) {
+    console.error('Error getting recent applications:', error);
+    return {
+      success: false,
+      error: {
+        code: error.code,
+        message: error.message
+      },
+      data: []
+    };
+  }
+};
+
 // Get platform overview metrics
 export const getPlatformMetrics = async (currentUser, timeRange = '7days') => {
   try {
@@ -296,19 +339,31 @@ export const getPlatformMetrics = async (currentUser, timeRange = '7days') => {
         startDate.setDate(startDate.getDate() - 7);
     }
 
+    // Get all users count
+    const usersQuery = query(collection(db, 'users'));
+    const usersSnapshot = await getDocs(usersQuery);
+    const totalUsers = usersSnapshot.size;
+
     // Get driver metrics
     const driversQuery = query(collection(db, 'driverApplications'));
     const driversSnapshot = await getDocs(driversQuery);
     
     let totalDrivers = 0;
     let activeDrivers = 0;
+    let approvedDrivers = 0;
     let pendingApplications = 0;
     
     driversSnapshot.forEach((doc) => {
       const data = doc.data();
       totalDrivers++;
       
-      if (data.status === 'approved' || data.status === 'active') {
+      // Check approval status
+      if (data.approvalStatus?.status === 'approved') {
+        approvedDrivers++;
+      }
+      
+      // Check activity status
+      if (data.status === 'approved' || data.status === 'active' || data.status === 'available') {
         activeDrivers++;
       } else if (data.status === 'pending' || data.status === 'review_pending') {
         pendingApplications++;
@@ -348,11 +403,14 @@ export const getPlatformMetrics = async (currentUser, timeRange = '7days') => {
         timeRange,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
+        totalUsers,
+        activeDrivers,
         drivers: {
           total: totalDrivers,
           active: activeDrivers,
+          approved: approvedDrivers,
           pending: pendingApplications,
-          approvalRate: totalDrivers > 0 ? (activeDrivers / totalDrivers * 100).toFixed(1) : 0
+          approvalRate: totalDrivers > 0 ? (approvedDrivers / totalDrivers * 100).toFixed(1) : 0
         },
         rides: {
           total: totalRides,
