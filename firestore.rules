@@ -3,20 +3,39 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Users collection rules
     match /users/{userId} {
+      // Admin access for user management
+      allow read, write: if request.auth != null && request.auth.token.role in ['admin', 'super_admin'];
+      // User access to their own profile
       allow read, update: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null; // Allow any authenticated user to create their own user document
+      // Allow authenticated users to query users collection (for duplicate email checks)
+      allow list: if request.auth != null;
+      
+      // Rating system rules - Allow rating statistics updates
+      // Allow system to update ratingStats for any user (for aggregated ratings)
+      allow update: if request.auth != null && 
+        request.resource.data.keys().hasAll(['ratingStats', 'updatedAt']);
+      
+      // Allow users to read rating stats of other users (for driver/rider profiles)
+      allow read: if request.auth != null;
     }
 
-    // Drivers collection rules
+    // DEPRECATED: Drivers collection (legacy - being phased out)
+    // All driver data now consolidated in 'driverApplications' collection
     match /drivers/{driverId} {
       allow read, update: if request.auth != null && request.auth.uid == driverId;
-      allow create: if request.auth != null && request.auth.uid == driverId; // Only allow drivers to create their own driver document
+      allow create: if request.auth != null && request.auth.uid == driverId;
     }
 
-    // Driver Applications collection rules
+    // Driver Applications collection rules (PRIMARY DRIVER COLLECTION)
     match /driverApplications/{applicationId} {
-      allow read, update: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Admin access for management
+      allow read, write: if request.auth != null && request.auth.token.role in ['admin', 'super_admin'];
+      // Driver access to their own application
+      allow read, update: if request.auth != null && request.auth.uid == applicationId;
+      allow create: if request.auth != null && request.auth.uid == applicationId;
+      // Allow authenticated users to query driver applications (for duplicate email checks)
+      allow list: if request.auth != null;
     }
 
     // Notifications collection rules
@@ -26,16 +45,51 @@ service cloud.firestore {
 
     // Rides collection rules
     match /rides/{rideId} {
+      // Admin access for management and analytics
+      allow read, write: if request.auth != null && request.auth.token.role in ['admin', 'super_admin'];
+      // Driver and rider access to their own rides
       allow read, write: if request.auth != null && 
         (resource.data.driverId == request.auth.uid || 
          resource.data.riderId == request.auth.uid);
     }
 
-    // Ride requests collection rules
+        // Ride requests collection rules
     match /rideRequests/{requestId} {
-      allow read, write: if request.auth != null && 
+      // Allow querying ride requests for authenticated users
+      // The query itself filters by availableDrivers array-contains
+      allow list: if request.auth != null;
+      
+      // Only allow reading individual documents where user is involved
+      allow get: if request.auth != null && 
         (resource.data.driverId == request.auth.uid || 
-         resource.data.riderId == request.auth.uid);
+         resource.data.riderId == request.auth.uid ||
+         request.auth.uid in resource.data.availableDrivers);
+      
+      // Only allow updates where user is involved
+      allow update: if request.auth != null && 
+        (resource.data.driverId == request.auth.uid || 
+         resource.data.riderId == request.auth.uid ||
+         request.auth.uid in resource.data.availableDrivers);
+      
+      // Only allow deleting where user is involved
+      allow delete: if request.auth != null && 
+        (resource.data.driverId == request.auth.uid || 
+         resource.data.riderId == request.auth.uid ||
+         request.auth.uid in resource.data.availableDrivers);
+      
+      // Allow authenticated users to create ride requests
+      allow create: if request.auth != null;
+      
+      // Rating system rules - Allow rating updates for involved parties
+      // Allow drivers to rate riders (driverToRider ratings)
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.driverId &&
+        request.resource.data.keys().hasAll(['ratings', 'updatedAt']);
+      
+      // Allow riders to rate drivers (riderToDriver ratings)
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.riderId &&
+        request.resource.data.keys().hasAll(['ratings', 'updatedAt']);
     }
 
     // Earnings collection rules
@@ -80,6 +134,165 @@ service cloud.firestore {
     match /analytics/{analyticsId} {
       allow read, write: if request.auth != null && 
         request.auth.token.role in ['admin', 'super_admin'];
+    }
+
+    // Notifications collection rules
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || 
+         request.auth.token.role in ['admin', 'super_admin']);
+      allow write: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || 
+         request.auth.token.role in ['admin', 'super_admin']);
+      allow create: if request.auth != null; // Allow authenticated users to create notifications for any user
+    }
+
+    // Driver Bids collection rules
+    match /driverBids/{bidId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.driverId == request.auth.uid || 
+         resource.data.riderId == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+    }
+
+    // Ride Matching collection rules
+    match /rideMatching/{matchId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.driverId == request.auth.uid || 
+         resource.data.riderId == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+    }
+
+    // Video Recordings collection rules
+    match /videoRecordings/{recordingId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.driverId == request.auth.uid || 
+         resource.data.riderId == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+    }
+
+    // Medical Appointments collection rules
+    match /medicalAppointments/{appointmentId} {
+      allow read: if request.auth != null; // Allow authenticated users to read medical appointments (for statistics, calendar)
+      allow write: if request.auth != null && 
+        (resource.data.patientId == request.auth.uid || 
+         resource.data.driverId == request.auth.uid ||
+         resource.data.organizationId == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+      allow create: if request.auth != null; // Allow authenticated users to create medical appointments
+    }
+
+    // Medical Ride Schedule collection rules
+    match /medicalRideSchedule/{rideId} {
+      allow read: if request.auth != null; // Allow all authenticated users to read for conflict checking
+      
+      // Allow update if user is already assigned or if they're assigning themselves
+      allow update: if request.auth != null && 
+        (resource.data.patientId == request.auth.uid || 
+         resource.data.assignedDriverId == request.auth.uid ||
+         resource.data.organizationId == request.auth.uid ||
+         resource.data.dispatcherId == request.auth.uid ||
+         request.resource.data.assignedDriverId == request.auth.uid || // Allow driver to assign themselves
+         request.auth.token.role in ['admin', 'super_admin']);
+      
+      allow delete: if request.auth != null && 
+        (resource.data.patientId == request.auth.uid || 
+         resource.data.assignedDriverId == request.auth.uid ||
+         resource.data.organizationId == request.auth.uid ||
+         resource.data.dispatcherId == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+      
+      allow create: if request.auth != null; // Allow authenticated users to create medical rides
+    }
+
+    // Scheduled Rides collection rules
+    match /scheduledRides/{rideId} {
+      allow read: if request.auth != null; // Allow all authenticated users to read for conflict checking
+      
+      // Allow update if user is already assigned or if they're assigning themselves
+      allow update: if request.auth != null && 
+        (resource.data.patientId == request.auth.uid || 
+         resource.data.assignedDriverId == request.auth.uid ||
+         resource.data.organizationId == request.auth.uid ||
+         resource.data.dispatcherId == request.auth.uid ||
+         request.resource.data.assignedDriverId == request.auth.uid || // Allow driver to assign themselves
+         request.auth.token.role in ['admin', 'super_admin']);
+      
+      allow delete: if request.auth != null && 
+        (resource.data.patientId == request.auth.uid || 
+         resource.data.assignedDriverId == request.auth.uid ||
+         resource.data.organizationId == request.auth.uid ||
+         resource.data.dispatcherId == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+      
+      allow create: if request.auth != null; // Allow authenticated users to create scheduled rides
+    }
+
+    // Ride Drafts collection rules
+    match /rideDrafts/{draftId} {
+      allow read, write: if request.auth != null && 
+        resource.data.createdBy == request.auth.uid;
+      allow create: if request.auth != null; // Allow authenticated users to create drafts
+    }
+
+    // Paired Drivers collection rules
+    match /pairedDrivers/{pairId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.primaryDriverId == request.auth.uid || 
+         resource.data.secondaryDriverId == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+    }
+
+    // Analytics Events collection rules
+    match /analyticsEvents/{eventId} {
+      allow read, write: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+
+    // Fare Configuration collection rules (public read access for authenticated users)
+    match /fareConfiguration/{configId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        request.auth.token.role in ['admin', 'super_admin'];
+    }
+
+    // App Configuration collection rules (public read access for authenticated users)
+    match /appConfig/{configId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Profile Pictures collection rules (public read access for authenticated users)
+    match /profilePictures/{pictureId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Vehicle Info collection rules
+    match /vehicle_info/{vehicleId} {
+      allow read, write: if request.auth != null && request.auth.uid == vehicleId;
+    }
+
+    // Service Areas collection rules (public read access for authenticated users)
+    match /serviceAreas/{areaId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        request.auth.token.role in ['admin', 'super_admin'];
+    }
+
+    // Ratings collection rules (for future dedicated ratings collection)
+    match /ratings/{ratingId} {
+      allow read: if request.auth != null && 
+        (resource.data.raterId == request.auth.uid || 
+         resource.data.rateeId == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.raterId;
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.raterId;
+      allow delete: if request.auth != null && 
+        (request.auth.uid == resource.data.raterId ||
+         request.auth.token.role in ['admin', 'super_admin']);
     }
 
     // Default deny for all other collections

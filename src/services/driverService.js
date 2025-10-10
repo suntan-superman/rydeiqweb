@@ -102,7 +102,7 @@ export const createDriverApplication = async (userId, initialData) => {
       ...initialData
     };
 
-    await setDoc(doc(db, 'drivers', userId), driverData);
+    await setDoc(doc(db, 'driverApplications', userId), driverData);
     return { success: true, data: driverData };
   } catch (error) {
     console.error('Error creating driver application:', error);
@@ -113,7 +113,7 @@ export const createDriverApplication = async (userId, initialData) => {
 // Get driver application by user ID
 export const getDriverApplication = async (userId) => {
   try {
-    const driverDoc = await getDoc(doc(db, 'drivers', userId));
+    const driverDoc = await getDoc(doc(db, 'driverApplications', userId));
     
     if (driverDoc.exists()) {
       return { success: true, data: driverDoc.data() };
@@ -144,7 +144,7 @@ export const updateDriverStep = async (userId, stepName, stepData) => {
       updateData.currentStep = nextStep;
     }
 
-    await updateDoc(doc(db, 'drivers', userId), updateData);
+    await updateDoc(doc(db, 'driverApplications', userId), updateData);
     return { success: true };
   } catch (error) {
     console.error('Error updating driver step:', error);
@@ -200,7 +200,7 @@ export const uploadDriverDocument = async (userId, documentType, file) => {
     };
     
     console.log('Updating Firestore with document data...');
-    await updateDoc(doc(db, 'drivers', userId), documentData);
+    await updateDoc(doc(db, 'driverApplications', userId), documentData);
     console.log('Firestore update completed');
     
     return { success: true, url: downloadURL };
@@ -219,7 +219,7 @@ export const uploadDriverDocument = async (userId, documentType, file) => {
 export const deleteDriverDocument = async (userId, documentType) => {
   try {
     // Get current document info
-    const driverDoc = await getDoc(doc(db, 'drivers', userId));
+    const driverDoc = await getDoc(doc(db, 'driverApplications', userId));
     const driverData = driverDoc.data();
     
     if (driverData?.documents?.[documentType]) {
@@ -238,7 +238,7 @@ export const deleteDriverDocument = async (userId, documentType) => {
       const updatedDocuments = { ...driverData.documents };
       delete updatedDocuments[documentType];
       
-      await updateDoc(doc(db, 'drivers', userId), {
+      await updateDoc(doc(db, 'driverApplications', userId), {
         documents: updatedDocuments,
         updatedAt: serverTimestamp()
       });
@@ -272,7 +272,7 @@ export const submitDriverApplication = async (userId) => {
 export const getDriverApplications = async (filters = {}) => {
   try {
     console.log('getDriverApplications called with filters:', filters);
-    let q = collection(db, 'drivers');
+    let q = collection(db, 'driverApplications');
     
     // Apply filters
     if (filters.status && filters.status !== 'all') {
@@ -315,7 +315,7 @@ export const updateDriverStatus = async (userId, status, adminNote = '') => {
       });
     }
     
-    await updateDoc(doc(db, 'drivers', userId), updateData);
+    await updateDoc(doc(db, 'driverApplications', userId), updateData);
     return { success: true };
   } catch (error) {
     console.error('Error updating driver status:', error);
@@ -364,7 +364,7 @@ export const setOnboardingStatus = async (userId, completed, adminUid) => {
       updateData.status = DRIVER_STATUS.PENDING;
     }
 
-    await updateDoc(doc(db, 'drivers', userId), updateData);
+    await updateDoc(doc(db, 'driverApplications', userId), updateData);
     return { success: true };
   } catch (error) {
     console.error('Error setting onboarding status:', error);
@@ -375,7 +375,7 @@ export const setOnboardingStatus = async (userId, completed, adminUid) => {
 // Check onboarding status (for mobile app)
 export const checkOnboardingStatus = async (userId) => {
   try {
-    const driverDoc = await getDoc(doc(db, 'drivers', userId));
+    const driverDoc = await getDoc(doc(db, 'driverApplications', userId));
     
     if (driverDoc.exists()) {
       const data = driverDoc.data();
@@ -413,7 +413,7 @@ export const updateMobileAppStatus = async (userId, accountCreated = true) => {
       updateData['mobileAppStatus.accountCreatedAt'] = serverTimestamp();
     }
 
-    await updateDoc(doc(db, 'drivers', userId), updateData);
+    await updateDoc(doc(db, 'driverApplications', userId), updateData);
     return { success: true };
   } catch (error) {
     console.error('Error updating mobile app status:', error);
@@ -434,7 +434,7 @@ export const verifyDriverDocument = async (userId, documentType, isVerified, not
       updateData[`documents.${documentType}.verificationNote`] = note;
     }
     
-    await updateDoc(doc(db, 'drivers', userId), updateData);
+    await updateDoc(doc(db, 'driverApplications', userId), updateData);
     return { success: true };
   } catch (error) {
     console.error('Error verifying document:', error);
@@ -445,7 +445,7 @@ export const verifyDriverDocument = async (userId, documentType, isVerified, not
 // Check if driver application exists
 export const checkDriverExists = async (userId) => {
   try {
-    const driverDoc = await getDoc(doc(db, 'drivers', userId));
+    const driverDoc = await getDoc(doc(db, 'driverApplications', userId));
     return { success: true, exists: driverDoc.exists(), data: driverDoc.data() };
   } catch (error) {
     console.error('Error checking driver existence:', error);

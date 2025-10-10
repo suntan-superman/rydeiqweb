@@ -1,0 +1,23 @@
+{
+  "name": "anyryde-mobile-profile-photos",
+  "version": "1.0.0",
+  "description": "Profile photo implementation package for AnyRyde mobile apps",
+  "dependencies": {
+    "react-native-fast-image": "^8.6.3",
+    "react-native-image-picker": "^7.1.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "install-deps": "npm install react-native-fast-image react-native-image-picker",
+    "ios-pod-install": "cd ios && pod install && cd ..",
+    "android-clean": "cd android && ./gradlew clean && cd .."
+  },
+  "keywords": [
+    "react-native",
+    "profile-photos",
+    "firebase",
+    "anyryde"
+  ],
+  "author": "AnyRyde Team",
+  "license": "MIT"
+}

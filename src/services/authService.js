@@ -66,6 +66,11 @@ export const getRedirectPath = (user) => {
       
     case USER_ROLES.CUSTOMER:
     default:
+      // Check if customer/rider has completed onboarding
+      if (!user.onboardingCompleted) {
+        console.log('getRedirectPath: Customer with incomplete onboarding -> /rider-onboarding');
+        return '/rider-onboarding';
+      }
       console.log('getRedirectPath: Customer -> /dashboard');
       return '/dashboard';
   }
@@ -107,9 +112,9 @@ export const checkUserExistsInAuth = async (email, currentUser) => {
 };
 
 // Register new user with user type
-export const registerUser = async ({ email, password, firstName, lastName, userType = USER_TYPES.PASSENGER, city }) => {
+export const registerUser = async ({ email, password, firstName, lastName, phone, userType = USER_TYPES.PASSENGER, city }) => {
   try {
-    console.log('Starting user registration with data:', { email, firstName, lastName, userType, city });
+    console.log('Starting user registration with data:', { email, firstName, lastName, phone, userType, city });
     
     // Check if user already exists
     const userCheck = await checkUserExistsInAuth(email);
@@ -153,10 +158,13 @@ export const registerUser = async ({ email, password, firstName, lastName, userT
       firstName,
       lastName,
       displayName: `${firstName} ${lastName}`,
+      phoneNumber: phone || '',
       role: role,
       userType: userType,
       createdAt: new Date().toISOString(),
       emailVerified: false,
+      onboardingCompleted: false,
+      onboardingStep: 'welcome',
       preferences: {
         notifications: true,
         darkMode: false,
@@ -790,7 +798,7 @@ export const deleteUserCompletely = async (email, currentUser) => {
     console.log(`🗑️ Deleting user: ${email} (UID: ${userId})`);
     
     // Delete from Firestore collections
-    const collectionsToDelete = ['users', 'drivers'];
+    const collectionsToDelete = ['users', 'driverApplications'];
     
     for (const collectionName of collectionsToDelete) {
       try {
@@ -840,7 +848,7 @@ export const deleteCurrentUser = async () => {
     console.log(`🗑️ Current user deleting themselves: ${email} (UID: ${userId})`);
     
     // Delete from Firestore collections
-    const collectionsToDelete = ['users', 'drivers'];
+    const collectionsToDelete = ['users', 'driverApplications'];
     
     for (const collectionName of collectionsToDelete) {
       try {

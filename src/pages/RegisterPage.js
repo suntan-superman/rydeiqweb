@@ -31,6 +31,9 @@ const RegistrationForm = ({ userType, onSubmit, isLoading }) => {
   useEffect(() => {
     console.log('Form component mounted for user type:', userType);
     
+    // Scroll to top of page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
     // Reset form to empty state
     reset({
       firstName: '',
@@ -304,7 +307,7 @@ const RegistrationForm = ({ userType, onSubmit, isLoading }) => {
         </Button>
 
         {/* Debug buttons - remove in production */}
-        {process.env.NODE_ENV === 'development' && (
+        {/* {process.env.NODE_ENV === 'development' && (
           <div className="space-y-2 mt-4">
             <button
               type="button"
@@ -347,7 +350,7 @@ const RegistrationForm = ({ userType, onSubmit, isLoading }) => {
               📝 Test Form Submission (Debug)
             </button>
           </div>
-        )}
+        )} */}
       </form>
 
       <div className="mt-6 text-center">

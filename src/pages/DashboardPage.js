@@ -2,7 +2,6 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { isAdmin } from '../services/authService';
-import UserDebug from '../components/debug/UserDebug';
 
 const DashboardPage = () => {
   const { user } = useAuth();
@@ -35,9 +34,6 @@ const DashboardPage = () => {
             </div>
           </div>
         )}
-
-        {/* Temporary Debug Component */}
-        <UserDebug />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Quick Actions */}

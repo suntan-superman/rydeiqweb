@@ -29,6 +29,15 @@ export const AuthProvider = ({ children }) => {
             emailVerified: firebaseUser.emailVerified
           });
 
+          // CRITICAL: Check email verification first
+          // Only allow verified users or those in development mode
+          if (!firebaseUser.emailVerified && process.env.NODE_ENV === 'production') {
+            console.warn('⚠️ User not verified, denying access:', firebaseUser.email);
+            setUser(null);
+            setLoading(false);
+            return;
+          }
+
           // Get additional user data from Firestore first
           const userData = await getUserData(firebaseUser.uid);
           
@@ -36,8 +45,6 @@ export const AuthProvider = ({ children }) => {
             const userDoc = userData.data;
             console.log('User data from Firestore:', userDoc);
             
-            // Note: Email verification is handled in loginUser function
-            // AuthContext only manages the user state after successful authentication
             console.log('Setting user in AuthContext - emailVerified:', firebaseUser.emailVerified);
 
             // Set the user with combined data
@@ -51,7 +58,7 @@ export const AuthProvider = ({ children }) => {
             });
           } else {
             console.log('Failed to get user data from Firestore:', userData.error);
-            // If we can't get user data, still allow login but with basic info
+            // If we can't get user data, still allow login but with basic info (only if verified)
             setUser({
               uid: firebaseUser.uid,
               email: firebaseUser.email,

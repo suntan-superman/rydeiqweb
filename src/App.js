@@ -36,6 +36,8 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import CookiePolicyPage from './pages/CookiePolicyPage';
 import SMSTermsPage from './pages/SMSTermsPage';
+import ProfilePage from './pages/ProfilePage';
+import RiderOnboardingPage from './pages/RiderOnboardingPage';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import './App.css';
 
@@ -201,6 +203,15 @@ function App() {
                     />
                     
                     <Route 
+                      path="profile" 
+                      element={
+                        <ProtectedRoute>
+                          <ProfilePage />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    
+                    <Route 
                       path="driver-dashboard" 
                       element={
                         <ProtectedRoute>
@@ -238,6 +249,15 @@ function App() {
                     <Route 
                       path="driver-onboarding" 
                       element={<DriverOnboardingPage />} 
+                    />
+                    
+                    <Route 
+                      path="rider-onboarding" 
+                      element={
+                        <ProtectedRoute>
+                          <RiderOnboardingPage />
+                        </ProtectedRoute>
+                      } 
                     />
                     
                     {/* Rider App Routes */}

@@ -4,6 +4,7 @@ import { useDriverOnboarding } from '../../contexts/DriverOnboardingContext';
 import { validateStepCompletion, ONBOARDING_STEPS } from '../../services/driverService';
 import Button from '../common/Button';
 import Input from '../common/Input';
+import VehiclePhotoUpload from './VehiclePhotoUpload';
 import toast from 'react-hot-toast';
 
 const VehicleInfoForm = () => {
@@ -17,6 +18,7 @@ const VehicleInfoForm = () => {
   
   const [validationErrors, setValidationErrors] = useState([]);
   const [formInitialized, setFormInitialized] = useState(false);
+  const [vehiclePhotos, setVehiclePhotos] = useState({});
 
   const {
     register,
@@ -180,6 +182,11 @@ const VehicleInfoForm = () => {
     const registrationExpiration = new Date(data.registrationExpiration);
     if (registrationExpiration <= today) {
       customErrors.push('Vehicle registration must be current');
+    }
+
+    // Validate vehicle photos (at least one required)
+    if (!vehiclePhotos || Object.keys(vehiclePhotos).length === 0) {
+      customErrors.push('At least one vehicle photo is required (front view recommended)');
     }
 
     if (customErrors.length > 0) {
@@ -490,6 +497,14 @@ const VehicleInfoForm = () => {
             </div>
           </div>
 
+          {/* Vehicle Photos */}
+          <div className="border-t border-gray-200 pt-8">
+            <VehiclePhotoUpload 
+              currentPhotos={vehiclePhotos}
+              onPhotosUpdate={setVehiclePhotos}
+            />
+          </div>
+
           {/* Important Notes */}
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-yellow-900 mb-3">📝 Important Notes</h3>
@@ -499,6 +514,7 @@ const VehicleInfoForm = () => {
               <li>• Insurance must be valid for at least 30 days</li>
               <li>• Vehicle registration must be current</li>
               <li>• Vehicle will be subject to periodic inspections</li>
+              <li>• At least one clear vehicle photo is required</li>
             </ul>
           </div>
 

@@ -24,6 +24,14 @@ yarn-debug.log*
 yarn-error.log*
 
 serviceAccountKey.json
+
+# CSV exports (contain sensitive user data)
+*.csv
+*-export-*.csv
+users-export-*.csv
+driver-applications-export-*.csv
+combined-users-drivers-*.csv
+
 # Ignore all markdown files
 *.md
 
