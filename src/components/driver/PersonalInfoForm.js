@@ -4,14 +4,17 @@ import { useDriverOnboarding } from '../../contexts/DriverOnboardingContext';
 import { validateStepCompletion, ONBOARDING_STEPS } from '../../services/driverService';
 import Button from '../common/Button';
 import Input from '../common/Input';
+import RiderOptInModal from './RiderOptInModal';
 
 const PersonalInfoForm = () => {
   const { 
     driverApplication, 
     updateStep, 
-    goToNextStep, 
     saving, 
-    ONBOARDING_STEPS: STEPS 
+    ONBOARDING_STEPS: STEPS,
+    showRiderOptIn,
+    handleRiderOptIn,
+    triggerRiderOptIn
   } = useDriverOnboarding();
   
   const [validationErrors, setValidationErrors] = useState([]);
@@ -119,25 +122,12 @@ const PersonalInfoForm = () => {
       return;
     }
 
-    // Save the data
-    const result = await updateStep(STEPS.PERSONAL_INFO, data);
+    // Save the data with personalInfo key
+    const result = await updateStep(STEPS.PERSONAL_INFO, { personalInfo: data });
     
     if (result.success) {
-      // Clear form after successful submission
-      reset({
-        firstName: '',
-        lastName: '',
-        dateOfBirth: '',
-        phoneNumber: '',
-        email: '',
-        address: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        coverageArea: '',
-        referralCode: ''
-      });
-      goToNextStep();
+      // Show rider opt-in modal instead of directly going to next step
+      triggerRiderOptIn();
     }
   };
 
@@ -158,8 +148,16 @@ const PersonalInfoForm = () => {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="bg-white rounded-lg shadow-lg p-8">
+    <>
+      <RiderOptInModal
+        isOpen={showRiderOptIn}
+        onConfirm={handleRiderOptIn}
+        onSkip={() => handleRiderOptIn(false, 'later')}
+        driverData={driverApplication}
+      />
+      
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="bg-white rounded-lg shadow-lg p-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Personal Information</h1>
@@ -375,6 +373,7 @@ const PersonalInfoForm = () => {
         </form>
       </div>
     </div>
+    </>
   );
 };
 

@@ -8,6 +8,7 @@ import {
   submitDriverApplication,
   ONBOARDING_STEPS
 } from '../services/driverService';
+import { doc, setDoc, updateDoc, getFirestore } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
 const DriverOnboardingContext = createContext();
@@ -26,6 +27,9 @@ export const DriverOnboardingProvider = ({ children }) => {
   const [currentStep, setCurrentStep] = useState(ONBOARDING_STEPS.WELCOME);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  // NEW: Rider opt-in state
+  const [showRiderOptIn, setShowRiderOptIn] = useState(false);
 
   // Load driver application on mount
   useEffect(() => {
@@ -322,6 +326,94 @@ export const DriverOnboardingProvider = ({ children }) => {
     }
   }, [isStepAccessible, driverApplication, updateStep]);
 
+  // NEW: Create rider account during driver onboarding
+  const createRiderAccount = useCallback(async (optIn, paymentOption, personalInfo) => {
+    if (!user || !optIn) {
+      console.log('Skipping rider account creation');
+      return { success: true, skipped: true };
+    }
+
+    try {
+      console.log('🧑 Creating rider account for driver:', user.uid);
+      
+      const db = getFirestore();
+      const userRef = doc(db, 'users', user.uid);
+      
+      // Prepare rider profile data
+      const riderData = {
+        roles: ['driver', 'rider'], // Dual role
+        isDualAccount: true,
+        riderProfile: {
+          createdAt: new Date().toISOString(),
+          createdDuringDriverOnboarding: true,
+          paymentMethod: {
+            type: paymentOption === 'later' ? 'not_set' : 'linked_driver_account',
+            addedLater: paymentOption === 'later',
+            linkedDriverAccount: paymentOption === 'driver_account'
+          },
+          savedAddresses: [],
+          emergencyContact: null,
+          accessibilityNeeds: [],
+          preferences: {
+            communicationPreferences: personalInfo?.communicationPreferences || {}
+          }
+        },
+        // Copy relevant personal info
+        displayName: `${personalInfo?.firstName || ''} ${personalInfo?.lastName || ''}`.trim(),
+        phoneNumber: personalInfo?.phoneNumber || user.phoneNumber || '',
+        profilePicture: personalInfo?.profilePicture || null,
+      };
+
+      // Create/update user document with rider profile
+      await setDoc(userRef, riderData, { merge: true });
+
+      // Update driver application with rider opt-in flag
+      const driverAppRef = doc(db, 'driverApplications', user.uid);
+      await updateDoc(driverAppRef, {
+        isDualAccount: true,
+        riderOptIn: true,
+        riderAccountCreated: true,
+        riderAccountCreatedAt: new Date().toISOString(),
+        riderPaymentOption: paymentOption
+      });
+
+      console.log('✅ Rider account created successfully');
+      toast.success('Driver and rider accounts created successfully!');
+      
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error creating rider account:', error);
+      toast.error('Failed to create rider account. You can add this later in settings.');
+      return { success: false, error: error.message };
+    }
+  }, [user]);
+
+  // NEW: Handle rider opt-in completion
+  const handleRiderOptIn = useCallback((optIn, paymentOption) => {
+    setShowRiderOptIn(false);
+    
+    if (optIn && driverApplication?.personalInfo) {
+      // Create rider account with personal info
+      createRiderAccount(optIn, paymentOption, driverApplication.personalInfo).then(() => {
+        // Update local state to reflect dual account
+        setDriverApplication(prev => ({
+          ...prev,
+          isDualAccount: optIn,
+          riderOptIn: optIn,
+          riderAccountCreated: optIn
+        }));
+      });
+    }
+    
+    // Always proceed to next step regardless of opt-in choice
+    goToNextStep();
+  }, [driverApplication, createRiderAccount, goToNextStep]);
+
+  // NEW: Trigger rider opt-in modal (to be called after personal info step)
+  const triggerRiderOptIn = useCallback(() => {
+    setShowRiderOptIn(true);
+  }, []);
+
   const value = {
     driverApplication,
     currentStep,
@@ -337,7 +429,13 @@ export const DriverOnboardingProvider = ({ children }) => {
     getStepStatus,
     isStepAccessible,
     goToStep,
-    ONBOARDING_STEPS
+    ONBOARDING_STEPS,
+    // NEW: Rider opt-in functionality
+    showRiderOptIn,
+    setShowRiderOptIn,
+    handleRiderOptIn,
+    triggerRiderOptIn,
+    createRiderAccount
   };
 
   return (

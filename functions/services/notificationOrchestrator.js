@@ -5,6 +5,7 @@
 
 const admin = require('firebase-admin');
 const {defineSecret} = require('firebase-functions/params');
+const fetch = require('node-fetch');
 
 class NotificationOrchestrator {
   constructor() {
@@ -47,9 +48,11 @@ class NotificationOrchestrator {
       title,
       body,
       data = {},
-      channels = ['push'],
+      channels = ['push'], // Default: push only (no SMS)
       scheduleAt = null,
-      requireAck = false
+      requireAck = false,
+      rideId = null, // For collapse keys
+      collapseKey = null // Custom collapse key
     } = notificationData;
 
     try {
@@ -70,6 +73,18 @@ class NotificationOrchestrator {
         scheduleAt = this.getNextAllowedTime(userPrefs);
       }
 
+      // Check rate limiting (1 notification per 30 seconds per ride)
+      if (rideId && priority !== 'critical') {
+        const shouldRateLimit = await this.shouldRateLimit(rideId);
+        if (shouldRateLimit) {
+          console.log(`⏱️ Rate limit hit for ride ${rideId}, skipping`);
+          return { success: false, reason: 'rate_limited' };
+        }
+      }
+
+      // Generate collapse key
+      const finalCollapseKey = collapseKey || (rideId ? `ride:${rideId}` : null);
+
       // Store notification in Firestore
       const notificationRef = await admin.firestore()
         .collection('notifications')
@@ -84,6 +99,8 @@ class NotificationOrchestrator {
           status: scheduleAt ? 'scheduled' : 'pending',
           scheduleAt,
           requireAck,
+          rideId, // For tracking
+          collapseKey: finalCollapseKey, // For collapsing notifications
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           deliveryAttempts: [],
           read: false
@@ -129,17 +146,17 @@ class NotificationOrchestrator {
 
   /**
    * Deliver notification via all enabled channels
+   * NO SMS - Only Push + Email fallback for critical events
    */
   async deliverNotification(userId, notification, userPrefs) {
     const results = {
       push: null,
-      sms: null,
       email: null
     };
 
     const deliveryPromises = [];
 
-    // Push Notification
+    // PRIMARY: Push Notification (FCM + Expo)
     if (notification.channels.includes('push')) {
       deliveryPromises.push(
         this.sendPushNotification(userId, notification)
@@ -148,23 +165,20 @@ class NotificationOrchestrator {
       );
     }
 
-    // SMS Notification
-    if (notification.channels.includes('sms') && userPrefs.smsEnabled) {
-      deliveryPromises.push(
-        this.sendSMS(userId, notification)
-          .then(result => { results.sms = result; })
-          .catch(error => { results.sms = { success: false, error: error.message }; })
-      );
+    // FALLBACK: Email for critical events only
+    const isCriticalEvent = this.isCriticalEvent(notification.type);
+    if (isCriticalEvent || notification.channels.includes('email')) {
+      if (userPrefs.emailEnabled !== false) { // Email enabled by default
+        deliveryPromises.push(
+          this.sendEmail(userId, notification)
+            .then(result => { results.email = result; })
+            .catch(error => { results.email = { success: false, error: error.message }; })
+        );
+      }
     }
 
-    // Email Notification
-    if (notification.channels.includes('email') && userPrefs.emailEnabled) {
-      deliveryPromises.push(
-        this.sendEmail(userId, notification)
-          .then(result => { results.email = result; })
-          .catch(error => { results.email = { success: false, error: error.message }; })
-      );
-    }
+    // SMS DISABLED: Not used per requirements
+    // SMS functionality still available in code but not called
 
     await Promise.allSettled(deliveryPromises);
 
@@ -178,109 +192,62 @@ class NotificationOrchestrator {
   }
 
   /**
-   * Send Push Notification via FCM
+   * Send Push Notification via FCM (web) + Expo (mobile)
    */
   async sendPushNotification(userId, notification) {
     try {
-      // Get user's FCM tokens
-      const userDoc = await admin.firestore()
-        .collection('users')
-        .doc(userId)
-        .get();
+      // Try both users and drivers collections
+      let userDoc = await admin.firestore().collection('users').doc(userId).get();
+      if (!userDoc.exists) {
+        userDoc = await admin.firestore().collection('drivers').doc(userId).get();
+      }
 
       if (!userDoc.exists) {
         throw new Error('User not found');
       }
 
       const userData = userDoc.data();
-      const tokens = [];
+      const fcmTokens = [];
+      const expoPushToken = userData.expoPushToken;
 
-      // Web token
+      // Web FCM token
       if (userData.fcmToken) {
-        tokens.push(userData.fcmToken);
+        fcmTokens.push(userData.fcmToken);
       }
 
-      // Mobile token
+      // Mobile FCM token (legacy)
       if (userData.pushToken) {
-        tokens.push(userData.pushToken);
+        fcmTokens.push(userData.pushToken);
       }
 
-      if (tokens.length === 0) {
-        return { success: false, error: 'No FCM tokens found' };
+      // Send to both FCM and Expo if available
+      const results = [];
+
+      // Send via FCM (web browsers)
+      if (fcmTokens.length > 0) {
+        const fcmResult = await this.sendFCMNotification(fcmTokens, notification);
+        results.push(fcmResult);
       }
 
-      // Build FCM messages (one per token)
-      const messages = tokens.map(token => ({
-        notification: {
-          title: notification.title,
-          body: notification.body,
-        },
-        data: this.serializeData({
-          notificationId: notification.notificationId,
-          type: notification.type,
-          priority: notification.priority,
-          ...notification.data
-        }),
-        android: {
-          priority: notification.priority === 'critical' ? 'high' : 'normal',
-          notification: {
-            channelId: this.getAndroidChannel(notification.type),
-            sound: this.getNotificationSound(notification.type),
-            priority: notification.priority === 'critical' ? 'max' : 'high',
-          }
-        },
-        apns: {
-          headers: {
-            'apns-priority': notification.priority === 'critical' ? '10' : '5',
-          },
-          payload: {
-            aps: {
-              sound: this.getNotificationSound(notification.type),
-              badge: 1,
-              category: notification.type,
-            }
-          }
-        },
-        token: token
-      }));
-
-      // Send messages individually (more reliable than batch)
-      const sendPromises = messages.map(msg => 
-        admin.messaging().send(msg)
-          .then(() => ({ success: true }))
-          .catch(error => ({ success: false, error }))
-      );
-
-      const responses = await Promise.allSettled(sendPromises);
-      const successCount = responses.filter(r => r.status === 'fulfilled' && r.value.success).length;
-      const failureCount = responses.length - successCount;
-
-      // Handle invalid tokens
-      const invalidTokens = [];
-      responses.forEach((resp, idx) => {
-        if (resp.status === 'fulfilled' && !resp.value.success) {
-          const error = resp.value.error;
-          if (error && error.code && (
-            error.code === 'messaging/invalid-registration-token' ||
-            error.code === 'messaging/registration-token-not-registered'
-          )) {
-            invalidTokens.push(tokens[idx]);
-          }
-        }
-      });
-
-      // Remove invalid tokens
-      if (invalidTokens.length > 0) {
-        await this.removeInvalidTokens(userId, invalidTokens);
+      // Send via Expo (mobile apps)
+      if (expoPushToken) {
+        const expoResult = await this.sendExpoNotification(expoPushToken, notification);
+        results.push(expoResult);
       }
 
-      console.log(`✅ Push sent: ${successCount}/${tokens.length} tokens`);
+      if (results.length === 0) {
+        return { success: false, error: 'No push tokens found' };
+      }
+
+      // Return combined results
+      const totalSent = results.reduce((sum, r) => sum + (r.sentTo || 0), 0);
+      const anySuccess = results.some(r => r.success);
 
       return {
-        success: successCount > 0,
-        sentTo: successCount,
-        totalTokens: tokens.length,
-        failureCount: failureCount
+        success: anySuccess,
+        sentTo: totalSent,
+        fcm: results[0] || null,
+        expo: results[1] || results[0] // Expo could be first if no FCM
       };
 
     } catch (error) {
@@ -288,6 +255,8 @@ class NotificationOrchestrator {
       return { success: false, error: error.message };
     }
   }
+
+  // Old FCM-only code removed - now using sendFCMNotification() and sendExpoNotification()
 
   /**
    * Send SMS via Twilio
@@ -427,12 +396,14 @@ class NotificationOrchestrator {
       'ride_request': `🚗 New ride request! ${notification.data.pickup?.address || 'Pickup'} → ${notification.data.destination?.address || 'Destination'}. Fare: $${notification.data.estimatedFare || 'TBD'}`,
       'ride_accepted': `✅ ${notification.data.driverName || 'Your driver'} is on the way! ETA: ${notification.data.eta || '5 min'}`,
       'driver_arrived': `📍 Your driver has arrived at the pickup location.`,
+      'driver_nearby': `🚗 ${notification.data.driverName || 'Your driver'} is almost here! About ${notification.data.eta || '2'} minute${notification.data.eta > 1 ? 's' : ''} away.`,
       'ride_started': `🚀 Your ride has started. Have a safe trip!`,
       'ride_completed': `✅ Ride completed! Total: $${notification.data.totalFare || '0.00'}. Thanks for riding with AnyRyde!`,
       'ride_cancelled': `❌ Your ride has been cancelled.`,
       'scheduled_ride_reminder_24hr': `📅 Reminder: You have a ride scheduled for ${notification.data.scheduledTime ? new Date(notification.data.scheduledTime).toLocaleString() : 'tomorrow'}`,
       'scheduled_ride_reminder_1hr': `⏰ Your ride is scheduled in 1 hour. Pickup at ${notification.data.pickup?.address || 'your location'}`,
       'payment_received': `💰 Payment received: $${notification.data.amount || '0.00'}`,
+      'rating_reminder': `⭐ How was your ride? Rate your experience to help us improve!`,
       'emergency_alert': `🚨 Emergency alert triggered. Support team has been notified. Stay safe.`
     };
 
@@ -556,8 +527,10 @@ class NotificationOrchestrator {
       'ride_update': 'rideUpdates',
       'ride_accepted': 'rideUpdates',
       'driver_arrived': 'rideUpdates',
+      'driver_nearby': 'rideUpdates',
       'ride_started': 'rideUpdates',
       'ride_completed': 'rideUpdates',
+      'rating_reminder': 'rideUpdates',
       'payment': 'payments',
       'promotion': 'promotions',
       'safety': 'safety',
@@ -609,8 +582,10 @@ class NotificationOrchestrator {
       'ride_update': 'ride-updates',
       'ride_accepted': 'ride-updates',
       'driver_arrived': 'ride-updates',
+      'driver_nearby': 'ride-updates',
       'ride_started': 'ride-updates',
       'ride_completed': 'ride-updates',
+      'rating_reminder': 'ratings',
       'bid_update': 'bid-updates',
       'payment': 'payments',
       'emergency_alert': 'emergency',
@@ -626,8 +601,10 @@ class NotificationOrchestrator {
     const sounds = {
       'ride_request': 'mixkit-fast-car-drive-by-1538.wav',
       'bid_accepted': 'mixkit-achievement-bell-600.wav',
+      'driver_nearby': 'default',
       'ride_completed': 'success.mp3',
       'ride_cancelled': 'ui-error-negative-mallets-om-fx-1-00-01.mp3',
+      'rating_reminder': 'default',
       'emergency_alert': 'default'
     };
     return sounds[type] || 'default';
@@ -673,6 +650,162 @@ class NotificationOrchestrator {
       }
     }
     return serialized;
+  }
+
+  /**
+   * Check if notification type is critical (requires email fallback)
+   */
+  isCriticalEvent(notificationType) {
+    const criticalEvents = [
+      'bid_matched',
+      'bid_accepted',
+      'driver_arrived',
+      'wait_time_started',
+      'trip_complete',
+      'payment_failure',
+      'payment_received',
+      'emergency_alert',
+      'ride_cancelled'
+    ];
+    return criticalEvents.includes(notificationType);
+  }
+
+  /**
+   * Check if should rate limit notification (max 1 per 30 seconds per ride)
+   */
+  async shouldRateLimit(rideId) {
+    try {
+      const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
+      
+      const recentNotifications = await admin.firestore()
+        .collection('notifications')
+        .where('rideId', '==', rideId)
+        .where('createdAt', '>', thirtySecondsAgo)
+        .limit(1)
+        .get();
+
+      return !recentNotifications.empty;
+    } catch (error) {
+      console.error('Error checking rate limit:', error);
+      return false; // Don't block on error
+    }
+  }
+
+  /**
+   * Send FCM Notification (for web browsers)
+   */
+  async sendFCMNotification(tokens, notification) {
+    try {
+      const messages = tokens.map(token => ({
+        notification: {
+          title: notification.title,
+          body: notification.body,
+        },
+        data: this.serializeData({
+          notificationId: notification.notificationId,
+          type: notification.type,
+          priority: notification.priority,
+          collapseKey: notification.collapseKey,
+          ...notification.data
+        }),
+        android: {
+          priority: notification.priority === 'critical' ? 'high' : 'normal',
+          collapseKey: notification.collapseKey || undefined,
+          notification: {
+            channelId: this.getAndroidChannel(notification.type),
+            sound: this.getNotificationSound(notification.type),
+            priority: notification.priority === 'critical' ? 'max' : 'high',
+          }
+        },
+        apns: {
+          headers: {
+            'apns-priority': notification.priority === 'critical' ? '10' : '5',
+            'apns-collapse-id': notification.collapseKey || undefined,
+          },
+          payload: {
+            aps: {
+              sound: this.getNotificationSound(notification.type),
+              badge: 1,
+              category: notification.type,
+            }
+          }
+        },
+        token: token
+      }));
+
+      const sendPromises = messages.map(msg => 
+        admin.messaging().send(msg)
+          .then(() => ({ success: true }))
+          .catch(error => ({ success: false, error }))
+      );
+
+      const responses = await Promise.allSettled(sendPromises);
+      const successCount = responses.filter(r => r.status === 'fulfilled' && r.value.success).length;
+
+      console.log(`✅ FCM sent: ${successCount}/${tokens.length} tokens`);
+
+      return {
+        success: successCount > 0,
+        sentTo: successCount,
+        totalTokens: tokens.length
+      };
+    } catch (error) {
+      console.error('❌ FCM error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Send Expo Push Notification (for mobile apps)
+   */
+  async sendExpoNotification(expoPushToken, notification) {
+    try {
+      const message = {
+        to: expoPushToken,
+        sound: 'default',
+        title: notification.title,
+        body: notification.body,
+        data: {
+          notificationId: notification.notificationId,
+          type: notification.type,
+          priority: notification.priority,
+          collapseKey: notification.collapseKey,
+          ...notification.data
+        },
+        categoryId: notification.type,
+        channelId: this.getAndroidChannel(notification.type),
+        priority: notification.priority === 'critical' ? 'high' : 'default',
+        badge: 1,
+      };
+
+      // Send to Expo push service
+      const response = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(message),
+      });
+
+      const result = await response.json();
+
+      if (result.data && result.data[0]) {
+        const status = result.data[0].status;
+        if (status === 'ok') {
+          console.log('✅ Expo push sent successfully');
+          return { success: true, sentTo: 1 };
+        } else {
+          console.error('❌ Expo push error:', result.data[0].message);
+          return { success: false, error: result.data[0].message };
+        }
+      }
+
+      return { success: false, error: 'Unknown Expo response' };
+    } catch (error) {
+      console.error('❌ Expo notification error:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
 

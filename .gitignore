@@ -37,3 +37,12 @@ combined-users-drivers-*.csv
 
 # But keep README.md
 !README.md
+
+# service accounts / keys
+*service-account*.json
+*firebase*-service-account*.json
+*.p12
+*.pem
+*.keystore
+*.key
+*.apk

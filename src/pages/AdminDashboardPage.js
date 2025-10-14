@@ -13,6 +13,7 @@ import SystemSettings from '../components/admin/SystemSettings';
 import SupportCenter from '../components/admin/SupportCenter';
 import OnboardingManagement from '../components/admin/OnboardingManagement';
 import AIPricingDashboard from '../components/ai/AIPricingDashboard';
+import ReliabilityDashboard from '../components/admin/ReliabilityDashboard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
@@ -27,6 +28,7 @@ const AdminDashboardPage = () => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'drivers', label: 'Driver Management', icon: '👥' },
+    { id: 'reliability', label: 'Reliability', icon: '🛡️' },
     { id: 'onboarding', label: 'Onboarding', icon: '✅' },
     { id: 'rides', label: 'Ride Monitoring', icon: '🚗' },
     { id: 'analytics', label: 'Analytics', icon: '📈' },
@@ -88,6 +90,8 @@ const AdminDashboardPage = () => {
         return <AdminOverview metrics={platformMetrics} onRefresh={() => window.location.reload()} />;
       case 'drivers':
         return <DriverManagement />;
+      case 'reliability':
+        return <ReliabilityDashboard />;
       case 'onboarding':
         console.log('AdminDashboardPage: Rendering OnboardingManagement component');
         return <OnboardingManagement />;

@@ -389,6 +389,172 @@ exports.sendScheduledRideReminders = onSchedule('every 5 minutes', async (event)
   });
 
 /**
+ * Firestore Trigger: Driver Location Update (Proximity-Based Arrival Notification)
+ * Triggers when driver's location is updated during active ride
+ */
+exports.onDriverLocationUpdate = onDocumentUpdated('rides/{rideId}', async (event) => {
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+
+    // Only process for accepted rides that haven't arrived yet
+    if (after.status !== 'accepted' || after.proximityNotificationSent) {
+      return;
+    }
+
+    // Check if driver location exists
+    if (!after.driverLocation?.latitude || !after.driverLocation?.longitude) {
+      return;
+    }
+
+    // Check if pickup location exists
+    if (!after.pickup?.latitude || !after.pickup?.longitude) {
+      return;
+    }
+
+    // Calculate distance between driver and pickup location
+    const distance = calculateDistance(
+      after.driverLocation.latitude,
+      after.driverLocation.longitude,
+      after.pickup.latitude,
+      after.pickup.longitude
+    );
+
+    // Send notification if driver is within 0.5 miles (800 meters) and hasn't been sent yet
+    if (distance <= 800 && !after.proximityNotificationSent) {
+      console.log(`📍 Driver is ${distance.toFixed(0)}m away from pickup, sending proximity notification`);
+
+      const driverName = after.driverName || 'Your driver';
+      const eta = Math.ceil(distance / 200); // Rough estimate: 200m/min walking speed
+
+      const orchestrator = getOrchestrator();
+      await orchestrator.sendNotification(after.riderId, {
+        type: 'driver_nearby',
+        priority: 'high',
+        title: `${driverName} is Almost Here! 🚗`,
+        body: `Your driver is about ${eta} minute${eta > 1 ? 's' : ''} away. Get ready!`,
+        channels: ['push'],
+        rideId: event.params.rideId,
+        data: {
+          rideId: event.params.rideId,
+          driverId: after.driverId,
+          driverName,
+          distance: Math.round(distance),
+          eta,
+          driverLocation: after.driverLocation
+        }
+      });
+
+      // Mark that proximity notification has been sent
+      await event.data.after.ref.update({
+        proximityNotificationSent: true,
+        proximityNotificationSentAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+  });
+
+/**
+ * Scheduled Function: Send Rating Reminders
+ * Runs every 5 minutes to check for completed rides without ratings
+ */
+exports.sendRatingReminders = onSchedule('every 5 minutes', async (event) => {
+    console.log('⭐ Checking for rating reminders...');
+
+    const fiveMinutesAgo = admin.firestore.Timestamp.fromMillis(Date.now() - (5 * 60 * 1000));
+    const tenMinutesAgo = admin.firestore.Timestamp.fromMillis(Date.now() - (10 * 60 * 1000));
+
+    // Get completed rides from 5-10 minutes ago without ratings
+    const completedRidesSnapshot = await admin.firestore()
+      .collection('rides')
+      .where('status', '==', 'completed')
+      .where('completedAt', '<=', fiveMinutesAgo)
+      .where('completedAt', '>', tenMinutesAgo)
+      .where('ratingReminderSent', '==', false)
+      .limit(50)
+      .get();
+
+    const reminderPromises = [];
+
+    completedRidesSnapshot.forEach(rideDoc => {
+      const ride = rideDoc.data();
+
+      // Check if rider has already rated
+      if (ride.riderRating || ride.riderRating === 0) {
+        // Mark as sent to avoid checking again
+        rideDoc.ref.update({ ratingReminderSent: true });
+        return;
+      }
+
+      // Send rating reminder to rider
+      const orchestrator = getOrchestrator();
+      reminderPromises.push(
+        orchestrator.sendNotification(ride.riderId, {
+          type: 'rating_reminder',
+          priority: 'low',
+          title: 'How Was Your Ride? ⭐',
+          body: `Please rate your experience with ${ride.driverName || 'your driver'}. Your feedback helps us improve!`,
+          channels: ['push'],
+          data: {
+            rideId: rideDoc.id,
+            driverId: ride.driverId,
+            driverName: ride.driverName,
+            completedAt: ride.completedAt
+          }
+        }).then(() => {
+          return rideDoc.ref.update({ 
+            ratingReminderSent: true,
+            ratingReminderSentAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+        }).catch(error => {
+          console.error(`Error sending rating reminder for ride ${rideDoc.id}:`, error);
+        })
+      );
+
+      // Send rating reminder to driver (if they haven't rated the rider)
+      if (!ride.driverRating && ride.driverRating !== 0) {
+        reminderPromises.push(
+          orchestrator.sendNotification(ride.driverId, {
+            type: 'rating_reminder',
+            priority: 'low',
+            title: 'Rate Your Rider ⭐',
+            body: `How was your experience with ${ride.riderName || 'this rider'}? Your feedback matters!`,
+            channels: ['push'],
+            data: {
+              rideId: rideDoc.id,
+              riderId: ride.riderId,
+              riderName: ride.riderName,
+              completedAt: ride.completedAt
+            }
+          }).catch(error => {
+            console.error(`Error sending rating reminder to driver for ride ${rideDoc.id}:`, error);
+          })
+        );
+      }
+    });
+
+    await Promise.allSettled(reminderPromises);
+    console.log(`✅ Sent ${reminderPromises.length} rating reminders`);
+  });
+
+/**
+ * Helper: Calculate distance between two coordinates (Haversine formula)
+ * Returns distance in meters
+ */
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // Earth's radius in meters
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) *
+    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // Distance in meters
+}
+
+/**
  * Emergency Alert Trigger
  */
 exports.onEmergencyAlert = onDocumentCreated('emergencyAlerts/{alertId}', async (event) => {
@@ -445,4 +611,380 @@ exports.onEmergencyAlert = onDocumentCreated('emergencyAlerts/{alertId}', async 
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
   });
+
+// ====================================================================
+// STRIPE PAYMENT CLOUD FUNCTIONS
+// ====================================================================
+
+// Lazy load Stripe service to avoid deployment timeout
+let stripeService = null;
+const getStripeService = () => {
+  if (!stripeService) {
+    stripeService = require('./services/stripeService');
+  }
+  return stripeService;
+};
+
+/**
+ * Create Payment Intent for Ride
+ */
+exports.createPaymentIntent = onCall(async (request) => {
+  const {data, auth} = request;
+  try {
+    if (!auth) {
+      throw new Error('User must be authenticated');
+    }
+
+    const {amount, rideId, driverId, metadata = {}} = data;
+
+    if (!amount || !rideId || !driverId) {
+      throw new Error('Missing required fields: amount, rideId, driverId');
+    }
+
+    // Get user data
+    const userDoc = await admin.firestore().collection('users').doc(auth.uid).get();
+    const userData = userDoc.data();
+
+    // Get or create Stripe customer
+    const stripe = getStripeService();
+    const customer = await stripe.getOrCreateCustomer(
+      auth.uid,
+      userData.email,
+      `${userData.firstName} ${userData.lastName}`
+    );
+
+    // Create payment intent
+    const paymentIntent = await stripe.createPaymentIntent({
+      amount,
+      customerId: customer.id,
+      rideId,
+      riderId: auth.uid,
+      driverId,
+      metadata
+    });
+
+    return {
+      success: true,
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id
+    };
+
+  } catch (error) {
+    console.error('❌ createPaymentIntent error:', error);
+    throw error;
+  }
+});
+
+/**
+ * Confirm Payment Intent (Server-side confirmation)
+ */
+exports.confirmPayment = onCall(async (request) => {
+  const {data, auth} = request;
+  try {
+    if (!auth) {
+      throw new Error('User must be authenticated');
+    }
+
+    const {paymentIntentId} = data;
+
+    if (!paymentIntentId) {
+      throw new Error('Missing required field: paymentIntentId');
+    }
+
+    const stripe = getStripeService();
+    const paymentIntent = await stripe.confirmPaymentIntent(paymentIntentId);
+
+    return {
+      success: true,
+      status: paymentIntent.status,
+      paymentIntentId: paymentIntent.id
+    };
+
+  } catch (error) {
+    console.error('❌ confirmPayment error:', error);
+    throw error;
+  }
+});
+
+/**
+ * Create Refund
+ */
+exports.createRefund = onCall(async (request) => {
+  const {data, auth} = request;
+  try {
+    if (!auth) {
+      throw new Error('User must be authenticated');
+    }
+
+    const {paymentIntentId, amount, reason} = data;
+
+    if (!paymentIntentId) {
+      throw new Error('Missing required field: paymentIntentId');
+    }
+
+    const stripe = getStripeService();
+    const refund = await stripe.createRefund(paymentIntentId, amount, reason);
+
+    return {
+      success: true,
+      refundId: refund.id,
+      status: refund.status,
+      amount: refund.amount / 100
+    };
+
+  } catch (error) {
+    console.error('❌ createRefund error:', error);
+    throw error;
+  }
+});
+
+/**
+ * Create Driver Connect Account
+ */
+exports.createDriverConnectAccount = onCall(async (request) => {
+  const {data, auth} = request;
+  try {
+    if (!auth) {
+      throw new Error('User must be authenticated');
+    }
+
+    // Get user data
+    const userDoc = await admin.firestore().collection('users').doc(auth.uid).get();
+    const userData = userDoc.data();
+
+    const driverDoc = await admin.firestore().collection('drivers').doc(auth.uid).get();
+    const driverData = driverDoc.data();
+
+    // Create Connect account
+    const stripe = getStripeService();
+    const account = await stripe.createConnectAccount(
+      auth.uid,
+      userData.email,
+      driverData
+    );
+
+    // Create onboarding link
+    const onboardingUrl = await stripe.createConnectOnboardingLink(
+      account.id,
+      data.refreshUrl || 'https://anyryde.com/driver/onboarding/refresh',
+      data.returnUrl || 'https://anyryde.com/driver/dashboard'
+    );
+
+    return {
+      success: true,
+      accountId: account.id,
+      onboardingUrl
+    };
+
+  } catch (error) {
+    console.error('❌ createDriverConnectAccount error:', error);
+    throw error;
+  }
+});
+
+/**
+ * Get Driver Earnings
+ */
+exports.getDriverEarnings = onCall(async (request) => {
+  const {data, auth} = request;
+  try {
+    if (!auth) {
+      throw new Error('User must be authenticated');
+    }
+
+    const {startDate, endDate} = data;
+
+    const stripe = getStripeService();
+    const earnings = await stripe.getDriverEarnings(
+      auth.uid,
+      startDate ? new Date(startDate) : null,
+      endDate ? new Date(endDate) : null
+    );
+
+    return {
+      success: true,
+      earnings
+    };
+
+  } catch (error) {
+    console.error('❌ getDriverEarnings error:', error);
+    throw error;
+  }
+});
+
+/**
+ * Get Customer Payment Methods
+ */
+exports.getPaymentMethods = onCall(async (request) => {
+  const {auth} = request;
+  try {
+    if (!auth) {
+      throw new Error('User must be authenticated');
+    }
+
+    // Get user data
+    const userDoc = await admin.firestore().collection('users').doc(auth.uid).get();
+    const userData = userDoc.data();
+
+    if (!userData.stripeCustomerId) {
+      return {
+        success: true,
+        paymentMethods: []
+      };
+    }
+
+    const stripe = getStripeService();
+    const paymentMethods = await stripe.getPaymentMethods(userData.stripeCustomerId);
+
+    return {
+      success: true,
+      paymentMethods
+    };
+
+  } catch (error) {
+    console.error('❌ getPaymentMethods error:', error);
+    throw error;
+  }
+});
+
+/**
+ * Stripe Webhook Handler
+ */
+exports.stripeWebhook = onCall(async (request) => {
+  const {data} = request;
+  try {
+    const event = data.event;
+
+    console.log('📨 Stripe webhook received:', event.type);
+
+    // Handle the event
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        const paymentIntent = event.data.object;
+        
+        // Update payment status in Firestore
+        const paymentsSnapshot = await admin.firestore()
+          .collection('payments')
+          .where('paymentIntentId', '==', paymentIntent.id)
+          .limit(1)
+          .get();
+
+        if (!paymentsSnapshot.empty) {
+          const paymentDoc = paymentsSnapshot.docs[0];
+          await paymentDoc.ref.update({
+            status: 'succeeded',
+            processedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+
+          const paymentData = paymentDoc.data();
+
+          // Update ride status
+          if (paymentData.rideId) {
+            await admin.firestore().collection('rides').doc(paymentData.rideId).update({
+              'payment.status': 'succeeded',
+              'payment.processedAt': admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+          }
+
+          // Send notifications
+          const orchestrator = getOrchestrator();
+          
+          // Notify rider
+          await orchestrator.sendNotification(paymentData.riderId, {
+            type: 'payment_received',
+            priority: 'medium',
+            title: '💰 Payment Confirmed',
+            body: `Your payment of $${paymentData.amount.toFixed(2)} has been processed successfully.`,
+            channels: ['push'],
+            data: {
+              paymentId: paymentDoc.id,
+              amount: paymentData.amount
+            }
+          });
+
+          // Notify driver
+          await orchestrator.sendNotification(paymentData.driverId, {
+            type: 'payment_received',
+            priority: 'medium',
+            title: '💰 Payment Received',
+            body: `You earned $${paymentData.driverAmount.toFixed(2)} from this ride.`,
+            channels: ['push'],
+            data: {
+              paymentId: paymentDoc.id,
+              earnings: paymentData.driverAmount
+            }
+          });
+        }
+        break;
+
+      case 'payment_intent.payment_failed':
+        const failedPayment = event.data.object;
+        
+        // Update payment status
+        const failedPaymentsSnapshot = await admin.firestore()
+          .collection('payments')
+          .where('paymentIntentId', '==', failedPayment.id)
+          .limit(1)
+          .get();
+
+        if (!failedPaymentsSnapshot.empty) {
+          const paymentDoc = failedPaymentsSnapshot.docs[0];
+          await paymentDoc.ref.update({
+            status: 'failed',
+            error: failedPayment.last_payment_error?.message,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+
+          const paymentData = paymentDoc.data();
+
+          // Notify rider
+          const orchestrator = getOrchestrator();
+          await orchestrator.sendNotification(paymentData.riderId, {
+            type: 'payment_failed',
+            priority: 'high',
+            title: '❌ Payment Failed',
+            body: 'Your payment could not be processed. Please update your payment method.',
+            channels: ['push', 'sms'],
+            data: {
+              paymentId: paymentDoc.id,
+              error: failedPayment.last_payment_error?.message
+            }
+          });
+        }
+        break;
+
+      case 'account.updated':
+        // Driver Connect account updated
+        const account = event.data.object;
+        
+        // Update driver's payment status
+        const driversSnapshot = await admin.firestore()
+          .collection('drivers')
+          .where('stripeConnectAccountId', '==', account.id)
+          .limit(1)
+          .get();
+
+        if (!driversSnapshot.empty) {
+          const driverDoc = driversSnapshot.docs[0];
+          await driverDoc.ref.update({
+            paymentStatus: account.charges_enabled ? 'active' : 'pending_verification',
+            payoutsEnabled: account.payouts_enabled,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+        }
+        break;
+
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    return {success: true};
+
+  } catch (error) {
+    console.error('❌ stripeWebhook error:', error);
+    throw error;
+  }
+});
 

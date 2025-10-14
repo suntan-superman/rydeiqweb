@@ -2,40 +2,27 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // Users collection rules
+    // Supports dual-role accounts (driver + rider)
+    // User document structure: { uid, email, roles: ['driver', 'rider'], isDualAccount: true, ... }
     match /users/{userId} {
-      // Admin access for user management
-      allow read, write: if request.auth != null && request.auth.token.role in ['admin', 'super_admin'];
-      // User access to their own profile
       allow read, update: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null; // Allow any authenticated user to create their own user document
-      // Allow authenticated users to query users collection (for duplicate email checks)
-      allow list: if request.auth != null;
-      
-      // Rating system rules - Allow rating statistics updates
-      // Allow system to update ratingStats for any user (for aggregated ratings)
-      allow update: if request.auth != null && 
-        request.resource.data.keys().hasAll(['ratingStats', 'updatedAt']);
-      
-      // Allow users to read rating stats of other users (for driver/rider profiles)
-      allow read: if request.auth != null;
+      allow list: if request.auth != null; // Allow authenticated users to query users collection (for duplicate email checks)
     }
 
-    // DEPRECATED: Drivers collection (legacy - being phased out)
-    // All driver data now consolidated in 'driverApplications' collection
+    // Drivers collection rules
     match /drivers/{driverId} {
       allow read, update: if request.auth != null && request.auth.uid == driverId;
-      allow create: if request.auth != null && request.auth.uid == driverId;
+      allow create: if request.auth != null && request.auth.uid == driverId; // Only allow drivers to create their own driver document
     }
 
-    // Driver Applications collection rules (PRIMARY DRIVER COLLECTION)
+    // Driver Applications collection rules
+    // Supports dual-role registration (riderOptIn, isDualAccount, riderAccountCreated fields)
     match /driverApplications/{applicationId} {
-      // Admin access for management
-      allow read, write: if request.auth != null && request.auth.token.role in ['admin', 'super_admin'];
-      // Driver access to their own application
       allow read, update: if request.auth != null && request.auth.uid == applicationId;
       allow create: if request.auth != null && request.auth.uid == applicationId;
-      // Allow authenticated users to query driver applications (for duplicate email checks)
-      allow list: if request.auth != null;
+      allow list: if request.auth != null; // Allow authenticated users to query driver applications (for duplicate email checks)
+      allow read: if request.auth != null; // Allow riders to read driver data for matching
     }
 
     // Notifications collection rules
@@ -45,9 +32,6 @@ service cloud.firestore {
 
     // Rides collection rules
     match /rides/{rideId} {
-      // Admin access for management and analytics
-      allow read, write: if request.auth != null && request.auth.token.role in ['admin', 'super_admin'];
-      // Driver and rider access to their own rides
       allow read, write: if request.auth != null && 
         (resource.data.driverId == request.auth.uid || 
          resource.data.riderId == request.auth.uid);
@@ -79,17 +63,6 @@ service cloud.firestore {
       
       // Allow authenticated users to create ride requests
       allow create: if request.auth != null;
-      
-      // Rating system rules - Allow rating updates for involved parties
-      // Allow drivers to rate riders (driverToRider ratings)
-      allow update: if request.auth != null && 
-        request.auth.uid == resource.data.driverId &&
-        request.resource.data.keys().hasAll(['ratings', 'updatedAt']);
-      
-      // Allow riders to rate drivers (riderToDriver ratings)
-      allow update: if request.auth != null && 
-        request.auth.uid == resource.data.riderId &&
-        request.resource.data.keys().hasAll(['ratings', 'updatedAt']);
     }
 
     // Earnings collection rules
@@ -153,6 +126,43 @@ service cloud.firestore {
         (resource.data.driverId == request.auth.uid || 
          resource.data.riderId == request.auth.uid ||
          request.auth.token.role in ['admin', 'super_admin']);
+    }
+
+    // Driver Reliability Scores collection rules
+    match /driver_reliability_scores/{scoreId} {
+      allow read: if request.auth != null && 
+        (resource.data.driver_id == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+      allow write: if request.auth.token.role in ['admin', 'super_admin'];
+    }
+
+    // Driver Metrics Daily collection rules
+    match /driver_metrics_daily/{metricId} {
+      allow read: if request.auth != null && 
+        (resource.data.driver_id == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+      allow write: if request.auth != null && request.resource.data.driver_id == request.auth.uid;
+    }
+
+    // Driver Cooldowns collection rules
+    match /driver_cooldowns/{cooldownId} {
+      allow read: if request.auth != null && cooldownId == request.auth.uid;
+      allow write: if request.auth != null && request.resource.data.driver_id == request.auth.uid;
+    }
+
+    // Bid Eligibility collection rules
+    match /bid_eligibility/{eligibilityId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.resource.data.driver_id == request.auth.uid;
+    }
+
+    // Ride Driver Cancel Events collection rules
+    match /ride_driver_cancel_events/{eventId} {
+      allow read: if request.auth != null && 
+        (resource.data.driver_id == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+      allow create: if request.auth != null && request.resource.data.driver_id == request.auth.uid;
+      allow update: if request.auth.token.role in ['admin', 'super_admin'];
     }
 
     // Ride Matching collection rules
@@ -293,6 +303,43 @@ service cloud.firestore {
       allow delete: if request.auth != null && 
         (request.auth.uid == resource.data.raterId ||
          request.auth.token.role in ['admin', 'super_admin']);
+    }
+
+    // Driver Reliability Scores collection rules
+    match /driver_reliability_scores/{scoreId} {
+      allow read: if request.auth != null && 
+        (resource.data.driver_id == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+      allow write: if request.auth.token.role in ['admin', 'super_admin'];
+    }
+
+    // Driver Metrics Daily collection rules
+    match /driver_metrics_daily/{metricId} {
+      allow read: if request.auth != null && 
+        (resource.data.driver_id == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+      allow write: if request.auth != null && request.resource.data.driver_id == request.auth.uid;
+    }
+
+    // Driver Cooldowns collection rules
+    match /driver_cooldowns/{cooldownId} {
+      allow read: if request.auth != null && cooldownId == request.auth.uid;
+      allow write: if request.auth != null && request.resource.data.driver_id == request.auth.uid;
+    }
+
+    // Bid Eligibility collection rules
+    match /bid_eligibility/{eligibilityId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.resource.data.driver_id == request.auth.uid;
+    }
+
+    // Ride Driver Cancel Events collection rules
+    match /ride_driver_cancel_events/{eventId} {
+      allow read: if request.auth != null && 
+        (resource.data.driver_id == request.auth.uid ||
+         request.auth.token.role in ['admin', 'super_admin']);
+      allow create: if request.auth != null && request.resource.data.driver_id == request.auth.uid;
+      allow update: if request.auth.token.role in ['admin', 'super_admin'];
     }
 
     // Default deny for all other collections
