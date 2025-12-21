@@ -8,7 +8,9 @@ import {
   query, 
   where, 
   orderBy, 
-  onSnapshot
+  onSnapshot,
+  startAfter,
+  limit as firestoreLimit
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { processPayment as processPaymentWithService } from './paymentService';
@@ -374,29 +376,69 @@ export const cancelRide = async (rideRequestId, reason, cancelledBy) => {
 
 // ===== RIDE HISTORY =====
 
-// Get customer's ride history
-export const getRideHistory = async (customerId, limit = 20) => {
+/**
+ * Get customer's ride history with cursor-based pagination
+ * @param {string} customerId - Customer's Firebase UID
+ * @param {Object} options - Pagination options
+ * @param {number} options.pageSize - Number of results per page (default: 20)
+ * @param {DocumentSnapshot} options.lastDoc - Last document from previous page for cursor
+ * @param {string} options.status - Optional status filter ('completed', 'cancelled', etc.)
+ * @returns {Promise<Object>} Paginated ride history
+ */
+export const getRideHistory = async (customerId, options = {}) => {
   try {
-    const q = query(
-      collection(db, 'rideRequests'),
+    const { pageSize = 20, lastDoc = null, status = null } = options;
+    
+    // Build query with filters
+    let constraints = [
       where('customerId', '==', customerId),
       orderBy('createdAt', 'desc'),
-      limit(limit)
-    );
+    ];
     
+    // Add status filter if provided
+    if (status) {
+      constraints.push(where('status', '==', status));
+    }
+    
+    // Add cursor for pagination
+    if (lastDoc) {
+      constraints.push(startAfter(lastDoc));
+    }
+    
+    // Add limit
+    constraints.push(firestoreLimit(pageSize + 1)); // Fetch one extra to check if there's more
+    
+    const q = query(collection(db, 'rideRequests'), ...constraints);
     const querySnapshot = await getDocs(q);
-    const rides = [];
     
-    querySnapshot.forEach((doc) => {
-      rides.push({
-        id: doc.id,
-        ...doc.data()
-      });
+    const rides = [];
+    let lastVisible = null;
+    let hasMore = false;
+    
+    querySnapshot.forEach((doc, index) => {
+      if (index < pageSize) {
+        rides.push({
+          id: doc.id,
+          ...doc.data()
+        });
+        lastVisible = doc;
+      } else {
+        // Extra document indicates more results available
+        hasMore = true;
+      }
     });
 
     return {
       success: true,
-      data: rides
+      data: {
+        rides,
+        pagination: {
+          hasMore,
+          lastDoc: lastVisible,
+          pageSize,
+          totalFetched: rides.length
+        }
+      }
     };
   } catch (error) {
     return {

@@ -1,45 +1,58 @@
 /* eslint-disable */
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import { RideProvider } from './contexts/RideContext';
 import { DriverOnboardingProvider } from './contexts/DriverOnboardingContext';
 import { isAdmin, getRedirectPath } from './services/authService';
 import MainLayout from './layouts/MainLayout';
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import DashboardPage from './pages/DashboardPage';
-import DriverDashboardPage from './pages/DriverDashboardPage';
-import AdminDashboardPage from './pages/AdminDashboardPage';
-import AdminSetupPage from './pages/AdminSetupPage';
-import SafetySettingsPage from './pages/SafetySettingsPage';
-import NotificationSettingsPage from './pages/NotificationSettingsPage';
-import AIPricingDashboard from './components/ai/AIPricingDashboard';
-import AnalyticsDashboard from './components/analytics/AnalyticsDashboard';
-import DriverToolsDashboard from './components/driver/DriverToolsDashboard';
-import RiderExperienceDashboard from './components/rider/RiderExperienceDashboard';
-import SustainabilityDashboard from './components/sustainability/SustainabilityDashboard';
-import CommunityDashboard from './components/community/CommunityDashboard';
-import DriverOnboardingPage from './pages/DriverOnboardingPage';
-import RideRequestPage from './pages/RideRequestPage';
-import RideTrackingPage from './pages/RideTrackingPage';
-import RideHistoryPage from './pages/RideHistoryPage';
-import AboutPage from './pages/AboutPage';
-import ContactPage from './pages/ContactPage';
-import CareersPage from './pages/CareersPage';
-import PressPage from './pages/PressPage';
-import ComparePage from './pages/ComparePage';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import TermsOfServicePage from './pages/TermsOfServicePage';
-import CookiePolicyPage from './pages/CookiePolicyPage';
-import SMSTermsPage from './pages/SMSTermsPage';
-import ProfilePage from './pages/ProfilePage';
-import RiderOnboardingPage from './pages/RiderOnboardingPage';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import './App.css';
+
+// Lazy load pages for code splitting - reduces initial bundle size
+const HomePage = lazy(() => import('./pages/HomePage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const DriverDashboardPage = lazy(() => import('./pages/DriverDashboardPage'));
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
+const AdminSetupPage = lazy(() => import('./pages/AdminSetupPage'));
+const SafetySettingsPage = lazy(() => import('./pages/SafetySettingsPage'));
+const NotificationSettingsPage = lazy(() => import('./pages/NotificationSettingsPage'));
+const DriverOnboardingPage = lazy(() => import('./pages/DriverOnboardingPage'));
+const RideRequestPage = lazy(() => import('./pages/RideRequestPage'));
+const RideTrackingPage = lazy(() => import('./pages/RideTrackingPage'));
+const RideHistoryPage = lazy(() => import('./pages/RideHistoryPage'));
+const MedicalPortalPage = lazy(() => import('./pages/MedicalPortalPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const CareersPage = lazy(() => import('./pages/CareersPage'));
+const PressPage = lazy(() => import('./pages/PressPage'));
+const ComparePage = lazy(() => import('./pages/ComparePage'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
+const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
+const CookiePolicyPage = lazy(() => import('./pages/CookiePolicyPage'));
+const SMSTermsPage = lazy(() => import('./pages/SMSTermsPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const RiderOnboardingPage = lazy(() => import('./pages/RiderOnboardingPage'));
+
+// Lazy load dashboard components (larger bundles)
+const AIPricingDashboard = lazy(() => import('./components/ai/AIPricingDashboard'));
+const AnalyticsDashboard = lazy(() => import('./components/analytics/AnalyticsDashboard'));
+const DriverToolsDashboard = lazy(() => import('./components/driver/DriverToolsDashboard'));
+const RiderExperienceDashboard = lazy(() => import('./components/rider/RiderExperienceDashboard'));
+const SustainabilityDashboard = lazy(() => import('./components/sustainability/SustainabilityDashboard'));
+const CommunityDashboard = lazy(() => import('./components/community/CommunityDashboard'));
+
+// Suspense fallback component
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <LoadingSpinner size="large" text="Loading..." />
+  </div>
+);
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -156,12 +169,14 @@ const ComparePageOld = () => {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <RideProvider>
-          <DriverOnboardingProvider>
-            <Router>
-              <div className="App">
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <RideProvider>
+            <DriverOnboardingProvider>
+              <Router>
+                <div className="App">
+                <Suspense fallback={<PageLoader />}>
                 <Routes>
                   {/* Public routes */}
                   <Route path="/" element={<MainLayout />}>
@@ -226,6 +241,15 @@ function App() {
                         <AdminRoute>
                           <AdminDashboardPage />
                         </AdminRoute>
+                      } 
+                    />
+                    
+                    <Route 
+                      path="medical-portal" 
+                      element={
+                        <ProtectedRoute>
+                          <MedicalPortalPage />
+                        </ProtectedRoute>
                       } 
                     />
                     
@@ -395,12 +419,14 @@ function App() {
                     },
                   }}
                 />
-              </div>
-            </Router>
-          </DriverOnboardingProvider>
-        </RideProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+                </Suspense>
+                </div>
+              </Router>
+            </DriverOnboardingProvider>
+          </RideProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -1,990 +1,895 @@
 /**
- * AnyRyde Cloud Functions
- * Server-side notification orchestration, SMS, email, and backend logic
+ * Cloud Functions for AnyRyde Driver App
+ * Video Recording Feature
+ * 
+ * Functions:
+ * 1. autoDeleteExpiredVideos - Delete videos after 72h retention
+ * 2. certificationExpiryReminder - Remind drivers when certification expires
+ * 3. updateRecordingStatistics - Update driver recording stats
+ * 4. generateVideoThumbnails - Generate thumbnails for uploaded videos (future)
  */
 
-const {onCall} = require('firebase-functions/v2/https');
-const {onDocumentCreated, onDocumentUpdated} = require('firebase-functions/v2/firestore');
-const {onSchedule} = require('firebase-functions/v2/scheduler');
-const {setGlobalOptions} = require('firebase-functions/v2');
+const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 
 // Initialize Firebase Admin
 admin.initializeApp();
 
-// Set global options
-setGlobalOptions({maxInstances: 10});
+const db = admin.firestore();
 
-// Lazy load notification orchestrator to avoid timeout
-let NotificationOrchestrator = null;
-const getOrchestrator = () => {
-  if (!NotificationOrchestrator) {
-    NotificationOrchestrator = require('./services/notificationOrchestrator');
+// ============================================
+// 1. Auto-Delete Expired Videos
+// Runs daily at 2 AM UTC
+// ============================================
+
+exports.autoDeleteExpiredVideos = functions
+  .runWith({ timeoutSeconds: 540, memory: '1GB' })
+  .pubsub
+  .schedule('0 2 * * *')
+  .timeZone('America/Los_Angeles')
+  .onRun(async (context) => {
+    console.log('🗑️  Starting auto-delete expired videos job...');
+    
+    try {
+      const now = admin.firestore.Timestamp.now();
+      
+      // Find rides with expired video retention that haven't been deleted
+      const expiredQuery = db.collection('rideRequests')
+        .where('videoLifecycle.autoDeleteScheduledFor', '<=', now)
+        .where('videoLifecycle.retentionExtended', '==', false)
+        .where('videoLifecycle.markedForDeletion', '==', false)
+        .limit(500); // Process in batches
+      
+      const snapshot = await expiredQuery.get();
+      
+      if (snapshot.empty) {
+        console.log('✅ No expired videos to delete');
+        return null;
+      }
+      
+      console.log(`📊 Found ${snapshot.size} video(s) to mark for deletion`);
+      
+      const batch = db.batch();
+      let count = 0;
+      
+      snapshot.forEach(doc => {
+        batch.update(doc.ref, {
+          'videoLifecycle.markedForDeletion': true,
+          'videoLifecycle.deletedAt': now,
+          'videoLifecycle.deletionMethod': 'auto',
+          'videoLifecycle.deletionConfirmedBy': 'system_scheduled_job',
+          'updatedAt': admin.firestore.FieldValue.serverTimestamp()
+        });
+        count++;
+      });
+      
+      await batch.commit();
+      
+      console.log(`✅ Successfully marked ${count} video(s) for deletion`);
+      
+      // Log analytics
+      await db.collection('analyticsEvents').add({
+        eventType: 'video_auto_deletion',
+        eventData: {
+          videosDeleted: count,
+          deletedAt: now,
+          reason: 'retention_expired'
+        },
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      return { success: true, deletedCount: count };
+      
+    } catch (error) {
+      console.error('❌ Error in autoDeleteExpiredVideos:', error);
+      
+      // Log error to analytics
+      await db.collection('analyticsEvents').add({
+        eventType: 'video_auto_deletion_error',
+        eventData: {
+          error: error.message,
+          timestamp: admin.firestore.Timestamp.now()
+        },
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      return { success: false, error: error.message };
+    }
+  });
+
+// ============================================
+// 2. Certification Expiry Reminder
+// Runs weekly on Sundays at 9 AM
+// ============================================
+
+exports.certificationExpiryReminder = functions
+  .runWith({ timeoutSeconds: 300, memory: '512MB' })
+  .pubsub
+  .schedule('0 9 * * 0')
+  .timeZone('America/Los_Angeles')
+  .onRun(async (context) => {
+    console.log('📢 Starting certification expiry reminder job...');
+    
+    try {
+      const thirtyDaysFromNow = admin.firestore.Timestamp.fromDate(
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      );
+      
+      // Find drivers whose certification expires in 30 days
+      const expiringQuery = db.collection('driverApplications')
+        .where('videoRecordingCapability.certificationExpiresAt', '<=', thirtyDaysFromNow)
+        .where('videoRecordingCapability.certificationStatus', '==', 'certified')
+        .where('videoRecordingCapability.recertificationRequired', '==', false);
+      
+      const snapshot = await expiringQuery.get();
+      
+      if (snapshot.empty) {
+        console.log('✅ No certifications expiring soon');
+        return null;
+      }
+      
+      console.log(`📊 Found ${snapshot.size} driver(s) with expiring certifications`);
+      
+      const batch = db.batch();
+      const notificationPromises = [];
+      let count = 0;
+      
+      snapshot.forEach(doc => {
+        const driverId = doc.id;
+        const driverData = doc.data();
+        const expiresAt = driverData.videoRecordingCapability.certificationExpiresAt;
+        const daysUntilExpiry = Math.ceil((expiresAt.toDate() - new Date()) / (24 * 60 * 60 * 1000));
+        
+        // Mark as requiring recertification
+        batch.update(doc.ref, {
+          'videoRecordingCapability.recertificationRequired': true,
+          'updatedAt': admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Create notification
+        const notificationPromise = db.collection('notifications').add({
+          userId: driverId,
+          type: 'certification_expiry',
+          title: '🎥 Video Recording Certification Expiring',
+          message: `Your video recording certification expires in ${daysUntilExpiry} days. Please complete recertification to continue accepting recorded rides.`,
+          priority: 'high',
+          actionRequired: true,
+          actionUrl: '/settings/video-recording',
+          data: {
+            expiresAt: expiresAt,
+            daysRemaining: daysUntilExpiry
+          },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          read: false,
+          sentVia: 'scheduled_function'
+        });
+        
+        notificationPromises.push(notificationPromise);
+        count++;
+      });
+      
+      await batch.commit();
+      await Promise.all(notificationPromises);
+      
+      console.log(`✅ Successfully sent ${count} certification expiry reminder(s)`);
+      
+      // Log analytics
+      await db.collection('analyticsEvents').add({
+        eventType: 'certification_expiry_reminders_sent',
+        eventData: {
+          remindersSent: count,
+          sentAt: admin.firestore.Timestamp.now()
+        },
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      return { success: true, remindersSent: count };
+      
+    } catch (error) {
+      console.error('❌ Error in certificationExpiryReminder:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+// ============================================
+// 3. Update Recording Statistics
+// Triggered when a ride with recording completes
+// ============================================
+
+exports.updateRecordingStatistics = functions.firestore
+  .document('rides/{rideId}')
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+    
+    // Check if ride just completed
+    const wasCompleted = before.status !== 'completed' && after.status === 'completed';
+    
+    if (!wasCompleted) {
+      return null; // Not interested in this update
+    }
+    
+    // Check if ride had recording
+    const hadRecording = after.activeRecording?.isRecording === true || 
+                        after.recordingStatus?.durationSeconds > 0;
+    
+    if (!hadRecording) {
+      return null; // No recording, nothing to update
+    }
+    
+    try {
+      const driverId = after.driverId;
+      const durationSeconds = after.recordingStatus?.durationSeconds || 0;
+      const durationHours = durationSeconds / 3600;
+      const estimatedSizeGB = after.recordingStatus?.videoMetadata?.estimatedFileSizeMB / 1024 || 0;
+      const incidentFlagged = after.activeRecording?.incidentFlagged || false;
+      
+      // Update driver's recording statistics
+      const driverRef = db.collection('driverApplications').doc(driverId);
+      
+      await driverRef.update({
+        'videoRecordingCapability.totalRecordedRides': admin.firestore.FieldValue.increment(1),
+        'videoRecordingCapability.totalRecordingHours': admin.firestore.FieldValue.increment(durationHours),
+        'videoRecordingCapability.totalRecordingSizeGB': admin.firestore.FieldValue.increment(estimatedSizeGB),
+        'videoRecordingCapability.lastRecordingDate': admin.firestore.Timestamp.now(),
+        'updatedAt': admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // If incident was flagged, increment incident count
+      if (incidentFlagged) {
+        await driverRef.update({
+          'videoRecordingCapability.incidentsReported': admin.firestore.FieldValue.increment(1)
+        });
+      }
+      
+      console.log(`✅ Updated recording stats for driver ${driverId}`);
+      
+      return { success: true, driverId };
+      
+    } catch (error) {
+      console.error('❌ Error updating recording statistics:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+// ============================================
+// 4. Clean Up Old Video Incidents
+// Runs monthly on the 1st at 3 AM
+// Deletes closed incidents older than 90 days
+// ============================================
+
+exports.cleanupOldVideoIncidents = functions
+  .runWith({ timeoutSeconds: 300, memory: '512MB' })
+  .pubsub
+  .schedule('0 3 1 * *')
+  .timeZone('America/Los_Angeles')
+  .onRun(async (context) => {
+    console.log('🧹 Starting cleanup of old video incidents...');
+    
+    try {
+      const ninetyDaysAgo = admin.firestore.Timestamp.fromDate(
+        new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+      );
+      
+      // Find closed incidents older than 90 days
+      const oldIncidentsQuery = db.collection('videoIncidents')
+        .where('reviewStatus', '==', 'closed')
+        .where('closedAt', '<=', ninetyDaysAgo)
+        .limit(100); // Process in batches
+      
+      const snapshot = await oldIncidentsQuery.get();
+      
+      if (snapshot.empty) {
+        console.log('✅ No old incidents to clean up');
+        return null;
+      }
+      
+      console.log(`📊 Found ${snapshot.size} old incident(s) to delete`);
+      
+      const batch = db.batch();
+      let count = 0;
+      
+      snapshot.forEach(doc => {
+        batch.delete(doc.ref);
+        count++;
+      });
+      
+      await batch.commit();
+      
+      console.log(`✅ Successfully deleted ${count} old incident(s)`);
+      
+      return { success: true, deletedCount: count };
+      
+    } catch (error) {
+      console.error('❌ Error in cleanupOldVideoIncidents:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+// ============================================
+// 5. Monitor Storage Usage
+// Runs daily to check driver storage capacity
+// ============================================
+
+exports.monitorStorageUsage = functions
+  .runWith({ timeoutSeconds: 300, memory: '512MB' })
+  .pubsub
+  .schedule('0 4 * * *')
+  .timeZone('America/Los_Angeles')
+  .onRun(async (context) => {
+    console.log('📊 Starting storage usage monitoring...');
+    
+    try {
+      // Find drivers currently recording or with high storage usage
+      const driversQuery = db.collection('driverApplications')
+        .where('videoRecordingCapability.hasEquipment', '==', true)
+        .where('videoRecordingCapability.certificationStatus', '==', 'certified');
+      
+      const snapshot = await driversQuery.get();
+      
+      if (snapshot.empty) {
+        console.log('✅ No video-capable drivers to monitor');
+        return null;
+      }
+      
+      console.log(`📊 Monitoring ${snapshot.size} video-capable driver(s)`);
+      
+      const warningThreshold = 102; // 80% of 128GB = ~102GB
+      const criticalThreshold = 115; // 90% of 128GB = ~115GB
+      
+      let warningsCount = 0;
+      const notificationPromises = [];
+      
+      snapshot.forEach(doc => {
+        const driverId = doc.id;
+        const driverData = doc.data();
+        const totalSizeGB = driverData.videoRecordingCapability?.totalRecordingSizeGB || 0;
+        const storageCapacityGB = driverData.videoRecordingCapability?.cameraInfo?.storageCapacityGB || 128;
+        
+        const usagePercent = (totalSizeGB / storageCapacityGB) * 100;
+        
+        if (usagePercent >= criticalThreshold) {
+          // Critical storage warning
+          notificationPromises.push(
+            db.collection('notifications').add({
+              userId: driverId,
+              type: 'storage_critical',
+              title: '🚨 Critical: Camera Storage Almost Full',
+              message: `Your camera storage is ${Math.round(usagePercent)}% full (${Math.round(totalSizeGB)}GB / ${storageCapacityGB}GB). Please free up space immediately or risk recording failures.`,
+              priority: 'critical',
+              actionRequired: true,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              read: false
+            })
+          );
+          warningsCount++;
+        } else if (usagePercent >= warningThreshold) {
+          // Warning storage alert
+          notificationPromises.push(
+            db.collection('notifications').add({
+              userId: driverId,
+              type: 'storage_warning',
+              title: '⚠️ Camera Storage Running Low',
+              message: `Your camera storage is ${Math.round(usagePercent)}% full (${Math.round(totalSizeGB)}GB / ${storageCapacityGB}GB). Consider freeing up space soon.`,
+              priority: 'medium',
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              read: false
+            })
+          );
+          warningsCount++;
+        }
+      });
+      
+      await Promise.all(notificationPromises);
+      
+      if (warningsCount > 0) {
+        console.log(`⚠️  Sent ${warningsCount} storage warning(s)`);
+      } else {
+        console.log('✅ All drivers have adequate storage');
+      }
+      
+      return { success: true, warningsSent: warningsCount };
+      
+    } catch (error) {
+      console.error('❌ Error in monitorStorageUsage:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+// ============================================
+// 6. Video Incident Created Notification
+// Triggers when a new video incident is created
+// ============================================
+
+exports.onVideoIncidentCreated = functions.firestore
+  .document('videoIncidents/{incidentId}')
+  .onCreate(async (snap, context) => {
+    const incident = snap.data();
+    const incidentId = context.params.incidentId;
+    
+    console.log(`🚨 New video incident created: ${incidentId}`);
+    
+    try {
+      // Notify admins/support
+      const adminsSnapshot = await db.collection('users')
+        .where('role', 'in', ['admin', 'super_admin', 'support'])
+        .get();
+      
+      const notificationPromises = adminsSnapshot.docs.map(adminDoc => {
+        return db.collection('notifications').add({
+          userId: adminDoc.id,
+          type: 'video_incident_created',
+          title: `🚨 New Video Incident - ${incident.incidentType}`,
+          message: `Driver ${incident.driverId} reported a ${incident.incidentType} incident. Severity: ${incident.incidentSeverity}`,
+          priority: incident.incidentSeverity === 'critical' ? 'critical' : 'high',
+          actionRequired: true,
+          actionUrl: `/admin/video-incidents/${incidentId}`,
+          data: {
+            incidentId,
+            rideId: incident.rideId,
+            incidentType: incident.incidentType,
+            severity: incident.incidentSeverity
+          },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          read: false
+        });
+      });
+      
+      await Promise.all(notificationPromises);
+      
+      console.log(`✅ Notified ${adminsSnapshot.size} admin(s) about incident`);
+      
+      return { success: true, notified: adminsSnapshot.size };
+      
+    } catch (error) {
+      console.error('❌ Error in onVideoIncidentCreated:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+// ============================================
+// Export all functions
+// ============================================
+
+// ============================================
+// 7. Validate Bid Submission (VAL-001)
+// Callable function to validate bids before submission
+// ============================================
+
+exports.validateBid = functions.https.onCall(async (data, context) => {
+  // Verify the user is authenticated
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to submit a bid');
   }
-  return NotificationOrchestrator;
-};
 
-/**
- * HTTP Callable Function: Send Notification
- * Used by web/mobile apps to send multi-channel notifications
- */
-exports.sendNotification = onCall(async (request) => {
-  const {data, auth} = request;
+  const { rideRequestId, bidAmount, driverId, estimatedArrivalMinutes } = data;
+
+  // Validate required fields
+  if (!rideRequestId || !bidAmount || !driverId) {
+    throw new functions.https.HttpsError('invalid-argument', 'Missing required fields: rideRequestId, bidAmount, driverId');
+  }
+
+  // Validate driverId matches authenticated user
+  if (context.auth.uid !== driverId) {
+    throw new functions.https.HttpsError('permission-denied', 'Driver ID must match authenticated user');
+  }
+
   try {
-    // Verify authentication
-    if (!auth) {
-      throw new Error('User must be authenticated');
+    // Get the ride request
+    const rideRequestRef = db.collection('rideRequests').doc(rideRequestId);
+    const rideRequestDoc = await rideRequestRef.get();
+
+    if (!rideRequestDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Ride request not found');
     }
 
-    const {
-      userId,
-      title,
-      body,
-      type = 'general',
-      priority = 'medium',
-      channels = ['push'],
-      data: customData = {},
-      scheduleAt = null
-    } = data;
+    const rideRequest = rideRequestDoc.data();
 
-    // Validate required fields
-    if (!userId || !title || !body) {
-      throw new Error('Missing required fields: userId, title, body');
+    // Check if ride is still open for bids
+    const validStatuses = ['pending', 'open_for_bids', 'awaiting_bids'];
+    if (!validStatuses.includes(rideRequest.status)) {
+      throw new functions.https.HttpsError('failed-precondition', `Ride is no longer accepting bids. Current status: ${rideRequest.status}`);
     }
 
-    // Send notification
-    const orchestrator = getOrchestrator();
-    const result = await orchestrator.sendNotification(userId, {
-      type,
-      priority,
-      title,
-      body,
-      channels,
-      data: customData,
-      scheduleAt
-    });
+    // Check if bidding window has expired
+    if (rideRequest.biddingExpiresAt) {
+      const expiryTime = rideRequest.biddingExpiresAt.toDate ? rideRequest.biddingExpiresAt.toDate() : new Date(rideRequest.biddingExpiresAt);
+      if (new Date() > expiryTime) {
+        throw new functions.https.HttpsError('deadline-exceeded', 'Bidding window has expired');
+      }
+    }
 
-    return result;
+    // Validate bid amount
+    const parsedBidAmount = parseFloat(bidAmount);
+    if (isNaN(parsedBidAmount) || parsedBidAmount <= 0) {
+      throw new functions.https.HttpsError('invalid-argument', 'Bid amount must be a positive number');
+    }
+
+    // Check minimum bid amount (e.g., $5 minimum)
+    const MINIMUM_BID = 5.00;
+    if (parsedBidAmount < MINIMUM_BID) {
+      throw new functions.https.HttpsError('invalid-argument', `Bid amount must be at least $${MINIMUM_BID}`);
+    }
+
+    // Check maximum bid amount (prevent typos, e.g., $9999 max)
+    const MAXIMUM_BID = 9999.00;
+    if (parsedBidAmount > MAXIMUM_BID) {
+      throw new functions.https.HttpsError('invalid-argument', `Bid amount exceeds maximum allowed ($${MAXIMUM_BID})`);
+    }
+
+    // Check if bid is reasonable compared to estimated fare (if available)
+    if (rideRequest.estimatedFare) {
+      const estimatedFare = parseFloat(rideRequest.estimatedFare);
+      const minReasonableBid = estimatedFare * 0.5; // At least 50% of estimate
+      const maxReasonableBid = estimatedFare * 3.0; // At most 300% of estimate
+
+      if (parsedBidAmount < minReasonableBid) {
+        console.warn(`Bid ${parsedBidAmount} is below 50% of estimated fare ${estimatedFare}`);
+        // Allow but flag as suspicious
+      }
+
+      if (parsedBidAmount > maxReasonableBid) {
+        throw new functions.https.HttpsError('invalid-argument', `Bid amount is unreasonably high compared to estimated fare`);
+      }
+    }
+
+    // Check if driver is eligible (driver exists and is active)
+    const driverRef = db.collection('driverApplications').doc(driverId);
+    const driverDoc = await driverRef.get();
+
+    if (!driverDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Driver profile not found');
+    }
+
+    const driver = driverDoc.data();
+
+    // Check driver status
+    if (driver.applicationStatus !== 'approved' && driver.status !== 'active') {
+      throw new functions.https.HttpsError('permission-denied', 'Driver is not approved to accept rides');
+    }
+
+    // Check if driver is currently online
+    if (driver.isOnline === false) {
+      throw new functions.https.HttpsError('failed-precondition', 'Driver must be online to submit bids');
+    }
+
+    // Check if driver is already on another ride
+    if (driver.currentRideId && driver.currentRideId !== rideRequestId) {
+      throw new functions.https.HttpsError('failed-precondition', 'Driver is currently on another ride');
+    }
+
+    // Check if driver has already submitted a bid for this ride
+    const existingBids = rideRequest.driverBids || [];
+    const hasBid = existingBids.some(bid => bid.driverId === driverId);
+    if (hasBid) {
+      throw new functions.https.HttpsError('already-exists', 'Driver has already submitted a bid for this ride');
+    }
+
+    // Check if driver is in the availableDrivers list (if applicable)
+    if (rideRequest.availableDrivers && rideRequest.availableDrivers.length > 0) {
+      if (!rideRequest.availableDrivers.includes(driverId)) {
+        throw new functions.https.HttpsError('permission-denied', 'Driver is not eligible for this ride request');
+      }
+    }
+
+    // All validations passed
+    console.log(`✅ Bid validation passed for driver ${driverId} on ride ${rideRequestId}: $${parsedBidAmount}`);
+
+    return {
+      valid: true,
+      rideRequestId,
+      driverId,
+      bidAmount: parsedBidAmount,
+      estimatedArrivalMinutes: estimatedArrivalMinutes || null,
+      validatedAt: new Date().toISOString()
+    };
 
   } catch (error) {
-    console.error('❌ sendNotification error:', error);
-    throw error;
+    // Re-throw HttpsError as-is
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    // Wrap other errors
+    console.error('❌ Bid validation error:', error);
+    throw new functions.https.HttpsError('internal', 'An error occurred while validating the bid');
   }
 });
 
-/**
- * Firestore Trigger: Driver Application Approved
- */
-exports.onDriverApplicationApproved = onDocumentUpdated('driverApplications/{applicationId}', async (event) => {
-    const before = event.data.before.data();
-    const after = event.data.after.data();
+// ============================================
+// 8. Validate Payment (VAL-002)
+// Callable function to validate payment before processing
+// ============================================
 
-    // Check if status changed to approved
-    if (before.approvalStatus?.status !== 'approved' && after.approvalStatus?.status === 'approved') {
-      console.log('🎉 Driver approved:', after.userId);
+exports.validatePayment = functions.https.onCall(async (data, context) => {
+  // Verify the user is authenticated
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to process payment');
+  }
 
-      const driverName = `${after.personalInfo?.firstName || 'Driver'}`;
+  const { rideId, paymentAmount, paymentMethodId, riderId } = data;
 
-      await NotificationOrchestrator.sendNotification(after.userId, {
-        type: 'driver_application_approved',
-        priority: 'high',
-        title: '🎉 Congratulations!',
-        body: `${driverName}, your AnyRyde driver application has been approved! You can now start accepting rides and earning money.`,
-        channels: ['push', 'sms', 'email'],
-        data: {
-          applicationId: event.params.applicationId,
-          approvedAt: admin.firestore.FieldValue.serverTimestamp()
-        }
-      });
+  // Validate required fields
+  if (!rideId || !paymentAmount) {
+    throw new functions.https.HttpsError('invalid-argument', 'Missing required fields: rideId, paymentAmount');
+  }
+
+  try {
+    // Get the ride
+    const rideRef = db.collection('rideRequests').doc(rideId);
+    const rideDoc = await rideRef.get();
+
+    if (!rideDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Ride not found');
     }
 
-    // Check if status changed to rejected/pending
-    if (before.approvalStatus?.status !== 'rejected' && after.approvalStatus?.status === 'rejected') {
-      console.log('❌ Driver application rejected:', after.userId);
+    const ride = rideDoc.data();
 
-      const orchestrator = getOrchestrator();
-      await orchestrator.sendNotification(after.userId, {
-        type: 'driver_application_rejected',
-        priority: 'high',
-        title: 'Application Update Required',
-        body: 'Your AnyRyde driver application requires additional review. Please check your email for details or contact support.',
-        channels: ['push', 'email'],
-        data: {
-          applicationId: event.params.applicationId,
-          reason: after.approvalStatus?.notes || 'Additional review required'
-        }
-      });
-    }
-  });
-
-/**
- * Firestore Trigger: Ride Accepted by Driver
- */
-exports.onRideAccepted = onDocumentUpdated('rides/{rideId}', async (event) => {
-    const before = event.data.before.data();
-    const after = event.data.after.data();
-
-    // Ride accepted
-    if (before.status !== 'accepted' && after.status === 'accepted') {
-      console.log('🚗 Ride accepted:', event.params.rideId);
-
-      const driverName = after.driverName || 'Your driver';
-      const eta = after.estimatedArrivalTime || '5 minutes';
-
-      const orchestrator = getOrchestrator();
-      await orchestrator.sendNotification(after.riderId, {
-        type: 'ride_accepted',
-        priority: 'high',
-        title: 'Driver On The Way! 🚗',
-        body: `${driverName} is coming to pick you up. Estimated arrival: ${eta}`,
-        channels: ['push', 'sms'],
-        data: {
-          rideId: event.params.rideId,
-          driverId: after.driverId,
-          driverName,
-          driverPhoto: after.driverPhoto || '',
-          vehicleInfo: after.vehicleInfo || {},
-          eta
-        }
-      });
+    // Verify the user is the rider for this ride
+    const riderIdToCheck = riderId || context.auth.uid;
+    if (ride.riderId !== riderIdToCheck && ride.userId !== riderIdToCheck) {
+      throw new functions.https.HttpsError('permission-denied', 'User is not authorized to pay for this ride');
     }
 
-    // Driver arrived
-    if (before.status !== 'driver_arrived' && after.status === 'driver_arrived') {
-      console.log('📍 Driver arrived:', event.params.rideId);
-
-      const orchestrator = getOrchestrator();
-      await orchestrator.sendNotification(after.riderId, {
-        type: 'driver_arrived',
-        priority: 'high',
-        title: 'Driver Has Arrived! 📍',
-        body: 'Your driver is waiting at the pickup location.',
-        channels: ['push', 'sms'],
-        data: {
-          rideId: event.params.rideId,
-          driverId: after.driverId,
-          location: after.currentLocation || {}
-        }
-      });
+    // Check if ride is in a payable status
+    const payableStatuses = ['completed', 'trip_completed', 'awaiting_payment'];
+    if (!payableStatuses.includes(ride.status)) {
+      throw new functions.https.HttpsError('failed-precondition', `Ride is not ready for payment. Current status: ${ride.status}`);
     }
 
-    // Ride started
-    if (before.status !== 'in_progress' && after.status === 'in_progress') {
-      console.log('🚀 Ride started:', event.params.rideId);
-
-      const orchestrator = getOrchestrator();
-      await orchestrator.sendNotification(after.riderId, {
-        type: 'ride_started',
-        priority: 'medium',
-        title: 'Ride Started 🚀',
-        body: 'Your ride has started. Have a safe trip!',
-        channels: ['push'],
-        data: {
-          rideId: event.params.rideId,
-          startTime: admin.firestore.FieldValue.serverTimestamp()
-        }
-      });
+    // Check if ride is already paid
+    if (ride.paymentStatus === 'paid' || ride.paymentStatus === 'completed') {
+      throw new functions.https.HttpsError('already-exists', 'This ride has already been paid');
     }
 
-    // Ride completed
-    if (before.status !== 'completed' && after.status === 'completed') {
-      console.log('✅ Ride completed:', event.params.rideId);
-
-      const totalFare = after.payment?.totalFare || after.estimatedFare || 0;
-
-      // Notify rider
-      const orchestrator = getOrchestrator();
-      await orchestrator.sendNotification(after.riderId, {
-        type: 'ride_completed',
-        priority: 'medium',
-        title: 'Ride Completed ✅',
-        body: `Your ride is complete. Total: $${totalFare.toFixed(2)}. Thank you for riding with AnyRyde!`,
-        channels: ['push', 'sms', 'email'],
-        data: {
-          rideId: event.params.rideId,
-          totalFare,
-          receipt: true
-        }
-      });
-
-      // Notify driver
-      if (after.driverId) {
-        const earnings = after.payment?.driverEarnings || (totalFare * 0.8);
-        
-        await orchestrator.sendNotification(after.driverId, {
-          type: 'ride_completed',
-          priority: 'medium',
-          title: 'Great Job! ✅',
-          body: `Ride completed. You earned $${earnings.toFixed(2)}`,
-          channels: ['push'],
-          data: {
-            rideId: event.params.rideId,
-            earnings,
-            totalFare
-          }
-        });
-      }
+    // Validate payment amount
+    const parsedPaymentAmount = parseFloat(paymentAmount);
+    if (isNaN(parsedPaymentAmount) || parsedPaymentAmount <= 0) {
+      throw new functions.https.HttpsError('invalid-argument', 'Payment amount must be a positive number');
     }
 
-    // Ride cancelled
-    if (before.status !== 'cancelled' && after.status === 'cancelled') {
-      console.log('❌ Ride cancelled:', event.params.rideId);
+    // Get the expected fare
+    const expectedFare = ride.finalFare || ride.acceptedBidAmount || ride.estimatedFare || 0;
+    const parsedExpectedFare = parseFloat(expectedFare);
 
-      const cancelledBy = after.cancelledBy || 'unknown';
-      const cancelReason = after.cancelReason || 'No reason provided';
-
-      // Notify the other party
-      if (cancelledBy === 'rider' && after.driverId) {
-        const orchestrator = getOrchestrator();
-        await orchestrator.sendNotification(after.driverId, {
-          type: 'ride_cancelled',
-          priority: 'high',
-          title: 'Ride Cancelled',
-          body: 'The rider has cancelled this ride.',
-          channels: ['push', 'sms'],
-          data: {
-            rideId: event.params.rideId,
-            cancelledBy,
-            reason: cancelReason
-          }
-        });
-      } else if (cancelledBy === 'driver' && after.riderId) {
-        await orchestrator.sendNotification(after.riderId, {
-          type: 'ride_cancelled',
-          priority: 'high',
-          title: 'Ride Cancelled',
-          body: 'Your ride has been cancelled. We\'re sorry for the inconvenience.',
-          channels: ['push', 'sms'],
-          data: {
-            rideId: event.params.rideId,
-            cancelledBy,
-            reason: cancelReason
-          }
-        });
-      }
+    if (parsedExpectedFare <= 0) {
+      throw new functions.https.HttpsError('failed-precondition', 'Ride does not have a valid fare amount');
     }
-  });
 
-/**
- * Firestore Trigger: New Ride Request
- * Notify nearby drivers
- */
-exports.onNewRideRequest = onDocumentCreated('rideRequests/{rideRequestId}', async (event) => {
-    const rideData = event.data.data();
-    
-    console.log('📢 New ride request:', event.params.rideRequestId);
-
-    // Get nearby drivers (this would typically use geolocation queries)
-    // For now, we'll just demonstrate the notification
-    const driversSnapshot = await admin.firestore()
-      .collection('driverApplications')
-      .where('status', '==', 'available')
-      .where('approvalStatus.status', '==', 'approved')
-      .limit(10)
-      .get();
-
-    const notificationPromises = [];
-
-    driversSnapshot.forEach(driverDoc => {
-      const driverData = driverDoc.data();
-      
-      // Check if driver has SMS enabled for ride requests
-      const sendSMS = driverData.notificationPreferences?.smsRideRequests || false;
-
-      const orchestrator = getOrchestrator();
-      notificationPromises.push(
-        orchestrator.sendNotification(driverData.userId, {
-          type: 'ride_request',
-          priority: 'high',
-          title: 'New Ride Request! 🚗',
-          body: `${rideData.pickup?.address || 'Pickup'} → ${rideData.destination?.address || 'Destination'}. Fare: $${rideData.estimatedFare?.toFixed(2) || 'TBD'}`,
-          channels: sendSMS ? ['push', 'sms'] : ['push'],
-          data: { 
-            rideRequestId: event.params.rideRequestId,
-            pickup: rideData.pickup,
-            destination: rideData.destination,
-            estimatedFare: rideData.estimatedFare,
-            rideType: rideData.rideType,
-            expiresAt: rideData.expiresAt
-          }
-        })
+    // Validate payment amount matches expected fare (with small tolerance for rounding)
+    const tolerance = 0.01; // $0.01 tolerance
+    if (Math.abs(parsedPaymentAmount - parsedExpectedFare) > tolerance) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        `Payment amount ($${parsedPaymentAmount.toFixed(2)}) does not match expected fare ($${parsedExpectedFare.toFixed(2)})`
       );
-    });
+    }
 
-    await Promise.allSettled(notificationPromises);
-    console.log(`✅ Notified ${driversSnapshot.size} drivers`);
-  });
+    // Validate payment method if provided
+    if (paymentMethodId) {
+      // Get user's payment methods from Firestore
+      const userRef = db.collection('users').doc(riderIdToCheck);
+      const userDoc = await userRef.get();
 
-/**
- * Scheduled Function: Send Ride Reminders
- * Runs every 5 minutes to check for scheduled rides
- */
-exports.sendScheduledRideReminders = onSchedule('every 5 minutes', async (event) => {
-    console.log('⏰ Checking for scheduled ride reminders...');
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        const paymentMethods = userData.paymentMethods || [];
+        const validMethod = paymentMethods.find(pm => pm.id === paymentMethodId || pm.stripePaymentMethodId === paymentMethodId);
 
-    const now = admin.firestore.Timestamp.now();
-    const in24Hours = admin.firestore.Timestamp.fromMillis(Date.now() + (24 * 60 * 60 * 1000));
-    const in1Hour = admin.firestore.Timestamp.fromMillis(Date.now() + (60 * 60 * 1000));
+        if (!validMethod) {
+          // Check default payment method
+          if (userData.defaultPaymentMethodId !== paymentMethodId) {
+            console.warn(`Payment method ${paymentMethodId} not found in user's saved methods`);
+            // Don't fail - Stripe will validate the actual method
+          }
+        }
+      }
+    }
 
-    // Get scheduled rides in next 24 hours that haven't been reminded
-    const scheduledRidesSnapshot = await admin.firestore()
-      .collection('scheduledRides')
-      .where('scheduledDateTime', '<=', in24Hours)
-      .where('scheduledDateTime', '>', now)
-      .where('status', '==', 'scheduled')
+    // Check for suspicious activity (multiple payment attempts)
+    const recentPaymentAttempts = await db.collection('paymentAttempts')
+      .where('rideId', '==', rideId)
+      .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(new Date(Date.now() - 5 * 60 * 1000))) // Last 5 minutes
       .get();
 
-    const reminderPromises = [];
-
-    scheduledRidesSnapshot.forEach(rideDoc => {
-      const ride = rideDoc.data();
-      const rideTime = ride.scheduledDateTime.toMillis();
-      const timeDiff = rideTime - Date.now();
-
-      // 24-hour reminder
-      if (timeDiff <= (24 * 60 * 60 * 1000) && timeDiff > (23.5 * 60 * 60 * 1000) && !ride.reminder24hrSent) {
-        const orchestrator = getOrchestrator();
-        reminderPromises.push(
-          orchestrator.sendNotification(ride.riderId, {
-            type: 'scheduled_ride_reminder_24hr',
-            priority: 'medium',
-            title: 'Ride Reminder 📅',
-            body: `Your ride is scheduled for tomorrow at ${new Date(rideTime).toLocaleTimeString()}`,
-            channels: ['push', 'sms'],
-            data: {
-              rideId: rideDoc.id,
-              scheduledTime: rideTime,
-              pickup: ride.pickup
-            }
-          }).then(() => {
-            return rideDoc.ref.update({ reminder24hrSent: true });
-          })
-        );
-      }
-
-      // 1-hour reminder
-      if (timeDiff <= (60 * 60 * 1000) && timeDiff > (55 * 60 * 1000) && !ride.reminder1hrSent) {
-        const orchestrator = getOrchestrator();
-        reminderPromises.push(
-          orchestrator.sendNotification(ride.riderId, {
-            type: 'scheduled_ride_reminder_1hr',
-            priority: 'high',
-            title: 'Ride Starting Soon! ⏰',
-            body: `Your ride is scheduled in 1 hour. Pickup at ${ride.pickup?.address || 'your location'}`,
-            channels: ['push', 'sms'],
-            data: {
-              rideId: rideDoc.id,
-              scheduledTime: rideTime,
-              pickup: ride.pickup
-            }
-          }).then(() => {
-            return rideDoc.ref.update({ reminder1hrSent: true });
-          })
-        );
-      }
-    });
-
-    await Promise.allSettled(reminderPromises);
-    console.log(`✅ Sent ${reminderPromises.length} ride reminders`);
-  });
-
-/**
- * Firestore Trigger: Driver Location Update (Proximity-Based Arrival Notification)
- * Triggers when driver's location is updated during active ride
- */
-exports.onDriverLocationUpdate = onDocumentUpdated('rides/{rideId}', async (event) => {
-    const before = event.data.before.data();
-    const after = event.data.after.data();
-
-    // Only process for accepted rides that haven't arrived yet
-    if (after.status !== 'accepted' || after.proximityNotificationSent) {
-      return;
+    if (recentPaymentAttempts.size >= 5) {
+      console.warn(`⚠️ Multiple payment attempts detected for ride ${rideId}`);
+      throw new functions.https.HttpsError('resource-exhausted', 'Too many payment attempts. Please try again later.');
     }
 
-    // Check if driver location exists
-    if (!after.driverLocation?.latitude || !after.driverLocation?.longitude) {
-      return;
-    }
-
-    // Check if pickup location exists
-    if (!after.pickup?.latitude || !after.pickup?.longitude) {
-      return;
-    }
-
-    // Calculate distance between driver and pickup location
-    const distance = calculateDistance(
-      after.driverLocation.latitude,
-      after.driverLocation.longitude,
-      after.pickup.latitude,
-      after.pickup.longitude
-    );
-
-    // Send notification if driver is within 0.5 miles (800 meters) and hasn't been sent yet
-    if (distance <= 800 && !after.proximityNotificationSent) {
-      console.log(`📍 Driver is ${distance.toFixed(0)}m away from pickup, sending proximity notification`);
-
-      const driverName = after.driverName || 'Your driver';
-      const eta = Math.ceil(distance / 200); // Rough estimate: 200m/min walking speed
-
-      const orchestrator = getOrchestrator();
-      await orchestrator.sendNotification(after.riderId, {
-        type: 'driver_nearby',
-        priority: 'high',
-        title: `${driverName} is Almost Here! 🚗`,
-        body: `Your driver is about ${eta} minute${eta > 1 ? 's' : ''} away. Get ready!`,
-        channels: ['push'],
-        rideId: event.params.rideId,
-        data: {
-          rideId: event.params.rideId,
-          driverId: after.driverId,
-          driverName,
-          distance: Math.round(distance),
-          eta,
-          driverLocation: after.driverLocation
-        }
-      });
-
-      // Mark that proximity notification has been sent
-      await event.data.after.ref.update({
-        proximityNotificationSent: true,
-        proximityNotificationSentAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-    }
-  });
-
-/**
- * Scheduled Function: Send Rating Reminders
- * Runs every 5 minutes to check for completed rides without ratings
- */
-exports.sendRatingReminders = onSchedule('every 5 minutes', async (event) => {
-    console.log('⭐ Checking for rating reminders...');
-
-    const fiveMinutesAgo = admin.firestore.Timestamp.fromMillis(Date.now() - (5 * 60 * 1000));
-    const tenMinutesAgo = admin.firestore.Timestamp.fromMillis(Date.now() - (10 * 60 * 1000));
-
-    // Get completed rides from 5-10 minutes ago without ratings
-    const completedRidesSnapshot = await admin.firestore()
-      .collection('rides')
-      .where('status', '==', 'completed')
-      .where('completedAt', '<=', fiveMinutesAgo)
-      .where('completedAt', '>', tenMinutesAgo)
-      .where('ratingReminderSent', '==', false)
-      .limit(50)
-      .get();
-
-    const reminderPromises = [];
-
-    completedRidesSnapshot.forEach(rideDoc => {
-      const ride = rideDoc.data();
-
-      // Check if rider has already rated
-      if (ride.riderRating || ride.riderRating === 0) {
-        // Mark as sent to avoid checking again
-        rideDoc.ref.update({ ratingReminderSent: true });
-        return;
-      }
-
-      // Send rating reminder to rider
-      const orchestrator = getOrchestrator();
-      reminderPromises.push(
-        orchestrator.sendNotification(ride.riderId, {
-          type: 'rating_reminder',
-          priority: 'low',
-          title: 'How Was Your Ride? ⭐',
-          body: `Please rate your experience with ${ride.driverName || 'your driver'}. Your feedback helps us improve!`,
-          channels: ['push'],
-          data: {
-            rideId: rideDoc.id,
-            driverId: ride.driverId,
-            driverName: ride.driverName,
-            completedAt: ride.completedAt
-          }
-        }).then(() => {
-          return rideDoc.ref.update({ 
-            ratingReminderSent: true,
-            ratingReminderSentAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-        }).catch(error => {
-          console.error(`Error sending rating reminder for ride ${rideDoc.id}:`, error);
-        })
-      );
-
-      // Send rating reminder to driver (if they haven't rated the rider)
-      if (!ride.driverRating && ride.driverRating !== 0) {
-        reminderPromises.push(
-          orchestrator.sendNotification(ride.driverId, {
-            type: 'rating_reminder',
-            priority: 'low',
-            title: 'Rate Your Rider ⭐',
-            body: `How was your experience with ${ride.riderName || 'this rider'}? Your feedback matters!`,
-            channels: ['push'],
-            data: {
-              rideId: rideDoc.id,
-              riderId: ride.riderId,
-              riderName: ride.riderName,
-              completedAt: ride.completedAt
-            }
-          }).catch(error => {
-            console.error(`Error sending rating reminder to driver for ride ${rideDoc.id}:`, error);
-          })
-        );
-      }
-    });
-
-    await Promise.allSettled(reminderPromises);
-    console.log(`✅ Sent ${reminderPromises.length} rating reminders`);
-  });
-
-/**
- * Helper: Calculate distance between two coordinates (Haversine formula)
- * Returns distance in meters
- */
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371e3; // Earth's radius in meters
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
-
-  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) *
-    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c; // Distance in meters
-}
-
-/**
- * Emergency Alert Trigger
- */
-exports.onEmergencyAlert = onDocumentCreated('emergencyAlerts/{alertId}', async (event) => {
-    const alert = event.data.data();
-    
-    console.log('🚨 EMERGENCY ALERT:', event.params.alertId);
-
-    // Notify the user
-    if (alert.userId) {
-      const orchestrator = getOrchestrator();
-      await orchestrator.sendNotification(alert.userId, {
-        type: 'emergency_alert',
-        priority: 'critical',
-        title: '🚨 Emergency Alert Received',
-        body: 'Your emergency alert has been received. Help is on the way. Stay safe.',
-        channels: ['push', 'sms'], // Always send SMS for emergencies
-        data: {
-          alertId: event.params.alertId,
-          location: alert.location,
-          emergencyType: alert.type
-        }
-      });
-    }
-
-    // Notify emergency contacts if any
-    if (alert.emergencyContacts && Array.isArray(alert.emergencyContacts)) {
-      const orchestrator = getOrchestrator();
-      const contactPromises = alert.emergencyContacts.map(contact => {
-        return orchestrator.sendNotification(contact.userId || contact.phone, {
-          type: 'emergency_contact_alert',
-          priority: 'critical',
-          title: '🚨 Emergency Alert',
-          body: `${alert.userName || 'Someone'} has triggered an emergency alert. Location: ${alert.location?.address || 'Unknown'}`,
-          channels: ['sms'], // Emergency contacts get SMS
-          data: {
-            alertId: event.params.alertId,
-            location: alert.location
-          }
-        });
-      });
-
-      await Promise.allSettled(contactPromises);
-    }
-
-    // Notify support team
-    await admin.firestore().collection('supportTickets').add({
-      type: 'emergency',
-      alertId: event.params.alertId,
-      userId: alert.userId,
-      rideId: alert.rideId,
-      location: alert.location,
-      priority: 'critical',
-      status: 'open',
+    // Log the payment attempt
+    await db.collection('paymentAttempts').add({
+      rideId,
+      riderId: riderIdToCheck,
+      paymentAmount: parsedPaymentAmount,
+      paymentMethodId: paymentMethodId || null,
+      status: 'validated',
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
-  });
 
-// ====================================================================
-// STRIPE PAYMENT CLOUD FUNCTIONS
-// ====================================================================
+    console.log(`✅ Payment validation passed for ride ${rideId}: $${parsedPaymentAmount}`);
 
-// Lazy load Stripe service to avoid deployment timeout
-let stripeService = null;
-const getStripeService = () => {
-  if (!stripeService) {
-    stripeService = require('./services/stripeService');
-  }
-  return stripeService;
-};
-
-/**
- * Create Payment Intent for Ride
- */
-exports.createPaymentIntent = onCall(async (request) => {
-  const {data, auth} = request;
-  try {
-    if (!auth) {
-      throw new Error('User must be authenticated');
-    }
-
-    const {amount, rideId, driverId, metadata = {}} = data;
-
-    if (!amount || !rideId || !driverId) {
-      throw new Error('Missing required fields: amount, rideId, driverId');
-    }
-
-    // Get user data
-    const userDoc = await admin.firestore().collection('users').doc(auth.uid).get();
-    const userData = userDoc.data();
-
-    // Get or create Stripe customer
-    const stripe = getStripeService();
-    const customer = await stripe.getOrCreateCustomer(
-      auth.uid,
-      userData.email,
-      `${userData.firstName} ${userData.lastName}`
-    );
-
-    // Create payment intent
-    const paymentIntent = await stripe.createPaymentIntent({
-      amount,
-      customerId: customer.id,
+    return {
+      valid: true,
       rideId,
-      riderId: auth.uid,
-      driverId,
-      metadata
-    });
-
-    return {
-      success: true,
-      clientSecret: paymentIntent.client_secret,
-      paymentIntentId: paymentIntent.id
+      paymentAmount: parsedPaymentAmount,
+      expectedFare: parsedExpectedFare,
+      riderId: riderIdToCheck,
+      validatedAt: new Date().toISOString()
     };
 
   } catch (error) {
-    console.error('❌ createPaymentIntent error:', error);
-    throw error;
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    console.error('❌ Payment validation error:', error);
+    throw new functions.https.HttpsError('internal', 'An error occurred while validating the payment');
   }
 });
 
-/**
- * Confirm Payment Intent (Server-side confirmation)
- */
-exports.confirmPayment = onCall(async (request) => {
-  const {data, auth} = request;
+// ============================================
+// 9. Validate and Update Ride Status (VAL-003)
+// Callable function to validate ride status transitions
+// ============================================
+
+exports.updateRideStatus = functions.https.onCall(async (data, context) => {
+  // Verify the user is authenticated
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to update ride status');
+  }
+
+  const { rideId, newStatus, driverId, riderId, reason } = data;
+
+  // Validate required fields
+  if (!rideId || !newStatus) {
+    throw new functions.https.HttpsError('invalid-argument', 'Missing required fields: rideId, newStatus');
+  }
+
+  // Define valid status transitions
+  const VALID_TRANSITIONS = {
+    'pending': ['open_for_bids', 'cancelled'],
+    'open_for_bids': ['awaiting_bids', 'accepted', 'cancelled', 'expired'],
+    'awaiting_bids': ['accepted', 'cancelled', 'expired', 'no_bids'],
+    'accepted': ['en_route_pickup', 'cancelled'],
+    'en_route_pickup': ['arrived_pickup', 'cancelled'],
+    'arrived_pickup': ['customer_onboard', 'cancelled', 'no_show'],
+    'customer_onboard': ['trip_active', 'cancelled'],
+    'trip_active': ['trip_completed', 'cancelled'],
+    'trip_completed': ['completed', 'awaiting_payment'],
+    'awaiting_payment': ['completed', 'payment_failed'],
+    'completed': [], // Terminal state
+    'cancelled': [], // Terminal state
+    'expired': [], // Terminal state
+    'no_bids': ['pending', 'cancelled'], // Can retry
+    'no_show': ['cancelled'], // Terminal
+    'payment_failed': ['awaiting_payment', 'cancelled']
+  };
+
+  // Define who can perform which transitions
+  const DRIVER_TRANSITIONS = [
+    'en_route_pickup', 'arrived_pickup', 'customer_onboard', 
+    'trip_active', 'trip_completed', 'no_show'
+  ];
+
+  const RIDER_TRANSITIONS = [
+    'cancelled', 'completed'
+  ];
+
+  const SYSTEM_TRANSITIONS = [
+    'expired', 'no_bids', 'payment_failed', 'awaiting_payment'
+  ];
+
   try {
-    if (!auth) {
-      throw new Error('User must be authenticated');
+    // Get the ride
+    const rideRef = db.collection('rideRequests').doc(rideId);
+    const rideDoc = await rideRef.get();
+
+    if (!rideDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Ride not found');
     }
 
-    const {paymentIntentId} = data;
+    const ride = rideDoc.data();
+    const currentStatus = ride.status;
 
-    if (!paymentIntentId) {
-      throw new Error('Missing required field: paymentIntentId');
+    // Check if this is a valid transition
+    const allowedTransitions = VALID_TRANSITIONS[currentStatus] || [];
+    if (!allowedTransitions.includes(newStatus)) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        `Invalid status transition: ${currentStatus} → ${newStatus}. Allowed: ${allowedTransitions.join(', ') || 'none'}`
+      );
     }
 
-    const stripe = getStripeService();
-    const paymentIntent = await stripe.confirmPaymentIntent(paymentIntentId);
+    // Determine user role and verify permission
+    const userId = context.auth.uid;
+    const isDriver = driverId === userId || ride.driverId === userId || ride.acceptedDriver?.driverId === userId;
+    const isRider = riderId === userId || ride.riderId === userId || ride.userId === userId;
 
-    return {
-      success: true,
-      status: paymentIntent.status,
-      paymentIntentId: paymentIntent.id
+    // Check if user has permission for this transition
+    if (DRIVER_TRANSITIONS.includes(newStatus) && !isDriver) {
+      throw new functions.https.HttpsError('permission-denied', 'Only the driver can set this status');
+    }
+
+    if (RIDER_TRANSITIONS.includes(newStatus) && !isRider && !isDriver) {
+      throw new functions.https.HttpsError('permission-denied', 'Only the rider or driver can set this status');
+    }
+
+    // Additional validation for specific transitions
+    if (newStatus === 'accepted' && !ride.acceptedDriver && !driverId) {
+      throw new functions.https.HttpsError('invalid-argument', 'Accepted status requires a driver assignment');
+    }
+
+    if (newStatus === 'cancelled' && !reason) {
+      console.warn(`Ride ${rideId} cancelled without reason`);
+      // Allow but log warning
+    }
+
+    // Prepare update data
+    const updateData = {
+      status: newStatus,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      statusHistory: admin.firestore.FieldValue.arrayUnion({
+        status: newStatus,
+        previousStatus: currentStatus,
+        changedBy: userId,
+        changedAt: new Date().toISOString(),
+        reason: reason || null
+      })
     };
 
-  } catch (error) {
-    console.error('❌ confirmPayment error:', error);
-    throw error;
-  }
-});
-
-/**
- * Create Refund
- */
-exports.createRefund = onCall(async (request) => {
-  const {data, auth} = request;
-  try {
-    if (!auth) {
-      throw new Error('User must be authenticated');
-    }
-
-    const {paymentIntentId, amount, reason} = data;
-
-    if (!paymentIntentId) {
-      throw new Error('Missing required field: paymentIntentId');
-    }
-
-    const stripe = getStripeService();
-    const refund = await stripe.createRefund(paymentIntentId, amount, reason);
-
-    return {
-      success: true,
-      refundId: refund.id,
-      status: refund.status,
-      amount: refund.amount / 100
+    // Add timestamp for specific statuses
+    const statusTimestamps = {
+      'en_route_pickup': 'enRouteAt',
+      'arrived_pickup': 'arrivedAt',
+      'customer_onboard': 'pickupAt',
+      'trip_active': 'tripStartedAt',
+      'trip_completed': 'tripCompletedAt',
+      'completed': 'completedAt',
+      'cancelled': 'cancelledAt'
     };
 
-  } catch (error) {
-    console.error('❌ createRefund error:', error);
-    throw error;
-  }
-});
-
-/**
- * Create Driver Connect Account
- */
-exports.createDriverConnectAccount = onCall(async (request) => {
-  const {data, auth} = request;
-  try {
-    if (!auth) {
-      throw new Error('User must be authenticated');
+    if (statusTimestamps[newStatus]) {
+      updateData[statusTimestamps[newStatus]] = admin.firestore.FieldValue.serverTimestamp();
     }
 
-    // Get user data
-    const userDoc = await admin.firestore().collection('users').doc(auth.uid).get();
-    const userData = userDoc.data();
-
-    const driverDoc = await admin.firestore().collection('drivers').doc(auth.uid).get();
-    const driverData = driverDoc.data();
-
-    // Create Connect account
-    const stripe = getStripeService();
-    const account = await stripe.createConnectAccount(
-      auth.uid,
-      userData.email,
-      driverData
-    );
-
-    // Create onboarding link
-    const onboardingUrl = await stripe.createConnectOnboardingLink(
-      account.id,
-      data.refreshUrl || 'https://anyryde.com/driver/onboarding/refresh',
-      data.returnUrl || 'https://anyryde.com/driver/dashboard'
-    );
-
-    return {
-      success: true,
-      accountId: account.id,
-      onboardingUrl
-    };
-
-  } catch (error) {
-    console.error('❌ createDriverConnectAccount error:', error);
-    throw error;
-  }
-});
-
-/**
- * Get Driver Earnings
- */
-exports.getDriverEarnings = onCall(async (request) => {
-  const {data, auth} = request;
-  try {
-    if (!auth) {
-      throw new Error('User must be authenticated');
-    }
-
-    const {startDate, endDate} = data;
-
-    const stripe = getStripeService();
-    const earnings = await stripe.getDriverEarnings(
-      auth.uid,
-      startDate ? new Date(startDate) : null,
-      endDate ? new Date(endDate) : null
-    );
-
-    return {
-      success: true,
-      earnings
-    };
-
-  } catch (error) {
-    console.error('❌ getDriverEarnings error:', error);
-    throw error;
-  }
-});
-
-/**
- * Get Customer Payment Methods
- */
-exports.getPaymentMethods = onCall(async (request) => {
-  const {auth} = request;
-  try {
-    if (!auth) {
-      throw new Error('User must be authenticated');
-    }
-
-    // Get user data
-    const userDoc = await admin.firestore().collection('users').doc(auth.uid).get();
-    const userData = userDoc.data();
-
-    if (!userData.stripeCustomerId) {
-      return {
-        success: true,
-        paymentMethods: []
+    // If cancelled, record cancellation details
+    if (newStatus === 'cancelled') {
+      updateData.cancellation = {
+        cancelledBy: isDriver ? 'driver' : 'rider',
+        cancelledById: userId,
+        reason: reason || 'No reason provided',
+        cancelledAt: admin.firestore.FieldValue.serverTimestamp()
       };
     }
 
-    const stripe = getStripeService();
-    const paymentMethods = await stripe.getPaymentMethods(userData.stripeCustomerId);
+    // Perform the update
+    await rideRef.update(updateData);
+
+    // Log the status change for audit
+    await db.collection('rideStatusAudit').add({
+      rideId,
+      previousStatus: currentStatus,
+      newStatus,
+      changedBy: userId,
+      userRole: isDriver ? 'driver' : (isRider ? 'rider' : 'system'),
+      reason: reason || null,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log(`✅ Ride ${rideId} status updated: ${currentStatus} → ${newStatus} by ${userId}`);
 
     return {
       success: true,
-      paymentMethods
+      rideId,
+      previousStatus: currentStatus,
+      newStatus,
+      updatedAt: new Date().toISOString()
     };
 
   } catch (error) {
-    console.error('❌ getPaymentMethods error:', error);
-    throw error;
-  }
-});
-
-/**
- * Stripe Webhook Handler
- */
-exports.stripeWebhook = onCall(async (request) => {
-  const {data} = request;
-  try {
-    const event = data.event;
-
-    console.log('📨 Stripe webhook received:', event.type);
-
-    // Handle the event
-    switch (event.type) {
-      case 'payment_intent.succeeded':
-        const paymentIntent = event.data.object;
-        
-        // Update payment status in Firestore
-        const paymentsSnapshot = await admin.firestore()
-          .collection('payments')
-          .where('paymentIntentId', '==', paymentIntent.id)
-          .limit(1)
-          .get();
-
-        if (!paymentsSnapshot.empty) {
-          const paymentDoc = paymentsSnapshot.docs[0];
-          await paymentDoc.ref.update({
-            status: 'succeeded',
-            processedAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-
-          const paymentData = paymentDoc.data();
-
-          // Update ride status
-          if (paymentData.rideId) {
-            await admin.firestore().collection('rides').doc(paymentData.rideId).update({
-              'payment.status': 'succeeded',
-              'payment.processedAt': admin.firestore.FieldValue.serverTimestamp(),
-              updatedAt: admin.firestore.FieldValue.serverTimestamp()
-            });
-          }
-
-          // Send notifications
-          const orchestrator = getOrchestrator();
-          
-          // Notify rider
-          await orchestrator.sendNotification(paymentData.riderId, {
-            type: 'payment_received',
-            priority: 'medium',
-            title: '💰 Payment Confirmed',
-            body: `Your payment of $${paymentData.amount.toFixed(2)} has been processed successfully.`,
-            channels: ['push'],
-            data: {
-              paymentId: paymentDoc.id,
-              amount: paymentData.amount
-            }
-          });
-
-          // Notify driver
-          await orchestrator.sendNotification(paymentData.driverId, {
-            type: 'payment_received',
-            priority: 'medium',
-            title: '💰 Payment Received',
-            body: `You earned $${paymentData.driverAmount.toFixed(2)} from this ride.`,
-            channels: ['push'],
-            data: {
-              paymentId: paymentDoc.id,
-              earnings: paymentData.driverAmount
-            }
-          });
-        }
-        break;
-
-      case 'payment_intent.payment_failed':
-        const failedPayment = event.data.object;
-        
-        // Update payment status
-        const failedPaymentsSnapshot = await admin.firestore()
-          .collection('payments')
-          .where('paymentIntentId', '==', failedPayment.id)
-          .limit(1)
-          .get();
-
-        if (!failedPaymentsSnapshot.empty) {
-          const paymentDoc = failedPaymentsSnapshot.docs[0];
-          await paymentDoc.ref.update({
-            status: 'failed',
-            error: failedPayment.last_payment_error?.message,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-
-          const paymentData = paymentDoc.data();
-
-          // Notify rider
-          const orchestrator = getOrchestrator();
-          await orchestrator.sendNotification(paymentData.riderId, {
-            type: 'payment_failed',
-            priority: 'high',
-            title: '❌ Payment Failed',
-            body: 'Your payment could not be processed. Please update your payment method.',
-            channels: ['push', 'sms'],
-            data: {
-              paymentId: paymentDoc.id,
-              error: failedPayment.last_payment_error?.message
-            }
-          });
-        }
-        break;
-
-      case 'account.updated':
-        // Driver Connect account updated
-        const account = event.data.object;
-        
-        // Update driver's payment status
-        const driversSnapshot = await admin.firestore()
-          .collection('drivers')
-          .where('stripeConnectAccountId', '==', account.id)
-          .limit(1)
-          .get();
-
-        if (!driversSnapshot.empty) {
-          const driverDoc = driversSnapshot.docs[0];
-          await driverDoc.ref.update({
-            paymentStatus: account.charges_enabled ? 'active' : 'pending_verification',
-            payoutsEnabled: account.payouts_enabled,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-        }
-        break;
-
-      default:
-        console.log(`Unhandled event type: ${event.type}`);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
     }
-
-    return {success: true};
-
-  } catch (error) {
-    console.error('❌ stripeWebhook error:', error);
-    throw error;
+    console.error('❌ Ride status update error:', error);
+    throw new functions.https.HttpsError('internal', 'An error occurred while updating ride status');
   }
 });
-

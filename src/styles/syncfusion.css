@@ -1,0 +1,232 @@
+/* Syncfusion Scheduler Styling for Medical Calendar */
+
+/* Import Syncfusion Material Theme */
+@import url('https://cdn.syncfusion.com/ej2/material.css');
+
+/* Calendar Container */
+.medical-calendar {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Calendar Header Styling */
+.medical-calendar .e-schedule .e-header-bar {
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.medical-calendar .e-schedule .e-header-bar .e-header-date {
+  color: #1f2937;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+/* Calendar Navigation Buttons */
+.medical-calendar .e-schedule .e-header-bar .e-prev,
+.medical-calendar .e-schedule .e-header-bar .e-next {
+  background: #059669;
+  color: white;
+  border-radius: 6px;
+  border: none;
+}
+
+.medical-calendar .e-schedule .e-header-bar .e-prev:hover,
+.medical-calendar .e-schedule .e-header-bar .e-next:hover {
+  background: #047857;
+}
+
+/* View Switcher Styling */
+.medical-calendar .e-schedule .e-header-bar .e-view-switcher .e-toolbar-item {
+  margin: 0 2px;
+  border-radius: 6px;
+}
+
+.medical-calendar .e-schedule .e-header-bar .e-view-switcher .e-toolbar-item.e-active {
+  background: #059669;
+  color: white;
+}
+
+.medical-calendar .e-schedule .e-header-bar .e-view-switcher .e-toolbar-item:hover {
+  background: #f3f4f6;
+}
+
+/* Calendar Grid Styling */
+.medical-calendar .e-schedule .e-content-wrap {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.medical-calendar .e-schedule .e-month-view .e-work-cells {
+  border: 1px solid #f1f5f9;
+  min-height: 80px;
+}
+
+.medical-calendar .e-schedule .e-month-view .e-work-cells:hover {
+  background: #f8fafc;
+}
+
+/* Calendar Header Days */
+.medical-calendar .e-schedule .e-header-cells {
+  background: #f1f5f9;
+  color: #374151;
+  font-weight: 600;
+  border: 1px solid #e5e7eb;
+  text-align: center;
+  padding: 12px 8px;
+}
+
+/* Today's Date Highlighting */
+.medical-calendar .e-schedule .e-month-view .e-work-cells.e-today {
+  background: #ecfdf5;
+  border: 2px solid #059669;
+}
+
+/* Event Styling */
+.medical-calendar .e-schedule .e-appointment {
+  border-radius: 4px;
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  margin: 1px;
+  padding: 2px 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.medical-calendar .e-schedule .e-appointment:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+/* Different calendar views */
+.medical-calendar .e-schedule .e-week-view .e-work-cells,
+.medical-calendar .e-schedule .e-day-view .e-work-cells {
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* Time slots in week/day view */
+.medical-calendar .e-schedule .e-time-cells {
+  background: #f8fafc;
+  border-right: 2px solid #e5e7eb;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+/* Weekend styling */
+.medical-calendar .e-schedule .e-month-view .e-work-cells.e-weekend {
+  background: #fefefe;
+}
+
+/* Agenda view styling */
+.medical-calendar .e-schedule .e-agenda-view .e-appointment {
+  border-left: 4px solid;
+  border-radius: 0;
+  margin: 2px 0;
+  padding: 8px 12px;
+}
+
+.medical-calendar .e-schedule .e-agenda-view .e-content-wrap {
+  background: white;
+}
+
+/* Loading and empty states */
+.medical-calendar .e-schedule .e-content-wrap:empty::after {
+  content: "No rides scheduled for this period";
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .medical-calendar .e-schedule .e-header-bar .e-header-date {
+    font-size: 16px;
+  }
+  
+  .medical-calendar .e-schedule .e-month-view .e-work-cells {
+    min-height: 60px;
+  }
+  
+  .medical-calendar .e-schedule .e-appointment {
+    font-size: 10px;
+    padding: 1px 4px;
+  }
+}
+
+/* Custom status colors for medical rides */
+.medical-calendar .e-schedule .e-appointment.assigned {
+  background-color: #2563EB !important;
+  color: white;
+}
+
+.medical-calendar .e-schedule .e-appointment.in-progress {
+  background-color: #16A34A !important;
+  color: white;
+}
+
+.medical-calendar .e-schedule .e-appointment.completed {
+  background-color: #1F2937 !important;
+  color: white;
+}
+
+.medical-calendar .e-schedule .e-appointment.postponed {
+  background-color: #F59E0B !important;
+  color: white;
+}
+
+.medical-calendar .e-schedule .e-appointment.cancelled {
+  background-color: #E11D48 !important;
+  color: white;
+}
+
+/* Drag and drop styling */
+.medical-calendar .e-schedule .e-drag-clone {
+  opacity: 0.8;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Selection styling */
+.medical-calendar .e-schedule .e-selected-cells {
+  background: #dbeafe !important;
+  border: 2px solid #3b82f6 !important;
+}
+
+/* Toolbar styling */
+.medical-calendar .e-schedule .e-toolbar {
+  background: #f8fafc;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 8px 16px;
+}
+
+.medical-calendar .e-schedule .e-toolbar .e-toolbar-item {
+  margin: 0 4px;
+}
+
+/* Custom appointment template styling */
+.medical-calendar .appointment-template {
+  width: 100%;
+  height: 100%;
+  padding: 2px 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.medical-calendar .appointment-template .patient-id {
+  font-weight: 600;
+  font-size: 10px;
+}
+
+.medical-calendar .appointment-template .appointment-type {
+  font-size: 9px;
+  opacity: 0.9;
+}
+
+.medical-calendar .appointment-template .time-info {
+  font-size: 8px;
+  opacity: 0.8;
+}

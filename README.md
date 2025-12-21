@@ -1,6 +1,12 @@
-# AnyRyde Platform
+# 🌐 RydeIQ Web Application
 
-A comprehensive ride-sharing platform built with React, Firebase, and modern web technologies.
+[![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)](https://reactjs.org/)
+[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-06B6D4?logo=tailwindcss)](https://tailwindcss.com/)
+[![Firebase](https://img.shields.io/badge/Firebase-10.14-FFCA28?logo=firebase)](https://firebase.google.com/)
+
+Marketing platform, onboarding portal, and administrative dashboard for the RydeIQ transportation marketplace.
+
+---
 
 ## 🚀 Quick Start
 
@@ -8,126 +14,124 @@ A comprehensive ride-sharing platform built with React, Firebase, and modern web
 # Install dependencies
 yarn install
 
+# Create environment file
+cp .env.example .env
+# Edit .env with your credentials
+
 # Start development server
 yarn start
-
-# Build for production
-yarn build
 ```
 
-## 📚 Documentation
-
-- [Architecture Overview](docs/architecture/README.md) - System design and patterns
-- [API Reference](docs/api/README.md) - Service layer and endpoints
-- [Database Schema](docs/database/README.md) - Firestore collections and rules
-- [Web Application](docs/web-app/README.md) - React frontend components
-- [Notification System](docs/notifications/README.md) - Multi-channel messaging
-- [Development Setup](docs/development/setup.md) - Local development guide
-
-## 🏗️ Tech Stack
-
-- **Frontend**: React 19.1.0, TailwindCSS, React Query
-- **Backend**: Firebase Functions (Node.js 18), Firestore
-- **Authentication**: Firebase Auth with custom claims
-- **Notifications**: Firebase Cloud Messaging, Twilio SMS, SendGrid
-- **Payments**: Stripe integration
-- **Maps**: Google Maps API
-
-## 🎯 Features
-
-- **Ride Management**: Request, track, and complete rides
-- **Driver Onboarding**: Complete driver application process
-- **Multi-Stop Rides**: Support for complex routes
-- **Real-time Notifications**: Push, SMS, and email alerts
-- **Admin Dashboard**: Platform management tools
-- **Safety Features**: Emergency alerts and monitoring
-- **AI Pricing**: Dynamic pricing and matching
-- **Analytics**: Platform metrics and insights
-
-## 📁 Project Structure
-
-```
-rydeIQWeb/
-├── src/                    # React application
-│   ├── components/         # Reusable UI components
-│   ├── contexts/          # React Context providers
-│   ├── pages/             # Route components
-│   ├── services/          # API and business logic
-│   └── layouts/           # Layout components
-├── functions/             # Firebase Cloud Functions
-├── docs/                  # Documentation
-├── public/                # Static assets
-└── firebase.json          # Firebase configuration
-```
-
-## 🔧 Development
-
-### Prerequisites
-- Node.js 18+
-- Yarn package manager
-- Firebase CLI
-- Firebase project setup
-
-### Environment Setup
-```bash
-# Copy environment template
-cp .env.example .env.local
-
-# Configure Firebase
-firebase login
-firebase init
-
-# Start emulators
-firebase emulators:start
-```
-
-See [Development Setup](docs/development/setup.md) for detailed instructions.
-
-## 🚀 Deployment
-
-```bash
-# Deploy to Firebase
-firebase deploy
-
-# Deploy specific services
-firebase deploy --only hosting
-firebase deploy --only functions
-```
-
-## 📊 Monitoring
-
-- **Firebase Console**: Authentication, Firestore, Functions
-- **Stripe Dashboard**: Payment processing
-- **Twilio Console**: SMS delivery
-- **SendGrid Dashboard**: Email delivery
-
-## 🔒 Security
-
-- Firebase Auth with custom claims
-- Firestore security rules
-- Input validation and sanitization
-- Rate limiting and throttling
-- Secure API key management
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and linting
-5. Submit a pull request
-
-## 📄 License
-
-This project is proprietary software. All rights reserved.
-
-## 🆘 Support
-
-For questions or issues:
-- Check the [documentation](docs/README.md)
-- Review [troubleshooting guides](docs/development/setup.md#troubleshooting)
-- Contact the development team
+App runs at: http://localhost:3000
 
 ---
 
-**AnyRyde Platform** - Smart Transportation Solutions
+## 📚 Documentation
+
+- **[Complete Documentation](../docs/apps/web/README.md)** - Full web app guide
+- **[Setup Guide](../docs/apps/web/setup.md)** - Detailed setup instructions
+- **[Components API](../docs/apps/web/components.md)** - Component reference
+- **[Services API](../docs/apps/web/services.md)** - Service layer documentation
+- **[Quick Start](../docs/getting-started/quick-start.md)** - Get running in 15 minutes
+
+---
+
+## ✨ Features
+
+- ✅ User & driver onboarding
+- ✅ Admin dashboard with analytics
+- ✅ Medical dispatcher portal
+- ✅ Payment management (Stripe)
+- ✅ Document upload & verification
+- ✅ Real-time ride monitoring
+
+---
+
+## 🏗️ Tech Stack
+
+- **React 19.1.0** - UI framework
+- **TailwindCSS 3.4** - Styling
+- **React Query 5.x** - Server state
+- **Firebase** - Backend (Auth, Firestore, Storage)
+- **Stripe** - Payment processing
+- **Google Maps API** - Mapping & geocoding
+
+---
+
+## 📂 Project Structure
+
+```
+src/
+├── components/      # Reusable UI components
+├── pages/          # Page components (routes)
+├── services/       # Business logic & API calls
+├── contexts/       # React Context providers
+├── layouts/        # Page layouts
+└── styles/         # Global styles
+```
+
+---
+
+## 📜 Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `yarn start` | Start development server (http://localhost:3000) |
+| `yarn build` | Build for production |
+| `yarn test` | Run tests |
+| `yarn eject` | Eject from CRA (not recommended) |
+
+---
+
+## 🔐 Environment Variables
+
+Required in `.env`:
+
+```bash
+REACT_APP_FIREBASE_API_KEY=...
+REACT_APP_FIREBASE_AUTH_DOMAIN=...
+REACT_APP_FIREBASE_PROJECT_ID=...
+REACT_APP_GOOGLE_MAPS_API_KEY=...
+```
+
+See [Environment Variables Reference](../docs/reference/environment-variables.md) for complete list.
+
+---
+
+## 🚢 Deployment
+
+**Netlify:** Automatic deployment on push to `main`
+
+```bash
+Build command: yarn build
+Publish directory: build
+```
+
+**Vercel:** Deploy with Vercel CLI
+
+```bash
+vercel deploy --prod
+```
+
+See [Deployment Guide](../docs/deployment/web-deployment.md) for detailed instructions.
+
+---
+
+## 🆘 Need Help?
+
+- **Docs:** [Complete Documentation](../docs/)
+- **Troubleshooting:** [Common Issues](../docs/apps/web/troubleshooting.md)
+- **Slack:** #rydeiq-web
+
+---
+
+## 📊 Project Status
+
+- **Version:** 1.0.0
+- **Status:** ✅ Production Ready
+- **Test Coverage:** TODO: Add tests (target 70%)
+- **Last Updated:** October 28, 2025
+
+---
+
+**For detailed documentation, see [/docs/apps/web/](../docs/apps/web/)**

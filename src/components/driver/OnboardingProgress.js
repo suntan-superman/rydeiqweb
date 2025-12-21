@@ -21,6 +21,11 @@ const OnboardingProgress = ({ currentStep, progress, applicationStatus }) => {
       description: 'Upload required documents'
     },
     {
+      key: ONBOARDING_STEPS.VIDEO_EQUIPMENT_VERIFICATION,
+      name: 'Video Equipment',
+      description: 'Video recording setup'
+    },
+    {
       key: ONBOARDING_STEPS.VEHICLE_INFO,
       name: 'Vehicle',
       description: 'Vehicle details'

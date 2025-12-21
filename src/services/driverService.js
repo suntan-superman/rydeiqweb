@@ -36,6 +36,7 @@ export const ONBOARDING_STEPS = {
   ACCOUNT_CREATION: 'account_creation',
   PERSONAL_INFO: 'personal_info',
   DOCUMENT_UPLOAD: 'document_upload',
+  VIDEO_EQUIPMENT_VERIFICATION: 'video_equipment_verification',
   VEHICLE_INFO: 'vehicle_info',
   BACKGROUND_CHECK: 'background_check',
   PAYOUT_SETUP: 'payout_setup',
@@ -51,7 +52,11 @@ export const DOCUMENT_TYPES = {
   GOVERNMENT_ID_BACK: 'government_id_back',
   VEHICLE_REGISTRATION: 'vehicle_registration',
   INSURANCE_PROOF: 'insurance_proof',
-  PROFILE_PHOTO: 'profile_photo'
+  PROFILE_PHOTO: 'profile_photo',
+  // Video Recording Equipment Documents
+  DASHCAM_PHOTO: 'dashcam_photo',
+  VIDEO_CERTIFICATION: 'video_certification',
+  PRIVACY_NOTICE_ACKNOWLEDGMENT: 'privacy_notice_acknowledgment'
 };
 
 // Create new driver application with onboarding status
@@ -73,6 +78,7 @@ export const createDriverApplication = async (userId, initialData) => {
       stepProgress: {
         [ONBOARDING_STEPS.PERSONAL_INFO]: false,
         [ONBOARDING_STEPS.DOCUMENT_UPLOAD]: false,
+        [ONBOARDING_STEPS.VIDEO_EQUIPMENT_VERIFICATION]: false,
         [ONBOARDING_STEPS.VEHICLE_INFO]: false,
         [ONBOARDING_STEPS.BACKGROUND_CHECK]: false,
         [ONBOARDING_STEPS.PAYOUT_SETUP]: false,
@@ -98,6 +104,24 @@ export const createDriverApplication = async (userId, initialData) => {
         accountCreated: false,
         accountCreatedAt: null,
         lastMobileLogin: null,
+      },
+      // Video Recording Capability
+      videoRecordingCapability: {
+        hasEquipment: false,
+        equipmentType: null, // 'vantrue_n2_pro', 'viofo_a129_duo_ir', 'garmin_tandem', 'other'
+        equipmentModel: null,
+        certificationStatus: 'not_started', // 'not_started', 'in_progress', 'completed', 'expired'
+        certificationCompletedAt: null,
+        certificationExpiresAt: null,
+        equipmentVerified: false,
+        verifiedAt: null,
+        verifiedBy: null,
+        privacyNoticeAcknowledged: false,
+        acknowledgedAt: null,
+        equipmentPhotos: {},
+        certificationDocument: null,
+        privacyNoticeDocument: null,
+        isVideoCapable: false, // Computed field: hasEquipment && certificationStatus === 'completed' && equipmentVerified
       },
       ...initialData
     };

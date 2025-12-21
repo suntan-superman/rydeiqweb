@@ -7,7 +7,8 @@ import {
   query, 
   where, 
   orderBy, 
-  limit
+  limit,
+  startAfter
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { isAdmin } from './authService';
@@ -185,46 +186,72 @@ export const updateDriverStatus = async (currentUser, driverId, status, reason =
 
 // ===== RIDE MANAGEMENT =====
 
-// Get all rides with filtering
+/**
+ * Get all rides with filtering and cursor-based pagination
+ * @param {Object} currentUser - Current admin user
+ * @param {Object} filters - Filter options (status, driverId, customerId)
+ * @param {Object} pagination - Pagination options (pageSize, lastDoc)
+ * @returns {Promise<Object>} Paginated rides with hasMore indicator
+ */
 export const getRides = async (currentUser, filters = {}, pagination = {}) => {
   try {
     checkAdminPermissions(currentUser);
 
-    const { status, driverId, customerId, page = 1, pageSize = 20 } = { ...filters, ...pagination };
+    const { status, driverId, customerId } = filters;
+    const { pageSize = 20, lastDoc = null } = pagination;
     
-    let q = collection(db, 'rides');
+    // Build query constraints
+    let constraints = [];
     
     // Add filters
     if (status && status !== 'all') {
-      q = query(q, where('status', '==', status));
+      constraints.push(where('status', '==', status));
     }
     if (driverId) {
-      q = query(q, where('driverId', '==', driverId));
+      constraints.push(where('driverId', '==', driverId));
     }
     if (customerId) {
-      q = query(q, where('customerId', '==', customerId));
+      constraints.push(where('customerId', '==', customerId));
     }
     
-    // Add ordering and pagination
-    q = query(q, orderBy('createdAt', 'desc'), limit(pageSize));
+    // Add ordering
+    constraints.push(orderBy('createdAt', 'desc'));
     
+    // Add cursor for pagination
+    if (lastDoc) {
+      constraints.push(startAfter(lastDoc));
+    }
+    
+    // Fetch one extra to check if there's more
+    constraints.push(limit(pageSize + 1));
+    
+    const q = query(collection(db, 'rides'), ...constraints);
     const snapshot = await getDocs(q);
-    const rides = [];
     
-    snapshot.forEach((doc) => {
-      rides.push({
-        id: doc.id,
-        ...doc.data()
-      });
+    const rides = [];
+    let lastVisible = null;
+    let hasMore = false;
+    
+    snapshot.forEach((doc, index) => {
+      if (index < pageSize) {
+        rides.push({
+          id: doc.id,
+          ...doc.data()
+        });
+        lastVisible = doc;
+      } else {
+        hasMore = true;
+      }
     });
 
     return {
       success: true,
       data: rides,
       pagination: {
-        page,
         pageSize,
-        hasMore: snapshot.docs.length === pageSize
+        hasMore,
+        lastDoc: lastVisible,
+        totalFetched: rides.length
       }
     };
   } catch (error) {

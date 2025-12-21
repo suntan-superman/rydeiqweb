@@ -3,6 +3,7 @@ import { DriverOnboardingProvider, useDriverOnboarding } from '../contexts/Drive
 import WelcomeScreen from '../components/driver/WelcomeScreen';
 import PersonalInfoForm from '../components/driver/PersonalInfoForm';
 import DocumentUploadForm from '../components/driver/DocumentUploadForm';
+import VideoEquipmentVerificationForm from '../components/driver/VideoEquipmentVerificationForm';
 import VehicleInfoForm from '../components/driver/VehicleInfoForm';
 import BackgroundCheckForm from '../components/driver/BackgroundCheckForm';
 import PayoutSetupForm from '../components/driver/PayoutSetupForm';
@@ -37,6 +38,8 @@ const DriverOnboardingContent = () => {
         return <PersonalInfoForm />;
       case ONBOARDING_STEPS.DOCUMENT_UPLOAD:
         return <DocumentUploadForm />;
+      case ONBOARDING_STEPS.VIDEO_EQUIPMENT_VERIFICATION:
+        return <VideoEquipmentVerificationForm />;
       case ONBOARDING_STEPS.VEHICLE_INFO:
         return <VehicleInfoForm />;
       case ONBOARDING_STEPS.BACKGROUND_CHECK:

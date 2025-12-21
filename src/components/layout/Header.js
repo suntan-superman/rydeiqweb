@@ -59,6 +59,11 @@ const Header = () => {
       navItems.push({ to: '/admin-dashboard', label: 'Admin Dashboard', icon: '👨‍💼' });
     }
 
+    // Medical Dashboard for super admins
+    if (user.role === USER_ROLES.SUPER_ADMIN || isSuperAdmin(user)) {
+      navItems.push({ to: '/medical-portal', label: 'Medical Dashboard', icon: '🏥' });
+    }
+
     // Profile (for all users)
     navItems.push({ to: '/profile', label: 'Profile', icon: '👤' });
 
