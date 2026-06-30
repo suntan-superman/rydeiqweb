@@ -68,7 +68,7 @@ const AdminOverview = ({ metrics, onRefresh, onTabChange }) => {
       title: 'Total Users',
       value: totalUsers.toLocaleString(),
       subtitle: `${activeDrivers} active drivers`,
-      change: `${((activeDrivers / totalUsers) * 100).toFixed(1)}% driver rate`,
+      change: `${totalUsers > 0 ? ((activeDrivers / totalUsers) * 100).toFixed(1) : '0.0'}% driver rate`,
       icon: '👥',
       color: 'blue'
     },

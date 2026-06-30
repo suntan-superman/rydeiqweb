@@ -4,7 +4,7 @@ import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyCAiGgj7WGUntSHs4PmAS1GB4UzqR4MrOU",
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyC3EmA-2Eb524pA1TD5olwNqoQzTRmSDeE",
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "rydeiq-8b8b8.firebaseapp.com",
   projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "rydeiq-8b8b8",
   storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "rydeiq-8b8b8.appspot.com",

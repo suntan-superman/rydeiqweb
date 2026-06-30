@@ -366,91 +366,130 @@ export const getPlatformMetrics = async (currentUser, timeRange = '7days') => {
         startDate.setDate(startDate.getDate() - 7);
     }
 
-    // Get all users count
-    const usersQuery = query(collection(db, 'users'));
-    const usersSnapshot = await getDocs(usersQuery);
-    const totalUsers = usersSnapshot.size;
-
-    // Get driver metrics
-    const driversQuery = query(collection(db, 'driverApplications'));
-    const driversSnapshot = await getDocs(driversQuery);
-    
     let totalDrivers = 0;
     let activeDrivers = 0;
     let approvedDrivers = 0;
     let pendingApplications = 0;
-    
-    driversSnapshot.forEach((doc) => {
-      const data = doc.data();
-      totalDrivers++;
-      
-      // Check approval status
-      if (data.approvalStatus?.status === 'approved') {
-        approvedDrivers++;
-      }
-      
-      // Check activity status
-      if (data.status === 'approved' || data.status === 'active' || data.status === 'available') {
-        activeDrivers++;
-      } else if (data.status === 'pending' || data.status === 'review_pending') {
-        pendingApplications++;
-      }
-    });
-
-    // Get ride metrics
-    const ridesQuery = query(
-      collection(db, 'rides'),
-      where('createdAt', '>=', startDate.toISOString()),
-      where('createdAt', '<=', endDate.toISOString())
-    );
-    const ridesSnapshot = await getDocs(ridesQuery);
-    
+    let totalUsers = 0;
     let totalRides = 0;
     let completedRides = 0;
     let cancelledRides = 0;
     let totalRevenue = 0;
     let totalCommission = 0;
-    
-    ridesSnapshot.forEach((doc) => {
-      const data = doc.data();
-      totalRides++;
+    const warnings = [];
+
+    try {
+      const usersQuery = query(collection(db, 'users'));
+      const usersSnapshot = await getDocs(usersQuery);
+      totalUsers = usersSnapshot.size;
+    } catch (error) {
+      warnings.push({
+        source: 'users',
+        code: error.code,
+        message: error.message,
+      });
+      console.warn('Unable to load user metrics:', error);
+    }
+
+    try {
+      const driversQuery = query(collection(db, 'driverApplications'));
+      const driversSnapshot = await getDocs(driversQuery);
       
-      if (data.status === 'completed') {
-        completedRides++;
-        totalRevenue += data.fare || 0;
-        totalCommission += data.commission || 0;
-      } else if (data.status === 'cancelled') {
-        cancelledRides++;
+      driversSnapshot.forEach((doc) => {
+        const data = doc.data();
+        totalDrivers++;
+        
+        // Check approval status
+        if (data.approvalStatus?.status === 'approved') {
+          approvedDrivers++;
+        }
+        
+        // Check activity status
+        if (data.status === 'approved' || data.status === 'active' || data.status === 'available') {
+          activeDrivers++;
+        } else if (data.status === 'pending' || data.status === 'review_pending') {
+          pendingApplications++;
+        }
+      });
+    } catch (error) {
+      warnings.push({
+        source: 'driverApplications',
+        code: error.code,
+        message: error.message,
+      });
+      console.warn('Unable to load driver metrics:', error);
+    }
+
+    try {
+      const ridesQuery = query(
+        collection(db, 'rides'),
+        where('createdAt', '>=', startDate.toISOString()),
+        where('createdAt', '<=', endDate.toISOString())
+      );
+      const ridesSnapshot = await getDocs(ridesQuery);
+      
+      ridesSnapshot.forEach((doc) => {
+        const data = doc.data();
+        totalRides++;
+        
+        if (data.status === 'completed') {
+          completedRides++;
+          totalRevenue += data.fare || 0;
+          totalCommission += data.commission || 0;
+        } else if (data.status === 'cancelled') {
+          cancelledRides++;
+        }
+      });
+    } catch (error) {
+      warnings.push({
+        source: 'rides',
+        code: error.code,
+        message: error.message,
+      });
+      console.warn('Unable to load ride metrics:', error);
+    }
+
+    if (warnings.length > 0) {
+      console.warn('Platform metrics loaded with partial data:', warnings);
+    }
+
+    const approvalRate = totalDrivers > 0 ? (approvedDrivers / totalDrivers * 100).toFixed(1) : 0;
+    const completionRate = totalRides > 0 ? (completedRides / totalRides * 100).toFixed(1) : 0;
+    const averageRide = completedRides > 0 ? (totalRevenue / completedRides).toFixed(2) : 0;
+
+    const data = {
+      timeRange,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      totalUsers,
+      activeDrivers,
+      drivers: {
+        total: totalDrivers,
+        active: activeDrivers,
+        approved: approvedDrivers,
+        pending: pendingApplications,
+        approvalRate
+      },
+      rides: {
+        total: totalRides,
+        completed: completedRides,
+        cancelled: cancelledRides,
+        completionRate
+      },
+      revenue: {
+        total: totalRevenue,
+        commission: totalCommission,
+        averageRide
       }
-    });
+    };
+
+    if (warnings.length > 0) {
+      data.warnings = warnings;
+    }
 
     return {
       success: true,
-      data: {
-        timeRange,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        totalUsers,
-        activeDrivers,
-        drivers: {
-          total: totalDrivers,
-          active: activeDrivers,
-          approved: approvedDrivers,
-          pending: pendingApplications,
-          approvalRate: totalDrivers > 0 ? (approvedDrivers / totalDrivers * 100).toFixed(1) : 0
-        },
-        rides: {
-          total: totalRides,
-          completed: completedRides,
-          cancelled: cancelledRides,
-          completionRate: totalRides > 0 ? (completedRides / totalRides * 100).toFixed(1) : 0
-        },
-        revenue: {
-          total: totalRevenue,
-          commission: totalCommission,
-          averageRide: completedRides > 0 ? (totalRevenue / completedRides).toFixed(2) : 0
-        }
-      }
+      data
     };
   } catch (error) {
     return {

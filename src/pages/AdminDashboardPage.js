@@ -87,7 +87,7 @@ const AdminDashboardPage = () => {
     console.log('AdminDashboardPage: renderTabContent called with activeTab:', activeTab);
     switch (activeTab) {
       case 'overview':
-        return <AdminOverview metrics={platformMetrics} onRefresh={() => window.location.reload()} />;
+        return <AdminOverview metrics={platformMetrics} onRefresh={() => window.location.reload()} onTabChange={setActiveTab} />;
       case 'drivers':
         return <DriverManagement />;
       case 'reliability':
@@ -110,7 +110,7 @@ const AdminDashboardPage = () => {
       case 'support':
         return <SupportCenter />;
       default:
-        return <AdminOverview metrics={platformMetrics} onRefresh={() => window.location.reload()} />;
+        return <AdminOverview metrics={platformMetrics} onRefresh={() => window.location.reload()} onTabChange={setActiveTab} />;
     }
   };
 
