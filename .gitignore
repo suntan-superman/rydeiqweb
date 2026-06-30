@@ -18,6 +18,8 @@
 .env.development.local
 .env.test.local
 .env.production.local
+.env.NetlifyEnvBackup
+test-firebase-connection.js
 
 npm-debug.log*
 yarn-debug.log*
